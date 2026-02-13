@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>사주 카페 (v1.4)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="overlay"></div>
+
+  <main class="app">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">☯</div>
+        <div>
+          <div class="title">사주 카페</div>
+          <div class="subtitle">정적 웹앱 · 3파일 구조 · v1.4 대운중심</div>
+        </div>
+      </div>
+      <div id="globalBadges" class="badges"></div>
+    </header>
+
+    <section class="panel">
+      <div class="form">
+        <label>
+          <span>이름(옵션)</span>
+          <input id="name" type="text" placeholder="추승우" />
+        </label>
+
+        <label>
+          <span>생년월일(양력)</span>
+          <input id="birthDate" type="date" required />
+        </label>
+
+        <label>
+          <span>출생시각(필수)</span>
+          <input id="birthTime" type="time" required />
+        </label>
+
+        <label>
+          <span>성별</span>
+          <select id="gender">
+            <option value="M" selected>남</option>
+            <option value="F">여</option>
+          </select>
+        </label>
+
+        <div id="alert" class="alert hidden"></div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="tab-saju">사주</button>
+        <button class="tab" data-tab="tab-hidden">지장간</button>
+        <button class="tab" data-tab="tab-shishen">십신</button>
+        <button class="tab" data-tab="tab-daeun">대운</button>
+        <button class="tab" data-tab="tab-analysis">격/용희기한</button>
+        <button class="tab" data-tab="tab-intuition">능력 분석</button>
+      </nav>
+
+      <section id="tab-saju" class="tabpane active">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">4주(연/월/일/시)</div>
+            <div class="pillars">
+              <div class="pillar">
+                <div class="p-label">년주</div>
+                <div class="p-ganji" id="p-year">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">월주</div>
+                <div class="p-ganji" id="p-month">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">일주</div>
+                <div class="p-ganji" id="p-day">-</div>
+              </div>
+              <div class="pillar">
+                <div class="p-label">시주</div>
+                <div class="p-ganji" id="p-hour">-</div>
+              </div>
+            </div>
+            <div class="tiny" id="dayMaster">일간: -</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">오행(표면 8글자)</div>
+            <div id="top2" class="top2">-</div>
+            <div class="bars" id="barsSurface"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-hidden" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">지장간(각 지지별)</div>
+            <div id="hiddenList" class="hiddenlist">-</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">오행(지장간 포함)</div>
+            <div class="tiny">※ 지지 1개당 지장간 모두 +1 단순합(가중치 없음)</div>
+            <div class="bars" id="barsHidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-shishen" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">천간 십신 (사주팔자)</div>
+            <div id="shishenPillars" class="shishen-pillars">-</div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">지장간 십신</div>
+            <div id="shishenHidden" class="hiddenlist">-</div>
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-daeun" class="tabpane">
+        <div class="card">
+          <div class="card-title">대운 정보</div>
+          <div id="daeunMeta" class="tiny muted">대운 시작: - / 방향: -</div>
+        </div>
+
+        <div id="daeunList" class="daeun-list">
+          <!-- 대운 카드들이 여기 렌더링 -->
+        </div>
+      </section>
+      
+      <!-- 새로운 탭: 격/용희기한/총점 -->
+      <section id="tab-analysis" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">격(格) 분석</div>
+            <div id="geokInfo">-</div>
+          </div>
+          
+          <div class="card">
+            <div class="card-title">신강/신약</div>
+            <div id="strengthInfo">-</div>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top: 12px;">
+          <div class="card-title">용희기한(用喜忌閑)</div>
+          <div id="godsInfo">-</div>
+        </div>
+        
+        <div class="card" style="margin-top: 12px;">
+          <div class="card-title">원국 총점</div>
+          <div class="profile-selector">
+            <label>
+              <input type="radio" name="profile" value="overall" checked onchange="window.SajuUI.onProfileChange('overall')">
+              <span>종합</span>
+            </label>
+            <label>
+              <input type="radio" name="profile" value="love" onchange="window.SajuUI.onProfileChange('love')">
+              <span>연애</span>
+            </label>
+            <label>
+              <input type="radio" name="profile" value="money" onchange="window.SajuUI.onProfileChange('money')">
+              <span>재물</span>
+            </label>
+          </div>
+          <div id="baseScore">-</div>
+        </div>
+      </section>
+      
+      <!-- 능력 분석 탭 -->
+      <section id="tab-intuition" class="tabpane">
+        <div id="intuitionPanel">
+          <!-- 직관 능력 분석이 여기 렌더링됨 -->
+        </div>
+      </section>
+    </section>
+
+  </main>
+
+  <!-- 사주 계산 엔진 (원국/대운 생성) -->
+  <script src="./saju_core.js?v=8"></script>
+  
+  <!-- 데이터 레이어 (inline 통합) -->
+  <script>
+    console.log("🔥 SajuData 통합 시작");
+    
+    window.SajuData = window.SajuData || {};
+    
+    // saju_core 상수 통합
+    if (typeof WUXING_STEM !== 'undefined') {
+      window.SajuData.WUXING_STEM = WUXING_STEM;
+      window.SajuData.WUXING_BRANCH = WUXING_BRANCH;
+      window.SajuData.WUXING_GENERATES = WUXING_GENERATES;
+      window.SajuData.WUXING_CONTROLS = WUXING_CONTROLS;
+    }
+    
+    // 십신 한글명
+    if (typeof SHISHEN_NAMES !== 'undefined') {
+      window.SajuData.TEN_GODS_KR = SHISHEN_NAMES;
+    }
+    
+    // 충 테이블
+    if (typeof CHUNG_PAIRS !== 'undefined') {
+      window.SajuData.EARTHLY_CLASHES = CHUNG_PAIRS;
+    }
+    
+    // 지장간 변환
+    if (typeof HIDDEN_STEMS_BRANCH !== 'undefined') {
+      window.SajuData.HIDDEN_STEMS_RATIO = {};
+      const roleToRatio = { "여기": 0.6, "중기": 0.25, "정기": 0.15 };
+      Object.keys(HIDDEN_STEMS_BRANCH).forEach(branch => {
+        const stems = HIDDEN_STEMS_BRANCH[branch];
+        window.SajuData.HIDDEN_STEMS_RATIO[branch] = stems.map(item => ({
+          stem: item.stem,
+          ratio: stems.length === 1 ? 1.0 : (
+            stems.length === 2 && item.role === "여기" ? 0.7 :
+            stems.length === 2 && item.role === "정기" ? 0.3 :
+            roleToRatio[item.role] || 0.5
+          )
+        }));
+      });
+    }
+    
+    // SEASON_MAP (saju_core에 없음)
+    window.SajuData.SEASON_MAP = {
+      "寅": "spring", "卯": "spring", "辰": "spring",
+      "巳": "summer", "午": "summer", "未": "summer",
+      "申": "autumn", "酉": "autumn", "戌": "autumn",
+      "亥": "winter", "子": "winter", "丑": "winter"
+    };
+    
+    window.SajuData.SEASON_ELEMENT = {
+      "spring": "wood",
+      "summer": "fire",
+      "autumn": "metal",
+      "winter": "water"
+    };
+    
+    // 육합
+    window.SajuData.EARTHLY_SIX_COMBINATIONS = [
+      ["子", "丑"], ["寅", "亥"], ["卯", "戌"], ["辰", "酉"], ["巳", "申"], ["午", "未"]
+    ];
+    
+    // 삼합
+    window.SajuData.EARTHLY_THREE_COMBINATIONS = [
+      { name: "申子辰 수국", branches: ["申", "子", "辰"], element: "water" },
+      { name: "亥卯未 목국", branches: ["亥", "卯", "未"], element: "wood" },
+      { name: "寅午戌 화국", branches: ["寅", "午", "戌"], element: "fire" },
+      { name: "巳酉丑 금국", branches: ["巳", "酉", "丑"], element: "metal" }
+    ];
+    
+    // 천간오합 (추가!)
+    window.SajuData.HEAVENLY_COMBINATIONS = [
+      ["甲", "己"], ["乙", "庚"], ["丙", "辛"], ["丁", "壬"], ["戊", "癸"]
+    ];
+    
+    // 형 (추가!)
+    window.SajuData.EARTHLY_PUNISHMENTS = [
+      ["寅", "巳", "申"],
+      ["丑", "未", "戌"],
+      ["子", "卯"]
+    ];
+    
+    // 격별 선호 축
+    window.SajuData.GEOK_PREFERENCE = {
+      "식신격": { prefer: ["食神"], support: ["正財", "偏財"], avoid: ["偏印", "劫財"] },
+      "상관격": { prefer: ["傷官"], support: ["偏財", "正財"], avoid: ["正官"] },
+      "정재격": { prefer: ["正財"], support: ["食神", "傷官", "正官"], avoid: ["劫財"] },
+      "편재격": { prefer: ["偏財"], support: ["食神", "傷官"], avoid: ["劫財", "比肩"] },
+      "정관격": { prefer: ["正官"], support: ["正印", "偏印", "正財"], avoid: ["傷官"] },
+      "편관격": { prefer: ["偏官"], support: ["食神", "正印"], avoid: ["傷官"] },
+      "정인격": { prefer: ["正印"], support: ["比肩", "正官"], avoid: ["偏財"] },
+      "편인격": { prefer: ["偏印"], support: ["劫財", "偏官"], avoid: ["食神"] },
+      "비견격": { prefer: ["比肩"], support: ["食神", "傷官", "偏官"], avoid: ["正財", "偏財"] },
+      "겁재격": { prefer: ["劫財"], support: ["傷官", "偏官"], avoid: ["正財"] },
+      "혼합격": { prefer: [], support: [], avoid: [] }
+    };
+    
+    // 프로파일
+    window.SajuData.PROFILES = {
+      overall: {
+        tenGods: { "比肩": 5, "劫財": 4, "食神": 6, "傷官": 5, "偏財": 6, "正財": 6, "偏官": 5, "正官": 6, "偏印": 5, "正印": 6 },
+        interactions: { "합": 2, "충": -3, "형": -2, "파": -2, "해": -1 }
+      },
+      love: {
+        tenGods: { "正財": 10, "偏財": 8, "正官": 10, "偏官": 8, "食神": 7, "傷官": 6, "比肩": -2, "劫財": -5, "正印": 2, "偏印": 1 },
+        interactions: { "합": 3, "충": -4, "형": -3, "파": -3, "해": -2 }
+      },
+      money: {
+        tenGods: { "食神": 9, "傷官": 10, "正財": 9, "偏財": 10, "正官": 6, "偏官": 4, "正印": 3, "偏印": 2, "比肩": -5, "劫財": -10 },
+        interactions: { "합": 2, "충": -4, "형": -3, "파": -2, "해": -1 }
+      }
+    };
+    
+    console.log("✅ SajuData 통합 완료:", window.SajuData);
+  </script>
+  
+  <!-- 새로운 엔진 -->
+  <script src="./saju_engine.js?v=8"></script>
+  <script src="./intuition_engine.js?v=1"></script>
+  <script src="./saju_ui.js?v=8"></script>
+</body>
+</html>
