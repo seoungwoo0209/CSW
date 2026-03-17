@@ -529,8 +529,10 @@ console.log("🔥 intuition_engine.js WorkInsight v2.0 로드");
     const sub2 = Math.round(s_riskPre);          // 위험 감지력
     const sub3 = Math.round(s_essence);          // 본질 해석력
 
-    console.log(`📊 [WI v2.0] 문제포착${sub1} 위험감지${sub2} 본질해석${sub3}`);
-    console.log(`🎯 [WI v2.0] 직장통찰 총점: ${insightTotal} | 90+조건: ${ninetyConditions}/3`);
+    // ── 파이프라인 디버그: 명식별 고유값 확인용
+    console.log(`📊 [WI v2.0] pillars: 일간=${dayStem} 월지=${pillars.month?.branch}`);
+    console.log(`📊 [WI v2.0] raw: SE=${raw_structureError.toFixed(3)} RP=${raw_riskPre.toFixed(3)} ES=${raw_essence.toFixed(3)}`);
+    console.log(`📊 [WI v2.0] subs: 문제포착=${sub1} 위험감지=${sub2} 본질해석=${sub3} 총점=${insightTotal}`);
 
     const typeObj = _workInsightType(sub1, sub2, sub3);
     const comment = _workInsightComment(sub1, sub2, sub3);
@@ -605,25 +607,52 @@ console.log("🔥 intuition_engine.js WorkInsight v2.0 로드");
     };
   }
 
-  // ── fallback (getShishen 없을 때)
+  // ── fallback (getShishen 없을 때 또는 dayStem 없을 때)
   function _fallback(baseState) {
-    const bv  = baseState.vectors?.baseVectors || baseState.vectors || {};
-    const tg0 = bv.tenGods || {};
-    const el0 = bv.elements || {};
+    const bv   = baseState.vectors?.baseVectors || baseState.vectors || {};
+    const tg0  = bv.tenGods  || {};
+    const el0  = bv.elements || {};
     const tgSum = Object.values(tg0).reduce((s,v)=>s+(+v||0), 0) || 1;
     const elSum = Object.values(el0).reduce((s,v)=>s+(+v||0), 0) || 1;
-    const tg  = { 인성:(+tg0["正印"]||0)+(+tg0["偏印"]||0),
-                  관성:(+tg0["正官"]||0)+(+tg0["偏官"]||0),
-                  식상:(+tg0["食神"]||0)+(+tg0["傷官"]||0) };
-    Object.keys(tg).forEach(k => tg[k] /= tgSum);
-    const el = { wood:(+el0.wood||0)/elSum, metal:(+el0.metal||0)/elSum };
-    const raw = 1.5*tg.인성 + 1.4*tg.관성 + 1.5*el.wood + 1.3*el.metal;
-    const s   = Math.round(toScore(raw, 0.55));
+
+    // 정규화된 십신/오행 비율
+    const tg = {
+      인성: ((+tg0["正印"]||0) + (+tg0["偏印"]||0)) / tgSum,
+      관성: ((+tg0["正官"]||0) + (+tg0["偏官"]||0)) / tgSum,
+    };
+    const el = {
+      wood:  (+el0.wood  || 0) / elSum,
+      earth: (+el0.earth || 0) / elSum,
+      metal: (+el0.metal || 0) / elSum,
+    };
+
+    // 3지표 rough 추정 (toScore 없이 직접 z-score 근사)
+    const r_se = 1.95*el.wood + 1.35*tg.관성 + 0.85*el.earth;
+    const r_rp = 1.75*tg.관성 + 0.75*el.wood + 0.45*el.earth;
+    const r_es = 1.55*el.earth + 1.05*el.wood + 0.70*tg.인성;
+
+    // 간이 점수화 (tanh 없이 선형 clamp)
+    const toFallbackScore = (r, center, span) =>
+      Math.round(clamp(58 + (r - center) / span * 32, 45, 95));
+
+    const s1 = toFallbackScore(r_se, 1.58, 0.49);
+    const s2 = toFallbackScore(r_rp, 0.91, 0.33);
+    const s3 = toFallbackScore(r_es, 1.65, 0.46);
+    const tot = Math.round(0.42*s1 + 0.34*s2 + 0.24*s3);
+
+    console.warn("⚠️ [WI fallback] getShishen 없음 — 간이 추정값 사용");
     return {
-      insightTotal: s, typeName:"균형형", typeDesc:"",
-      comment: { strength:"(fallback)", weakness:"" },
-      subs6: [], categories: { Insight: { score:s, grade:grade(s), percent:gradeLabel(s) } },
-      subs: [], overloadRisk:0,
+      insightTotal: tot,
+      typeName:  "분석 중",
+      typeDesc:  "상세 분석을 위해 사주 데이터를 확인하세요",
+      comment: { strength: "데이터 로딩 중", weakness: "" },
+      subs6: [
+        { id:1, name:"문제 포착력", score:s1, grade:grade(s1), gradeLabel:gradeLabel(s1) },
+        { id:2, name:"위험 감지력", score:s2, grade:grade(s2), gradeLabel:gradeLabel(s2) },
+        { id:3, name:"본질 해석력", score:s3, grade:grade(s3), gradeLabel:gradeLabel(s3) },
+      ],
+      categories: { Insight: { score:tot, grade:grade(tot), percent:gradeLabel(tot) } },
+      subs: [], overloadRisk: 0,
     };
   }
 
