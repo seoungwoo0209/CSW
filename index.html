@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>사주 카페 (v2.0 리팩토링)</title>
+  <link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="overlay"></div>
+
+  <main class="app">
+    <header class="top">
+      <div class="brand">
+        <div class="logo">☯</div>
+        <div>
+          <div class="title">사주 카페</div>
+          <div class="subtitle">v2.0 · 리팩토링</div>
+        </div>
+      </div>
+      <div id="globalBadges" class="badges"></div>
+    </header>
+
+    <section class="panel">
+      <div class="form">
+        <label>
+          <span>이름(옵션)</span>
+          <input id="name" type="text" placeholder="이름" />
+        </label>
+        <label>
+          <span>생년월일(양력)</span>
+          <input id="birthDate" type="date" required />
+        </label>
+        <label>
+          <span>출생시각(필수)</span>
+          <input id="birthTime" type="time" required />
+        </label>
+        <label>
+          <span>성별</span>
+          <select id="gender">
+            <option value="M" selected>남</option>
+            <option value="F">여</option>
+          </select>
+        </label>
+        <div id="alert" class="alert hidden"></div>
+      </div>
+
+      <nav class="tabs">
+        <button class="tab active" data-tab="tab-saju">사주</button>
+        <button class="tab" data-tab="tab-hidden">지장간</button>
+        <button class="tab" data-tab="tab-shishen">십신</button>
+        <button class="tab" data-tab="tab-daeun">대운</button>
+        <button class="tab" data-tab="tab-analysis">자원 분석</button>
+        <button class="tab" data-tab="tab-intuition">능력 분석</button>
+      </nav>
+
+      <!-- 사주 탭 -->
+      <section id="tab-saju" class="tabpane active">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">4주(연/월/일/시)</div>
+            <div class="pillars">
+              <div class="pillar"><div class="p-label">년주</div><div class="p-ganji" id="p-year">-</div></div>
+              <div class="pillar"><div class="p-label">월주</div><div class="p-ganji" id="p-month">-</div></div>
+              <div class="pillar"><div class="p-label">일주</div><div class="p-ganji" id="p-day">-</div></div>
+              <div class="pillar"><div class="p-label">시주</div><div class="p-ganji" id="p-hour">-</div></div>
+            </div>
+            <div class="tiny" id="dayMaster">일간: -</div>
+          </div>
+          <div class="card">
+            <div class="card-title">오행(표면 8글자)</div>
+            <div id="top2" class="top2">-</div>
+            <div class="bars" id="barsSurface"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 지장간 탭 -->
+      <section id="tab-hidden" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">지장간(각 지지별)</div>
+            <div id="hiddenList" class="hiddenlist">-</div>
+          </div>
+          <div class="card">
+            <div class="card-title">오행(지장간 포함)</div>
+            <div class="tiny">※ 지지 1개당 지장간 모두 +1 단순합</div>
+            <div class="bars" id="barsHidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 십신 탭 -->
+      <section id="tab-shishen" class="tabpane">
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">천간 십신 (사주팔자)</div>
+            <div id="shishenPillars" class="shishen-pillars">-</div>
+          </div>
+          <div class="card">
+            <div class="card-title">지장간 십신</div>
+            <div id="shishenHidden" class="hiddenlist">-</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 대운 탭 -->
+      <section id="tab-daeun" class="tabpane">
+        <div class="card">
+          <div class="card-title">대운 정보</div>
+          <div id="daeunMeta" class="tiny muted">대운 시작: - / 방향: -</div>
+        </div>
+        <div id="daeunList" class="daeun-list"></div>
+      </section>
+
+      <!-- 사주 자원 분석 탭 (격/신강약/원국총점 → 5축 자원 점수형으로 전면 교체) -->
+      <section id="tab-analysis" class="tabpane">
+        <div id="resourcePanel" style="padding:4px 0;">
+          <div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">
+            생년월일과 출생시각을 입력하면 자원 분석이 표시됩니다.
+          </div>
+        </div>
+      </section>
+
+      <!-- 능력 분석 탭 -->
+      <section id="tab-intuition" class="tabpane">
+        <div id="intuitionPanel"></div>
+      </section>
+    </section>
+  </main>
+
+  <!--
+    ┌─────────────────────────────────────────┐
+    │ 로드 순서 (의존성 순)                    │
+    │ 1. saju_data.js  → SajuData 초기화      │
+    │ 2. saju_core.js  → 계산 + getShishen    │
+    │ 3. saju_engine.js → 분석 엔진           │
+    │ 4. intuition_engine.js → 직관 분석      │
+    │ 5. saju_ui.js    → 렌더링               │
+    │ 6. app.js        → 앱 초기화/이벤트     │
+    └─────────────────────────────────────────┘
+  -->
+  <script src="./saju_data.js?v=3"></script>
+  <script src="./saju_core.js?v=3"></script>
+  <script src="./saju_engine.js?v=3"></script>
+  <script src="./intuition_engine.js?v=3"></script>
+  <script src="./saju_ui.js?v=3"></script>
+  <script src="./app.js?v=3"></script>
+</body>
+</html>
