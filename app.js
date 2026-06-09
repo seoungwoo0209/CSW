@@ -146,3 +146,69 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 console.log("✅ app.js 로드 완료");
+
+/* =========================================================
+   Gemini AI 운세 호출
+   ========================================================= */
+async function requestGeminiFortune() {
+  if (!window.SajuResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요.");
+    return;
+  }
+
+  const btn      = _$("geminiBtn");
+  const loading  = _$("geminiLoading");
+  const resultEl = _$("geminiResult");
+  const errorEl  = _$("geminiError");
+
+  // UI 초기화
+  btn.disabled          = true;
+  btn.style.opacity     = "0.5";
+  loading.style.display = "block";
+  resultEl.style.display = "none";
+  errorEl.style.display  = "none";
+
+  try {
+    const { name, gender, fourPillars } = window.SajuResult;
+
+    const res = await fetch("/api/gemini-saju", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, gender, fourPillars })
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data.error) {
+      throw new Error(data.error || "서버 오류가 발생했습니다.");
+    }
+
+    // **text** → <strong>, 줄바꿈 처리
+    const formatted = (data.result || "")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/\n/g, "<br>");
+
+    resultEl.innerHTML = `
+      <div style="
+        font-size:13px;color:#cbd3f0;line-height:1.9;
+        border-top:1px solid rgba(255,255,255,.08);padding-top:14px;
+      ">${formatted}</div>
+      <div style="margin-top:12px;text-align:right;">
+        <button onclick="requestGeminiFortune()" style="
+          background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);
+          color:#a5b4fc;font-size:11px;border-radius:8px;
+          padding:5px 12px;cursor:pointer;
+        ">🔄 다시 보기</button>
+      </div>
+    `;
+    resultEl.style.display = "block";
+
+  } catch (err) {
+    errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");
+    errorEl.style.display = "block";
+  } finally {
+    btn.disabled          = false;
+    btn.style.opacity     = "1";
+    loading.style.display = "none";
+  }
+}
