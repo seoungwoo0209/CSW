@@ -43,6 +43,10 @@
             <option value="F">여</option>
           </select>
         </label>
+        <label>
+          <span>출생도시(점성술용)</span>
+          <input id="birthCity" type="text" placeholder="예: 서울, 부산, 뉴욕" />
+        </label>
         <div id="alert" class="alert hidden"></div>
       </div>
 
@@ -53,6 +57,7 @@
         <button class="tab" data-tab="tab-daeun">대운</button>
         <button class="tab" data-tab="tab-analysis">자원 분석</button>
         <button class="tab" data-tab="tab-intuition">능력 분석</button>
+        <button class="tab" data-tab="tab-astro">⭐ 점성술</button>
       </nav>
 
       <!-- 사주 탭 -->
@@ -159,6 +164,56 @@
       <!-- 능력 분석 탭 -->
       <section id="tab-intuition" class="tabpane">
         <div id="intuitionPanel"></div>
+      </section>
+
+      <!-- 점성술 탭 -->
+      <section id="tab-astro" class="tabpane">
+        <div style="padding:4px 0 16px;">
+
+          <!-- 행성 위치 카드 -->
+          <div id="astroNatalPanel" style="display:none;">
+            <div style="
+              background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(25,10,60,.90));
+              border:1px solid rgba(200,170,255,.2);border-radius:16px;
+              padding:20px;margin-bottom:12px;
+            ">
+              <div style="font-size:12px;color:#c4b5fd;letter-spacing:2px;margin-bottom:12px;">🪐 네이탈 차트</div>
+              <div id="astroNatalGrid" style="
+                display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;
+              "></div>
+            </div>
+          </div>
+
+          <!-- AI 해석 카드 -->
+          <div style="
+            background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(25,10,60,.90));
+            border:1px solid rgba(200,170,255,.2);border-radius:16px;
+            padding:20px;
+          ">
+            <div style="font-size:12px;color:#c4b5fd;letter-spacing:2px;margin-bottom:6px;">🔮 AI 점성술 리딩</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:14px;line-height:1.6;">
+              Swiss Ephemeris 기반 정밀 계산 후 AI가 깊이 있는 점성술 리딩을 제공합니다.<br>
+              <span style="color:#a78bfa;font-size:11px;">※ 출생도시를 입력하면 정확한 하우스 계산이 가능합니다.</span>
+            </div>
+            <button id="astroBtn" onclick="requestAstroReading()" style="
+              background:linear-gradient(135deg,#7c3aed,#4f46e5);
+              color:#fff;font-size:13px;font-weight:700;
+              border:none;border-radius:10px;padding:10px 22px;
+              cursor:pointer;letter-spacing:.5px;transition:opacity .2s;
+            ">⭐ 점성술 리딩 시작</button>
+
+            <div id="astroLoading" style="display:none;margin-top:14px;text-align:center;">
+              <div style="font-size:13px;color:#c4b5fd;animation:pulse 1.5s ease-in-out infinite;">
+                🪐 행성 위치를 계산하고 있습니다...
+              </div>
+            </div>
+            <div id="astroResult" style="display:none;margin-top:16px;"></div>
+            <div id="astroError" style="display:none;margin-top:12px;
+              color:#ff7a7a;font-size:13px;background:rgba(255,122,122,.08);
+              border:1px solid rgba(255,122,122,.25);border-radius:8px;padding:10px 14px;">
+            </div>
+          </div>
+        </div>
       </section>
     </section>
   </main>
