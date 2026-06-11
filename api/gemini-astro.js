@@ -1,6 +1,10 @@
 /* =========================================================
-   api/gemini-astro.js
-   사전 계산된 astroData → Gemini 해석만 수행
+   api/gemini-astro.js  v2.0
+   변경 사항:
+   - progression: 태양·달 → 전 행성 + prog ASC/MC 프롬프트 반영
+   - natalAspects + aspectsToNatal 실제 계산값 주입 (AI 추측 제거)
+   - 프롬프트 규칙 6번 자기모순 해소: 에스펙트 계산값은 인풋으로만 사용
+   - [시스템 역할 정의] 멘트 출력 방지 규칙 명확화
    ========================================================= */
 
 export default async function handler(req, res) {
@@ -15,64 +19,99 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { angles, interpretation, meta } = astroData;
-    const I = interpretation || {};
+    const { natal, angles, houses, natalAspects = [], progression, meta } = astroData;
+    const progPlanets = progression?.planets || {};
+    const progAngles  = progression?.angles  || {};
+    const progMeta    = progression?.meta    || {};
+    const progAspects = progression?.aspectsToNatal || [];
 
-    const prompt = `[시스템 역할 정의]
-당신은 20년 경력의 전문 서양 점성술사입니다. 아래 데이터는 이미 계산된 결과입니다. 새로 계산하지 말고, 제공된 수치만 근거로 해석하세요.
+    // ── 행성 위치 문자열
+    const PLANET_LABELS = [
+      ['sun',     '태양(Sun)'],
+      ['moon',    '달(Moon)'],
+      ['mercury', '수성(Mercury)'],
+      ['venus',   '금성(Venus)'],
+      ['mars',    '화성(Mars)'],
+      ['jupiter', '목성(Jupiter)'],
+      ['saturn',  '토성(Saturn)'],
+      ['uranus',  '천왕성(Uranus)'],
+      ['neptune', '해왕성(Neptune)'],
+      ['pluto',   '명왕성(Pluto)'],
+    ];
 
-[핵심 리딩 원칙]
-1. 코어 자아: 태양과 달을 중심으로 본질을 먼저 설명하세요.
-2. 전체 흐름: 12하우스와 차트 지배행성을 서사적으로 연결하세요. 하우스별 나열은 피하세요.
-3. 어센던트(ASC): Chart Ruler와 함께 활용하세요.
-4. 세컨더리 프로그레션: 프로그레션 행성·ASC·에스펙트로 현재 인생 테마를 짚으세요.
-5. 역할 소개 멘트나 "Swiss Ephemeris" 같은 시스템 문구는 출력하지 마세요.
-6. 에스펙트는 제공된 목록만 사용하세요. 결과에 각도·오차 수치는 적지 마세요.
+    const planetStr = PLANET_LABELS
+      .filter(([k]) => natal[k])
+      .map(([k, label]) => {
+        const p = natal[k];
+        return `${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+      }).join('\n');
 
-[제공 데이터 — 계산 완료]
+    // ── 프로그레션 전 행성 문자열
+    const progPlanetStr = PLANET_LABELS
+      .filter(([k]) => progPlanets[k])
+      .map(([k, label]) => {
+        const p = progPlanets[k];
+        return `프로그레션 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+      }).join('\n');
 
+    const progAnglesStr = progAngles.asc
+      ? `프로그레션 ASC: ${progAngles.asc.sign} ${progAngles.asc.degree}°${progAngles.asc.minute}'\n` +
+        `프로그레션 MC: ${progAngles.mc.sign} ${progAngles.mc.degree}°${progAngles.mc.minute}'`
+      : '';
+
+    // ── 하우스 커스프 문자열
+    const houseCusps = (houses || []).map(h =>
+      `${h.house}하우스: ${h.sign} ${h.degree}°${h.minute}'`
+    ).join('\n');
+
+    // ── 에스펙트 문자열 (AI 입력용 — 출력에서는 수치 제외하도록 지시)
+    const natalAspectStr = natalAspects.length
+      ? natalAspects.map(a => `${a.planet1} ${a.symbol} ${a.planet2} (${a.aspect})`).join('\n')
+      : '(주요 에스펙트 없음)';
+
+    const progAspectStr = progAspects.length
+      ? progAspects.map(a => `${a.progPlanet} ${a.symbol} ${a.natalPlanet} (${a.aspect})`).join('\n')
+      : '(주요 프로그레션 에스펙트 없음)';
+
+    const prompt = `[분석 데이터]
 이름: ${meta.name || '(이름 없음)'}
 성별: ${meta.gender === 'M' ? '남성' : '여성'}
 출생: ${meta.birthDate} ${meta.birthTime}
+하우스 시스템: ${meta.houseSystem || 'Equal House'}
 
 어센던트(ASC): ${angles.asc.sign} ${angles.asc.degree}°${angles.asc.minute}'
 MC(천정): ${angles.mc.sign} ${angles.mc.degree}°${angles.mc.minute}'
 
-차트 지배행성:
-${I.chartRuler || '(없음)'}
-
-네이탈 행성:
-${I.natalPlanets || '(없음)'}
+네이탈 행성 위치:
+${planetStr}
 
 하우스 커스프:
-${I.houseCusps || '(없음)'}
+${houseCusps}
 
-네이탈 에스펙트:
-${I.aspectsNatal || '(없음)'}
+네이탈 주요 에스펙트 (분석 인풋용 — 결과에 수치/기호 그대로 쓰지 말 것):
+${natalAspectStr}
 
-${I.progressionMeta || ''}
+[세컨더리 프로그레션] (기준일: ${progMeta.progDate || '현재'}, 나이 약 ${progMeta.ageYears || '?'}세)
+${progPlanetStr}
+${progAnglesStr}
 
-세컨더리 프로그레션 행성:
-${I.progressionPlanets || '(없음)'}
+프로그레션↔네이탈 주요 에스펙트 (분석 인풋용 — 결과에 수치/기호 그대로 쓰지 말 것):
+${progAspectStr}
 
-프로그레션 각도:
-${I.progressionAngles || '(없음)'}
+[리딩 지침]
+- 출력 맨 앞에 "저는 점성술사입니다" 같은 자기소개 문장을 넣지 마세요.
+- 에스펙트·하우스 데이터는 해석의 근거로만 쓰고, 결과 텍스트에 각도 숫자나 기호(☌△□☍⚹)를 직접 쓰지 마세요.
+- 전문 용어(예: 트라인, 스퀘어, 컨정션)는 한국어 풀이로 바꾸거나 괄호 보충 설명으로 처리하세요.
+- 하우스별 나열 대신, 인생의 흐름을 하나의 서사로 연결하세요.
+- 어센던트가 Chart Ruler를 결정함을 토대로 전체 구조를 잡으세요.
+- 프로그레션 데이터로 현재 인생의 핵심 테마와 앞으로 1~2년 흐름을 짚으세요.
+- 완성된 문장으로 마무리하고, 중간에 절대 끊지 마세요.
 
-프로그레션 하우스 커스프:
-${I.progressionHouses || '(없음)'}
-
-프로그레션 내부 에스펙트:
-${I.aspectsProgression || '(없음)'}
-
-프로그레션 ↔ 네이탈 에스펙트:
-${I.aspectsProgToNatal || '(없음)'}
-
-[출력 양식]
-반드시 다음 3개 헤드라인으로 완성된 문장을 작성하세요. 중간에 끊지 마세요.
+[출력 양식 — 반드시 아래 3개 헤드라인 순서로 작성]
 
 ## ✨ 빛나는 코어: 태양과 달이 그리는 나의 본질과 내면 세계
 
-## 🌍 인생의 무대와 스토리: 12하우스와 지배행성이 엮어내는 운명의 흐름
+## 🌍 인생의 무대와 스토리: 하우스와 지배행성이 엮어내는 운명의 흐름
 
 ## ⏰ 운명의 시간표: 프로그레션 차트로 보는 현재의 위치와 다가올 변화`;
 
@@ -84,7 +123,7 @@ ${I.aspectsProgToNatal || '(없음)'}
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.8,
+            temperature: 0.75,
             maxOutputTokens: 8192,
           }
         })
@@ -97,14 +136,14 @@ ${I.aspectsProgToNatal || '(없음)'}
       return res.status(502).json({ error: message });
     }
 
-    const data = await response.json();
+    const data  = await response.json();
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!reply) {
       return res.status(502).json({ error: 'AI 응답을 파싱하는 데 실패했습니다.' });
     }
 
-    return res.status(200).json({ result: reply });
+    return res.status(200).json({ result: reply, astroData });
 
   } catch (error) {
     console.error('gemini-astro error:', error);
