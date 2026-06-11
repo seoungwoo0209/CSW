@@ -37,9 +37,12 @@ export default async function handler(req, res) {
   일주: ${fourPillars.day.stem}${fourPillars.day.branch}
   시주: ${fourPillars.hour.stem}${fourPillars.hour.branch}`;
 
-    // ── Gemini API 호출
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    // ── Gemini API 호출 (자동 재시도 최대 3회)
+    let response, lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -51,14 +54,22 @@ export default async function handler(req, res) {
           }
         })
       }
-    );
+        );
+        if (response.ok) break;
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+      } catch(e) {
+        lastError = e;
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    if (!response) throw lastError || new Error('재시도 실패');
 
     // ── HTTP 레벨 에러 처리
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       const message = errData?.error?.message || `Gemini API 오류 (status: ${response.status})`;
       console.error('Gemini API error:', message);
-      return res.status(502).json({ error: message });
+      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
     const data = await response.json();
@@ -67,7 +78,7 @@ export default async function handler(req, res) {
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!reply) {
       console.error('Gemini 응답 파싱 실패:', JSON.stringify(data));
-      return res.status(502).json({ error: 'AI 응답을 파싱하는 데 실패했습니다.' });
+      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
     return res.status(200).json({ result: reply });

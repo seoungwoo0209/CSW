@@ -115,8 +115,12 @@ ${progAspectStr}
 
 ## ⏰ 운명의 시간표: 프로그레션 차트로 보는 현재의 위치와 다가올 변화`;
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+    // 자동 재시도 (최대 3회, 1.5초 간격)
+    let response, lastError;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -128,19 +132,27 @@ ${progAspectStr}
           }
         })
       }
-    );
+        );
+        if (response.ok) break; // 성공하면 루프 탈출
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+      } catch(e) {
+        lastError = e;
+        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+      }
+    }
+    if (!response) throw lastError || new Error('재시도 실패');
 
     if (!response.ok) {
       const errData = await response.json().catch(() => ({}));
       const message = errData?.error?.message || `Gemini API 오류 (status: ${response.status})`;
-      return res.status(502).json({ error: message });
+      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
     const data  = await response.json();
     const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!reply) {
-      return res.status(502).json({ error: 'AI 응답을 파싱하는 데 실패했습니다.' });
+      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
     return res.status(200).json({ result: reply, astroData });
