@@ -1,6 +1,6 @@
 /* =========================================================
    api/gemini-astro.js
-   Swiss Ephemeris 데이터 → Gemini 점성술 해석
+   사전 계산된 astroData → Gemini 해석만 수행
    ========================================================= */
 
 export default async function handler(req, res) {
@@ -15,39 +15,21 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, progression, meta } = astroData;
-
-    // ── 하우스 커스프 문자열 생성
-    const houseCusps = houses.map(h =>
-      `${h.house}하우스 커스프: ${h.sign} ${h.degree}°${h.minute}'`
-    ).join('\n');
-
-    // ── 행성 위치 문자열 생성
-    const planetStr = [
-      `태양(Sun): ${natal.sun.sign} ${natal.sun.degree}°${natal.sun.minute}', ${natal.sun.house}하우스`,
-      `달(Moon): ${natal.moon.sign} ${natal.moon.degree}°${natal.moon.minute}', ${natal.moon.house}하우스`,
-      `수성(Mercury): ${natal.mercury.sign} ${natal.mercury.degree}°${natal.mercury.minute}', ${natal.mercury.house}하우스`,
-      `금성(Venus): ${natal.venus.sign} ${natal.venus.degree}°${natal.venus.minute}', ${natal.venus.house}하우스`,
-      `화성(Mars): ${natal.mars.sign} ${natal.mars.degree}°${natal.mars.minute}', ${natal.mars.house}하우스`,
-      `목성(Jupiter): ${natal.jupiter.sign} ${natal.jupiter.degree}°${natal.jupiter.minute}', ${natal.jupiter.house}하우스`,
-      `토성(Saturn): ${natal.saturn.sign} ${natal.saturn.degree}°${natal.saturn.minute}', ${natal.saturn.house}하우스`,
-      `천왕성(Uranus): ${natal.uranus.sign} ${natal.uranus.degree}°${natal.uranus.minute}', ${natal.uranus.house}하우스`,
-      `해왕성(Neptune): ${natal.neptune.sign} ${natal.neptune.degree}°${natal.neptune.minute}', ${natal.neptune.house}하우스`,
-      `명왕성(Pluto): ${natal.pluto.sign} ${natal.pluto.degree}°${natal.pluto.minute}', ${natal.pluto.house}하우스`,
-    ].join('\n');
+    const { angles, interpretation, meta } = astroData;
+    const I = interpretation || {};
 
     const prompt = `[시스템 역할 정의]
-당신은 20년 경력의 전문 서양 점성술사이자 운명 학자입니다. 제공되는 Swiss Ephemeris 데이터를 분석하여, 단편적인 해석을 넘어선 깊이 있고 유기적인 인생의 흐름을 통찰해 주세요.
+당신은 20년 경력의 전문 서양 점성술사입니다. 아래 데이터는 이미 계산된 결과입니다. 새로 계산하지 말고, 제공된 수치만 근거로 해석하세요.
 
 [핵심 리딩 원칙]
-1. 코어 자아: 태양(의식/자아실현)과 달(무의식/내면/감정)을 중심으로 본질적인 코어를 가장 먼저 깊게 설명하세요.
-2. 전체 흐름: 플라시두스(Placidus) 1~12 하우스 구조로 인생의 흐름을 서사적으로 연결하세요. 다만 하우스별로 나열해서 시간을 잡아먹을필요가 없습니다.
-3. 어센던트(ASC): 전체 하우스 구조의 기준점이자 Chart Ruler를 결정하는 핵심 지표로 활용하세요.
-4. 세컨더리 프로그레션: 현재 프로그레션 태양과 달의 위치로 현재 인생의 메인 테마를 짚어주세요.
-5. 앞단에 "당신은 20년 경력의 전문 서양 점성술사이자 운명 학자입니다. 제공되는 Swiss Ephemeris 데이터를 분석하여, 단편적인 해석을 넘어선 깊이 있고 유기적인 인생의 흐름을 통찰해 주세요. " 이러한 멘트는 넣지말아주세요
-6. 행성간의 에스펙트 각도와 하우스의 관계도 반드시 분석해야됩니다. 다만, 인풋으로만 사용하고 결과값에 각도등 이러한 불필요한것들은 적지말아주세요
+1. 코어 자아: 태양과 달을 중심으로 본질을 먼저 설명하세요.
+2. 전체 흐름: 12하우스와 차트 지배행성을 서사적으로 연결하세요. 하우스별 나열은 피하세요.
+3. 어센던트(ASC): Chart Ruler와 함께 활용하세요.
+4. 세컨더리 프로그레션: 프로그레션 행성·ASC·에스펙트로 현재 인생 테마를 짚으세요.
+5. 역할 소개 멘트나 "Swiss Ephemeris" 같은 시스템 문구는 출력하지 마세요.
+6. 에스펙트는 제공된 목록만 사용하세요. 결과에 각도·오차 수치는 적지 마세요.
 
-[제공 데이터 - Swiss Ephemeris 결과]
+[제공 데이터 — 계산 완료]
 
 이름: ${meta.name || '(이름 없음)'}
 성별: ${meta.gender === 'M' ? '남성' : '여성'}
@@ -56,18 +38,37 @@ export default async function handler(req, res) {
 어센던트(ASC): ${angles.asc.sign} ${angles.asc.degree}°${angles.asc.minute}'
 MC(천정): ${angles.mc.sign} ${angles.mc.degree}°${angles.mc.minute}'
 
-네이탈 행성 위치:
-${planetStr}
+차트 지배행성:
+${I.chartRuler || '(없음)'}
+
+네이탈 행성:
+${I.natalPlanets || '(없음)'}
 
 하우스 커스프:
-${houseCusps}
+${I.houseCusps || '(없음)'}
 
-현재 세컨더리 프로그레션:
-프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}'
-프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}'
+네이탈 에스펙트:
+${I.aspectsNatal || '(없음)'}
+
+${I.progressionMeta || ''}
+
+세컨더리 프로그레션 행성:
+${I.progressionPlanets || '(없음)'}
+
+프로그레션 각도:
+${I.progressionAngles || '(없음)'}
+
+프로그레션 하우스 커스프:
+${I.progressionHouses || '(없음)'}
+
+프로그레션 내부 에스펙트:
+${I.aspectsProgression || '(없음)'}
+
+프로그레션 ↔ 네이탈 에스펙트:
+${I.aspectsProgToNatal || '(없음)'}
 
 [출력 양식]
-반드시 다음 3개의 헤드라인을 사용하여 완성된 문장으로 작성하세요. 중간에 절대 끊지 마세요.
+반드시 다음 3개 헤드라인으로 완성된 문장을 작성하세요. 중간에 끊지 마세요.
 
 ## ✨ 빛나는 코어: 태양과 달이 그리는 나의 본질과 내면 세계
 
@@ -103,7 +104,7 @@ ${houseCusps}
       return res.status(502).json({ error: 'AI 응답을 파싱하는 데 실패했습니다.' });
     }
 
-    return res.status(200).json({ result: reply, astroData });
+    return res.status(200).json({ result: reply });
 
   } catch (error) {
     console.error('gemini-astro error:', error);
