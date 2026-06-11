@@ -45,7 +45,7 @@
         </label>
         <label>
           <span>출생도시(점성술용)</span>
-          <input id="birthCity" type="text" placeholder="예: 서울, 부산, 뉴욕" />
+          <select id="birthCity"><option value="서울" selected>서울</option></select>
         </label>
         <div id="alert" class="alert hidden"></div>
       </div>
@@ -172,6 +172,9 @@
       <!-- 점성술 탭 -->
       <section id="tab-astro" class="tabpane">
         <div style="padding:4px 0 16px;">
+
+          <!-- 차트 계산 상태 -->
+          <div id="astroCalcStatus" style="font-size:12px;color:#94a3b8;padding:6px 2px;min-height:20px;"></div>
 
           <!-- 행성 위치 카드 -->
           <div id="astroNatalPanel" style="display:none;">
