@@ -2132,8 +2132,6 @@ const TYPE_WEIGHT = { "충": 1.00, "형": 0.72, "파": 0.48, "해": 0.36, "합":
 const PERF_TG_SET = new Set(["食神","傷官","偏財","正財","偏官","正官"]);
 // 신약 전용 성과축: 관성(偏官·正官) 제외 — 신약에서 관성=克我=마찰
 const PERF_TG_SET_SHINYAK = new Set(["食神","傷官","偏財","正財"]);
-// 신약 전용 성과축 (관성 제외)
-const PERF_TG_SET_SHINYAK = new Set(["食神","傷官","偏財","正財"]);
 const SUPP_TG_SET = new Set(["正印","偏印","比肩","劫財","正官"]);
 
 /* ── 유틸 (_clamp는 PART 10에서 이미 정의, _round2/_round3 신규) ── */
