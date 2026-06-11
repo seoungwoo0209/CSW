@@ -53,7 +53,7 @@
       <nav class="tabs">
         <button class="tab active" data-tab="tab-saju">사주</button>
         <button class="tab" data-tab="tab-hidden">지장간</button>
-        <button class="tab" data-tab="tab-daeun">대운</button>
+        <button class="tab" data-tab="tab-lifegraph">🌌 인생 그래프</button>
         <button class="tab" data-tab="tab-analysis">자원 분석</button>
         <button class="tab" data-tab="tab-astro">⭐ 점성술</button>
       </nav>
@@ -94,13 +94,13 @@
         </div>
       </section>
 
-      <!-- 대운 탭 -->
-      <section id="tab-daeun" class="tabpane">
-        <div class="card">
-          <div class="card-title">대운 정보</div>
-          <div id="daeunMeta" class="tiny muted">대운 시작: - / 방향: -</div>
+      <!-- 인생 그래프 탭 -->
+      <section id="tab-lifegraph" class="tabpane">
+        <div id="lifeGraphPanel" style="padding:4px 0;">
+          <div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">
+            생년월일과 출생시각을 입력하면 인생 그래프가 표시됩니다.
+          </div>
         </div>
-        <div id="daeunList" class="daeun-list"></div>
       </section>
 
       <!-- 사주 자원 분석 탭 (격/신강약/원국총점 → 5축 자원 점수형으로 전면 교체) -->
@@ -219,6 +219,8 @@
   <script src="./saju_data.js?v=3"></script>
   <script src="./saju_core.js?v=3"></script>
   <script src="./saju_engine.js?v=3"></script>
+  <script src="./life_graph_engine.js?v=1"></script>
+  <script src="./life_graph_ui.js?v=1"></script>
   <script src="./saju_ui.js?v=3"></script>
   <script src="./app.js?v=3"></script>
 </body>

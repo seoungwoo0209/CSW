@@ -78,23 +78,6 @@ function runAll() {
 
   if (approx) console.log("ℹ️ 절기 근사모드 사용");
 
-  // ── 대운 계산
-  try {
-    const dt = buildDaeunTimeline(fourPillars, birthUtc, gender);
-
-    const metaEl = _$("daeunMeta");
-    if (metaEl) {
-      metaEl.innerHTML = `
-        <strong>방향:</strong> ${dt.direction} |
-        <strong>대운 시작:</strong> ${dt.daeunStart.age}세 (정확: ${dt.daeunStart.ageYears.toFixed(2)}세) |
-        <strong>시작일:</strong> ${dt.daeunStart.dateApprox} |
-        <strong>절기 차이:</strong> ${dt.deltaDays.toFixed(1)}일
-      `;
-    }
-
-    const daeunListEl = _$("daeunList");
-    if (daeunListEl) window.SajuUI.renderDaeunList(daeunListEl, dt.decades);
-
     // ── SajuResult 저장
     const yinyang = getYinYangCounts(fourPillars, false);
     const yinyangWithHidden = getYinYangCounts(fourPillars, true);
@@ -106,7 +89,6 @@ function runAll() {
       yinyang,
       yinyangWithHidden: yinyangWithHidden.withHidden,
       natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
-      daeunTimeline: dt
     };
 
     // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행)
@@ -121,12 +103,15 @@ function runAll() {
     }
     setTimeout(() => _tryRenderAnalysis(0), 50);
 
+    // ── 인생 그래프 렌더링
+    if (window.LifeGraphUI) {
+      const cityName = getCitySelectValue();
+      const { lat, lng, utcOffset } = getCityCoords(cityName);
+      window.LifeGraphUI.renderLifeGraph({ birthDate, birthTime, lat, lng, utcOffset });
+    }
+
     // ── 점성술 차트 미리 계산
     scheduleAstroCalc();
-
-  } catch (e) {
-    console.error("대운 계산 오류:", e);
-  }
 }
 
 /* =========================================================
