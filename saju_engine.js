@@ -245,10 +245,35 @@ function calculateStrength(pillars) {
   const stem         = stemScore();
   const controlDrain = 0;  // 3단계 이후 활성화 예정
 
-  const rawTotal = 50 + month + root + stem + controlDrain;
+  // ── 관살 과다 페널티 (명리학 핵심 보정)
+  // 원국에 편관+정관이 2개 이상 천간에 노출될 때 신약 가중
+  function killingStar_penalty() {
+    const D = window.SajuData;
+    const stems = [pillars.year.stem, pillars.month.stem, pillars.hour.stem];
+    let guanCount = 0;
+    stems.forEach(s => {
+      const ss = getShishen(dayStem, s);
+      if (ss === "偏官" || ss === "正官") guanCount++;
+    });
+    // 지장간 정기 관성도 체크
+    [pillars.year.branch, pillars.month.branch, pillars.day.branch, pillars.hour.branch].forEach(b => {
+      const primary = (D.HIDDEN_STEMS_BRANCH?.[b] || []).find(h => h.role === "정기");
+      if (primary) {
+        const ss = getShishen(dayStem, primary.stem);
+        if (ss === "偏官" || ss === "正官") guanCount += 0.5;
+      }
+    });
+    // 관살 2개 이상 → 신약 방향 추가 감점 (신강이면 페널티 없음)
+    if (guanCount >= 2.0) return -(guanCount - 1.5) * 4.5;
+    if (guanCount >= 1.5) return -2.0;
+    return 0;
+  }
+  const killPenalty = killingStar_penalty();
+
+  const rawTotal = 50 + month + root + stem + controlDrain + killPenalty;
   const total    = Math.max(0, Math.min(100, rawTotal));
 
-  // 라벨 기준 완화: 72↑신강 / 42~71중화 / 41↓신약 (기존 68/45 → 72/42)
+  // 라벨 기준: 72↑신강 / 42~71중화 / 41↓신약
   const label = total >= 72 ? "신강" : total >= 42 ? "중화" : "신약";
 
   return {
@@ -514,8 +539,12 @@ function getAxisUsefulnessIndex(grp, state, axisProfile, tenGodScores) {
   const tgs = GROUP_MAP[grp];
 
   // ── A. strengthFit: 신강/신약에 따른 축 유불리
+  // ── 신강약별 축 유불리 (명리학 기준 강화)
+  // 신약 관성: 克我가 과다 → 기신에 가까움 (-0.10 → -0.55)
+  // 신약 식상: 신약에서 설기는 흉이나 너무 강하면 역효과 → -0.35로 완화
+  // 신약 재성: 재성도 설기이나 후반대운(식신생재) 가능성 → -0.45로 완화
   const STRENGTH_FIT = {
-    신약: { 비겁:+0.85, 인성:+1.00, 관성:-0.10, 식상:-0.55, 재성:-0.65 },
+    신약: { 비겁:+0.85, 인성:+1.00, 관성:-0.55, 식상:-0.35, 재성:-0.45 },
     중화: { 비겁:0.00,  인성:+0.10, 관성:+0.15, 식상:+0.20, 재성:+0.20 },
     신강: { 비겁:-0.75, 인성:-0.60, 관성:+0.40, 식상:+0.75, 재성:+0.80 },
   };
@@ -1156,6 +1185,15 @@ function computeAxisBaseProfile(state) {
   });
 
   // STEP 1b: 지장간 (HIDDEN_STEMS_RATIO 기반 — 기존 호환)
+  // ※ 월지 인성 특별 보정: 인성이 월지에 중기·여기로 있어도
+  //    신약 명식에서는 실제 통근 효과가 있으므로 ratio 상향
+  function _monthInseongBoost(grp, ratio, isMonth, dayStem_) {
+    if (!isMonth) return ratio;
+    if (grp !== "인성") return ratio;
+    // 월지 인성은 여기(0.15)도 통근 효과 있음 → 최소 0.35 보장
+    return Math.max(ratio, 0.35);
+  }
+
   [
     { branch: pillars.year.branch,  pos:"year",  isMonth:false },
     { branch: pillars.month.branch, pos:"month", isMonth:true  },
@@ -1166,9 +1204,10 @@ function computeAxisBaseProfile(state) {
       const ss  = getShishen(dayStem, stem);
       const grp = GROUPS.find(g => GROUP_MAP[g].includes(ss));
       if (!grp) return;
-      const base = ratio * BRANCH_W[pos];
+      const boostedRatio = _monthInseongBoost(grp, ratio, isMonth, dayStem);
+      const base = boostedRatio * BRANCH_W[pos];
       amountRaw[grp] += isMonth ? base * MONTH_HIDDEN_BOOST : base;
-      rootPower[grp] += ratio * ROOT_POS_W[pos];
+      rootPower[grp] += boostedRatio * ROOT_POS_W[pos];
     });
   });
 
@@ -2086,7 +2125,15 @@ function computeResourceScores(state) {
 const ROLE_VALUE  = { "용신": 2, "희신": 1, "중립": 0, "기신": -1, "한신": -2 };
 const POS_WEIGHT  = { year: 0.80, month: 1.70, day: 1.35, hour: 1.00, flow: 0.95 };
 const TYPE_WEIGHT = { "충": 1.00, "형": 0.72, "파": 0.48, "해": 0.36, "합": 0.55 };
+// PERF_TG_SET: 성과 발현축
+// ※ 관성(偏官·正官)은 신강 명식에서만 성과축
+//    신약 명식에서는 관성 = 克我 → 마찰·부담 축
+// → 동적 판별은 scoreFlowPerformance 내부에서 신강약 확인 후 조정
 const PERF_TG_SET = new Set(["食神","傷官","偏財","正財","偏官","正官"]);
+// 신약 전용 성과축: 관성(偏官·正官) 제외 — 신약에서 관성=克我=마찰
+const PERF_TG_SET_SHINYAK = new Set(["食神","傷官","偏財","正財"]);
+// 신약 전용 성과축 (관성 제외)
+const PERF_TG_SET_SHINYAK = new Set(["食神","傷官","偏財","正財"]);
 const SUPP_TG_SET = new Set(["正印","偏印","比肩","劫財","正官"]);
 
 /* ── 유틸 (_clamp는 PART 10에서 이미 정의, _round2/_round3 신규) ── */
@@ -2741,7 +2788,16 @@ function evaluatePerformanceViabilityNew(state, baseState) {
     });
     structuralPenalty += directHit ? 6 : 2;
   });
-  structuralPenalty = Math.min(structuralPenalty, 22);
+
+  // ── 신약 관성 과다 페널티 (명리학 보정)
+  // 신약 명식에서 관성(克我)이 벡터상 과다하면 실행가능성 저하
+  if (strengthScore <= 44) {
+    const guanAmount = (vectors.tenGods["偏官"]||0) + (vectors.tenGods["正官"]||0);
+    const guanRatio  = guanAmount / totalTG;
+    if (guanRatio >= 0.30) structuralPenalty += Math.round((guanRatio - 0.25) * 40);
+  }
+
+  structuralPenalty = Math.min(structuralPenalty, 30);
 
   const raw = absScore + deltaScore + exposedScore + rootedScore + suppScore - structuralPenalty;
   const viabilityScore = Math.round(_clamp(raw + 20, 0, 100));
@@ -2769,8 +2825,16 @@ function evaluatePerformanceViability(state, baseState) {
    ========================================================= */
 function scoreFlowPerformance(state, baseState) {
   const totalTG = Object.values(state.vectors.tenGods).reduce((a,b)=>a+b,0) || 1;
+  const strengthLabel = state.strength?.label ?? "중화";
+  const strengthScore = state.strength?.score ?? 50;
+
+  // 신약 명식: 관성은 성과축에서 제외 (克我 과다 = 마찰)
+  const activePerfSet = (strengthScore <= 44)
+    ? PERF_TG_SET_SHINYAK
+    : PERF_TG_SET;
+
   let perfAmount = 0;
-  PERF_TG_SET.forEach(tg => { perfAmount += (state.vectors.tenGods[tg] || 0); });
+  activePerfSet.forEach(tg => { perfAmount += (state.vectors.tenGods[tg] || 0); });
   const perfRatio = perfAmount / totalTG;
 
   // 절대량
@@ -2865,7 +2929,19 @@ function scoreFlowFriction(state) {
     if (v > 0.8) giHanBurden += Math.min(v * 2.5, 8);
   });
 
-  const raw = Math.max(0, dynamic.fric) + extreme + geokBurden + giHanBurden;
+  // ── 신약 관성 대운 추가 마찰 (명리학 핵심 보정)
+  // 신약 명식에서 관성 대운 = 克我 강화 → 마찰 증가
+  let guanFriction = 0;
+  const ssScore_ = state.strength?.score ?? 50;
+  if (ssScore_ <= 44) {
+    const totalTG_ = Object.values(state.vectors.tenGods).reduce((a,b)=>a+b,0) || 1;
+    const guanAmt = (state.vectors.tenGods["偏官"]||0) + (state.vectors.tenGods["正官"]||0);
+    const guanR   = guanAmt / totalTG_;
+    // 관성 비율이 높을수록 마찰 가중
+    if (guanR >= 0.25) guanFriction = Math.min((guanR - 0.20) * 50, 18);
+  }
+
+  const raw = Math.max(0, dynamic.fric) + extreme + geokBurden + giHanBurden + guanFriction;
 
   state._fricDebug = {
     dynamicFric: _round2(dynamic.fric),
