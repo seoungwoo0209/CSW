@@ -218,9 +218,17 @@ function calcMercury(T) {
 }
 
 function calcVenus(T) {
-  const L = 181.979801 + 58519.2130302 * T + 0.00031014 * T * T;
-  const M = 212.8      + 58517.80      * T;
-  return norm360(L + 0.7758 * Math.sin(rad(M)) + 0.0033 * Math.sin(rad(2*M)));
+  // 태양중심 → 지구중심 변환 (Meeus Ch.32)
+  function _helio(L0,L1,a,e0,e1,pi0,pi1) {
+    const L=norm360(L0+L1*T), pv=norm360(pi0+pi1*T), M=norm360(L-pv), e=e0+e1*T;
+    const C=(2*e-e*e*e/4)*(180/Math.PI)*Math.sin(rad(M))+(5/4)*e*e*(180/Math.PI)*Math.sin(rad(2*M));
+    const nu=norm360(M+C);
+    return { lon:norm360(pv+nu), r:a*(1-e*e)/(1+e*Math.cos(rad(nu))) };
+  }
+  const v=_helio(181.9798,58519.2131,0.72333, 0.00677,-0.000013,131.5637,1.8905);
+  const e=_helio(100.4664,36000.7698,1.00000,0.016709,-0.000042,102.9373,0.3225);
+  const dL=v.lon-e.lon;
+  return norm360(v.lon+Math.atan2(e.r*Math.sin(rad(dL)),v.r-e.r*Math.cos(rad(dL)))*(180/Math.PI));
 }
 
 function calcMars(T) {
@@ -263,25 +271,72 @@ function calcPluto(T) {
    Equal House 계산 (ASC 기준 30° 등분 — 일관성 확보)
    ========================================================= */
 function calcHousesEqual(jd, lat, lng) {
+  return calcHousesPlacidus(jd, lat, lng);
+}
+
+/* =========================================================
+   Placidus 하우스 계산 (Equal House 대체)
+   표준 이분법 수렴 알고리즘
+   ========================================================= */
+function calcHousesPlacidus(jd, lat, lng) {
   const T    = (jd - 2451545.0) / 36525.0;
   const GMST = norm360(280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T);
   const LST  = norm360(GMST + lng);
-
+  const RAMC = LST;
   const eps  = 23.4392911 - 0.013004167 * T;
-  const epsr = rad(eps);
+  const epsR = rad(eps);
+  const latR = rad(lat);
 
   // MC
-  const mc = norm360(Math.atan2(Math.tan(rad(LST)), Math.cos(epsr)) * 180 / Math.PI);
+  const mc_raw = Math.atan(Math.tan(rad(RAMC)) / Math.cos(epsR)) * 180 / Math.PI;
+  const mc = norm360(Math.cos(rad(RAMC)) < 0 ? mc_raw + 180 : mc_raw);
 
   // ASC
-  const latR = rad(lat);
-  const RAMC = rad(LST);
-  const asc  = norm360(
-    Math.atan2(Math.cos(RAMC), -(Math.sin(epsr) * Math.tan(latR) + Math.cos(epsr) * Math.sin(RAMC))) * 180 / Math.PI
+  const asc = norm360(
+    Math.atan2(Math.cos(rad(RAMC)), -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(RAMC)))) * 180 / Math.PI
   );
 
-  // Equal House: 1하우스 = ASC, 이후 30° 씩
-  const houses = Array.from({ length: 12 }, (_, i) => norm360(asc + i * 30));
+  // RA → 황경 변환 (황위 0 가정)
+  function raToEcl(ra_deg) {
+    const r = rad(ra_deg);
+    return norm360(Math.atan2(Math.sin(r) * Math.cos(epsR), Math.cos(r)) * 180 / Math.PI);
+  }
+
+  // Placidus 커스프 RA 이분법 수렴
+  function getCuspRA(frac, baseRAMC_deg) {
+    let ra = norm360(baseRAMC_deg + frac * 180);
+    for (let i = 0; i < 100; i++) {
+      const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
+      const cosH = -Math.tan(latR) * Math.tan(decR);
+      if (cosH > 1)  { ra = norm360(baseRAMC_deg);       break; }
+      if (cosH < -1) { ra = norm360(baseRAMC_deg + 180); break; }
+      const H    = Math.acos(cosH) * 180 / Math.PI;
+      const newRA = norm360(baseRAMC_deg + frac * H);
+      if (Math.abs(newRA - ra) < 0.00001) break;
+      ra = (ra + newRA) / 2;
+    }
+    return ra;
+  }
+
+  const c11 = raToEcl(getCuspRA(1/3, RAMC));
+  const c12 = raToEcl(getCuspRA(2/3, RAMC));
+  const c2  = raToEcl(getCuspRA(1/3, norm360(RAMC + 180)));
+  const c3  = raToEcl(getCuspRA(2/3, norm360(RAMC + 180)));
+
+  const houses = [
+    asc,                   // 1
+    c2,                    // 2
+    c3,                    // 3
+    norm360(mc + 180),     // 4 (IC)
+    norm360(c11 + 180),    // 5
+    norm360(c12 + 180),    // 6
+    norm360(asc + 180),    // 7 (DSC)
+    norm360(c2 + 180),     // 8
+    norm360(c3 + 180),     // 9
+    mc,                    // 10
+    c11,                   // 11
+    c12,                   // 12
+  ];
 
   return { asc, mc, houses };
 }
