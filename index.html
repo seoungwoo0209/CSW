@@ -53,10 +53,8 @@
       <nav class="tabs">
         <button class="tab active" data-tab="tab-saju">사주</button>
         <button class="tab" data-tab="tab-hidden">지장간</button>
-        <button class="tab" data-tab="tab-shishen">십신</button>
         <button class="tab" data-tab="tab-daeun">대운</button>
         <button class="tab" data-tab="tab-analysis">자원 분석</button>
-        <button class="tab" data-tab="tab-intuition">능력 분석</button>
         <button class="tab" data-tab="tab-astro">⭐ 점성술</button>
       </nav>
 
@@ -92,20 +90,6 @@
             <div class="card-title">오행(지장간 포함)</div>
             <div class="tiny">※ 지지 1개당 지장간 모두 +1 단순합</div>
             <div class="bars" id="barsHidden"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- 십신 탭 -->
-      <section id="tab-shishen" class="tabpane">
-        <div class="grid2">
-          <div class="card">
-            <div class="card-title">천간 십신 (사주팔자)</div>
-            <div id="shishenPillars" class="shishen-pillars">-</div>
-          </div>
-          <div class="card">
-            <div class="card-title">지장간 십신</div>
-            <div id="shishenHidden" class="hiddenlist">-</div>
           </div>
         </div>
       </section>
@@ -162,11 +146,6 @@
             </div>
           </div>
         </div>
-      </section>
-
-      <!-- 능력 분석 탭 -->
-      <section id="tab-intuition" class="tabpane">
-        <div id="intuitionPanel"></div>
       </section>
 
       <!-- 점성술 탭 -->
@@ -233,15 +212,13 @@
     │ 1. saju_data.js  → SajuData 초기화      │
     │ 2. saju_core.js  → 계산 + getShishen    │
     │ 3. saju_engine.js → 분석 엔진           │
-    │ 4. intuition_engine.js → 직관 분석      │
-    │ 5. saju_ui.js    → 렌더링               │
-    │ 6. app.js        → 앱 초기화/이벤트     │
+    │ 4. saju_ui.js    → 렌더링               │
+    │ 5. app.js        → 앱 초기화/이벤트     │
     └─────────────────────────────────────────┘
   -->
   <script src="./saju_data.js?v=3"></script>
   <script src="./saju_core.js?v=3"></script>
   <script src="./saju_engine.js?v=3"></script>
-  <script src="./intuition_engine.js?v=3"></script>
   <script src="./saju_ui.js?v=3"></script>
   <script src="./app.js?v=3"></script>
 </body>

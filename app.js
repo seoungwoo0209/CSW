@@ -76,13 +76,6 @@ function runAll() {
   const barsHidden = _$("barsHidden");
   if (barsHidden && hw?.withHidden) window.SajuUI.renderBars(barsHidden, hw.withHidden);
 
-  // ── 십신 탭
-  const shishenPillarsEl = _$("shishenPillars");
-  if (shishenPillarsEl) window.SajuUI.renderShishenPillars(shishenPillarsEl, fourPillars);
-
-  const shishenHiddenEl = _$("shishenHidden");
-  if (shishenHiddenEl) window.SajuUI.renderShishenHidden(shishenHiddenEl, fourPillars);
-
   if (approx) console.log("ℹ️ 절기 근사모드 사용");
 
   // ── 대운 계산

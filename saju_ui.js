@@ -85,48 +85,6 @@ function renderHiddenList(container, fourPillars) {
   });
 }
 
-function renderShishenPillars(container, fourPillars) {
-  const shishen = getFourPillarsShishen(fourPillars);
-  const items   = [
-    { label:"년간", data: shishen.year  },
-    { label:"월간", data: shishen.month },
-    { label:"일간", data: shishen.day   },
-    { label:"시간", data: shishen.hour  }
-  ];
-  const grid = document.createElement("div");
-  grid.className = "pillars";
-  items.forEach(p => {
-    const el = document.createElement("div");
-    el.className = "pillar";
-    el.innerHTML = `
-      <div class="p-label">${p.label}</div>
-      <div class="p-ganji">${p.data.stem}</div>
-      <div class="p-shishen">${getShishenDisplay(p.data.shishen)}</div>
-    `;
-    grid.appendChild(el);
-  });
-  container.innerHTML = "";
-  container.appendChild(grid);
-}
-
-function renderShishenHidden(container, fourPillars) {
-  const hs = getHiddenStemsShishen(fourPillars);
-  container.innerHTML = "";
-  hs.forEach(data => {
-    const row = document.createElement("div");
-    row.className = "hiddenrow";
-    const roleClass = r => r === "여기" ? "role-yeogi" : r === "중기" ? "role-junggi" : "role-jeonggi";
-    row.innerHTML = `
-      <div class="k">${data.label} (${data.branch})</div>
-      <div class="v">${data.stems.map(item =>
-        `${item.stem}<span class="${roleClass(item.role)}">${item.role}</span>
-         <span class="shishen-label">${getShishenDisplay(item.shishen)}</span>`
-      ).join(" ")}</div>
-    `;
-    container.appendChild(row);
-  });
-}
-
 function renderDaeunList(container, decades) {
   container.innerHTML = "";
   const dayStem = window.SajuResult?.fourPillars?.day?.stem;
@@ -557,72 +515,6 @@ function renderDaeunScores(baseState, profileName = "overall") {
 }
 
 /* =========================================================
-   PART 4: 능력 분석 렌더링 (원국 고정)
-   ========================================================= */
-
-function renderIntuitionPanel(result) {
-  const c = _$("intuitionPanel");
-  if (!c) return;
-
-  const { insightTotal, typeName, typeDesc, comment, subs6 } = result;
-  const gradeColor = { S:"#6c3fc4", A:"#2563eb", B:"#0891b2", C:"#65a30d", D:"#9ca3af" };
-  const totalGrade = insightTotal >= 90 ? "S"
-                   : insightTotal >= 80 ? "A"
-                   : insightTotal >= 70 ? "B"
-                   : insightTotal >= 60 ? "C" : "D";
-  const gradeLabel = insightTotal >= 90 ? "최상위"
-                   : insightTotal >= 80 ? "상위"
-                   : insightTotal >= 70 ? "중상"
-                   : insightTotal >= 60 ? "중위" : "하위";
-
-  const mainHtml = `
-    <div style="background:linear-gradient(135deg,#1e1b4b 0%,#312e81 100%);border-radius:16px;padding:24px 20px;text-align:center;margin-bottom:16px;box-shadow:0 4px 20px rgba(99,60,196,.3);">
-      <div style="font-size:13px;color:#a5b4fc;letter-spacing:2px;margin-bottom:8px;">직장 통찰력 분석</div>
-      <div style="font-size:68px;font-weight:900;color:#fff;line-height:1;margin-bottom:6px;">${insightTotal}</div>
-      <div style="display:inline-block;background:${gradeColor[totalGrade]};color:#fff;font-size:13px;font-weight:700;padding:3px 14px;border-radius:20px;margin-bottom:12px;">${totalGrade}등급 · ${gradeLabel}</div>
-      <div style="font-size:16px;font-weight:700;color:#c7d2fe;margin-bottom:4px;">${typeName}</div>
-      <div style="font-size:12px;color:#818cf8;margin-bottom:14px;">${typeDesc}</div>
-      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;font-size:12px;">
-        <div style="background:rgba(165,180,252,.15);padding:5px 12px;border-radius:10px;color:#c7d2fe;">💡 ${comment.strength}</div>
-        <div style="background:rgba(165,180,252,.10);padding:5px 12px;border-radius:10px;color:#a5b4fc;">🔧 ${comment.weakness}</div>
-      </div>
-    </div>
-  `;
-
-  const icons   = ["🏢","⚠️","🔍"];
-  const weights = ["40%","22%","38%"];
-  const subsHtml = `
-    <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#94a3b8;padding-left:2px;">세부 3지표</div>
-    <div style="display:flex;flex-direction:column;gap:8px;">
-      ${(subs6 || []).map((sub, i) => {
-        const bc = sub.score >= 90 ? "#7c3aed"
-                 : sub.score >= 80 ? "#6366f1"
-                 : sub.score >= 70 ? "#0891b2"
-                 : sub.score >= 60 ? "#65a30d" : "#9ca3af";
-        return `
-          <div style="background:rgba(18,22,42,.78);border-radius:10px;padding:10px 14px;border:1px solid rgba(255,255,255,.10);">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-              <div style="font-size:13px;font-weight:600;color:#e2e8f0;">
-                ${icons[i]||"📊"} ${sub.name}
-                <span style="font-size:11px;color:#64748b;font-weight:400;margin-left:4px;">(${weights[i]||""})</span>
-              </div>
-              <div style="font-size:18px;font-weight:800;color:${bc};">
-                ${sub.score}<span style="font-size:11px;font-weight:500;color:#64748b;margin-left:2px;">${sub.grade}</span>
-              </div>
-            </div>
-            <div style="background:rgba(255,255,255,.10);border-radius:4px;height:5px;overflow:hidden;">
-              <div style="background:${bc};height:100%;width:${sub.score}%;border-radius:4px;transition:width .6s;"></div>
-            </div>
-          </div>
-        `;
-      }).join('')}
-    </div>
-  `;
-
-  c.innerHTML = mainHtml + subsHtml;
-}
-
-/* =========================================================
    PART 5: 프로파일 변경 핸들러
    ========================================================= */
 
@@ -654,12 +546,6 @@ function renderFullAnalysis(profileName = "overall") {
   // 대운 점수
   renderDaeunScores(baseState, profileName);
 
-  // 능력분석 (원국 고정)
-  if (window.IntuitionEngine) {
-    const result = window.IntuitionEngine.compute(baseState);
-    renderIntuitionPanel(result);
-  }
-
   console.log("✅ 전체 분석 렌더링 완료\n");
 }
 
@@ -670,8 +556,6 @@ window.SajuUI = {
   renderPillars,
   renderBars,
   renderHiddenList,
-  renderShishenPillars,
-  renderShishenHidden,
   renderDaeunList,
   renderGeokInfo,
   renderStrengthInfo,
@@ -679,7 +563,6 @@ window.SajuUI = {
   renderBaseScore,
   renderResourcePanel,
   renderDaeunScores,
-  renderIntuitionPanel,
   renderFullAnalysis,
   onProfileChange
 };

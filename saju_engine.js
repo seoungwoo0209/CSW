@@ -2132,7 +2132,7 @@ const TYPE_WEIGHT = { "충": 1.00, "형": 0.72, "파": 0.48, "해": 0.36, "합":
 const PERF_TG_SET = new Set(["食神","傷官","偏財","正財","偏官","正官"]);
 // 신약 전용 성과축: 관성(偏官·正官) 제외 — 신약에서 관성=克我=마찰
 const PERF_TG_SET_SHINYAK = new Set(["食神","傷官","偏財","正財"]);
-const SUPP_TG_SET = new Set(["正印","偏印","比肩","劫財","正官"]);
+const SUPP_TG_SET = new Set(["正印","偏印","比肩","正官"]);
 
 /* ── 유틸 (_clamp는 PART 10에서 이미 정의, _round2/_round3 신규) ── */
 function _round2(x) { return Math.round(x * 100) / 100; }
@@ -3008,9 +3008,14 @@ function scoreFlowSupport(state, baseState) {
   }
 
   // 안정축 carrier
+  // 명리학 기준: 인성(正印·偏印) = 생아(生我) → 진정한 기반
+  //             비견(比肩) = 동류 → 신약 보완
+  //             겁재(劫財)·정관(正官)은 안정축이 아님
+  //             겁재: 재성 탈취, 比劫 과다 시 불안정
+  //             정관: 신약 명식에서는 克我 = 부담
   const totalTG = Object.values(state.vectors.tenGods).reduce((a,b)=>a+b,0) || 1;
   let suppAmount = 0;
-  ["正印","偏印","比肩","劫財","正官"].forEach(tg => {
+  ["正印","偏印","比肩"].forEach(tg => {
     suppAmount += (state.vectors.tenGods[tg] || 0);
   });
   const suppRatio = suppAmount / totalTG;
