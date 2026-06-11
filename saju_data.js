@@ -180,5 +180,90 @@ window.SajuData.PROFILES = {
   }
 };
 
+/* ---------------------------
+   12) 월령 사령 프로파일 (MONTH_COMMAND_PROFILE)
+   ─────────────────────────────────────────────
+   각 월지(月支)가 실제로 지배하는 오행 비중.
+   근거: HIDDEN_STEMS_BRANCH의 정기(0.60)/중기(0.25)/여기(0.15) 비율을
+         오행 단위로 합산한 값.
+
+   엔진(saju_engine.js)에서 이 값을 소비하는 방식:
+     profile[el] * 관계계수 를 합산 → monthCommandScore / getAxisMonthCommandCoeff
+   v 값이 클수록 해당 오행의 월령 지배력이 강함 (합계 ≈ 1.0)
+
+   단일 오행 지지 (子·卯·酉):
+     정기 단독 → 해당 오행 1.00, 나머지 0
+
+   이중 오행 지지 (午·亥):
+     정기 0.70, 중기 0.30 비율 반영
+
+   삼중 오행 지지 (寅·辰·巳·未·申·戌·丑):
+     정기 0.60, 중기 0.25, 여기 0.15 비율 반영
+
+   사계토 (辰·未·戌·丑) 핵심 특징:
+     earth가 정기이나 나머지 오행이 혼재 → 단순 계절 판단과 결과가 크게 달라짐
+     예) 辰月 甲木: 봄이지만 earth 0.60 지배 → 신강약 판단이 유리하지 않음
+----------------------------*/
+window.SajuData.MONTH_COMMAND_PROFILE = {
+  // ── 겨울 (亥·子·丑)
+  "亥": { water:0.70, wood:0.30, fire:0,    metal:0,    earth:0    },
+  "子": { water:1.00, wood:0,    fire:0,    metal:0,    earth:0    },
+  "丑": { earth:0.60, water:0.25, metal:0.15, wood:0,   fire:0     },
+
+  // ── 봄 (寅·卯·辰)
+  "寅": { wood:0.60,  fire:0.25,  earth:0.15, metal:0,  water:0    },
+  "卯": { wood:1.00,  fire:0,     earth:0,    metal:0,  water:0    },
+  "辰": { earth:0.60, wood:0.25,  water:0.15, fire:0,   metal:0    },
+
+  // ── 여름 (巳·午·未)
+  "巳": { fire:0.60,  metal:0.25, earth:0.15, wood:0,   water:0    },
+  "午": { fire:0.70,  earth:0.30, wood:0,     metal:0,  water:0    },
+  "未": { earth:0.60, fire:0.25,  wood:0.15,  metal:0,  water:0    },
+
+  // ── 가을 (申·酉·戌)
+  "申": { metal:0.60, water:0.25, earth:0.15, wood:0,   fire:0     },
+  "酉": { metal:1.00, water:0,    earth:0,    wood:0,   fire:0     },
+  "戌": { earth:0.60, metal:0.25, fire:0.15,  wood:0,   water:0    }
+};
+
+/* ---------------------------
+   13) 위치 가중치 — 통근(ROOT) / 투간(STEM)
+   ─────────────────────────────────────────────
+   ROOT_POSITION_WEIGHT: 지지 통근 판단 시 위치별 가중치
+     월지(month)가 가장 강함 — 월령 사령의 핵심
+     일지(day)는 일간과 인접 → 차순위
+     연지(year)/시지(hour)는 상대적으로 약함
+
+   ROOT_ROLE_WEIGHT: 지장간 역할별 통근 강도
+     정기(main): 완전 통근 (1.00)
+     중기(mid):  부분 통근 (0.55)
+     여기(sub):  미약 통근 (0.28)
+
+   STEM_POSITION_WEIGHT: 천간 투출 위치별 가중치
+     월간(month)이 격(格) 성립의 핵심 → 가장 강함
+     시간(hour)은 일간과 인접 → 차순위
+     연간(year)은 원거리 → 약함
+----------------------------*/
+window.SajuData.ROOT_POSITION_WEIGHT = {
+  year:  0.85,
+  month: 1.70,
+  day:   1.35,
+  hour:  1.00
+};
+
+window.SajuData.ROOT_ROLE_WEIGHT = {
+  "정기": 1.00,
+  "중기": 0.55,
+  "여기": 0.28
+};
+
+window.SajuData.STEM_POSITION_WEIGHT = {
+  year:  0.85,
+  month: 1.25,
+  hour:  0.95
+};
+
 console.log("✅ SajuData 초기화 완료");
 console.log("📊 HIDDEN_STEMS_RATIO 샘플(子):", window.SajuData.HIDDEN_STEMS_RATIO["子"]);
+console.log("📊 MONTH_COMMAND_PROFILE 샘플(辰):", window.SajuData.MONTH_COMMAND_PROFILE["辰"]);
+console.log("📊 ROOT_POSITION_WEIGHT:", window.SajuData.ROOT_POSITION_WEIGHT);
