@@ -116,14 +116,17 @@ function runAll() {
       daeunTimeline: dt
     };
 
-    // ── 분석 탭 렌더링
-    setTimeout(() => {
-      if (window.SajuUI?.renderFullAnalysis) {
+    // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행)
+    function _tryRenderAnalysis(attempt) {
+      if (window.SajuEngine?.buildState && window.SajuUI?.renderFullAnalysis) {
         window.SajuUI.renderFullAnalysis("overall");
+      } else if (attempt < 10) {
+        setTimeout(() => _tryRenderAnalysis(attempt + 1), 150);
       } else {
-        console.error("❌ SajuUI.renderFullAnalysis 없음");
+        console.error("❌ SajuEngine 로드 타임아웃");
       }
-    }, 50);
+    }
+    setTimeout(() => _tryRenderAnalysis(0), 50);
 
     // ── 점성술 차트 미리 계산
     scheduleAstroCalc();

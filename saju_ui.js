@@ -382,8 +382,7 @@ function renderBaseScore(scoreResult) {
    ========================================================= */
 
 function _mergeDaeunState(baseState, decade) {
-  // ── 대운 완전 재계산형: 원국 strength 복사 금지
-  // buildExtendedStateWithExtraPillar()로 vectors/strength/geok/interactions/gods 전부 재산출
+  if (!window.SajuEngine?.buildExtendedStateWithExtraPillar) return null;
   const extraPillar = { stem: decade.stem, branch: decade.branch, label: "대운" };
   return window.SajuEngine.buildExtendedStateWithExtraPillar(baseState.pillars, extraPillar);
 }
@@ -488,6 +487,7 @@ function renderDaeunScores(baseState, profileName = "overall") {
     if (idx >= cards.length) return;
     const card       = cards[idx];
     const daeunState = _mergeDaeunState(baseState, decade);
+    if (!daeunState) return;
 
     // ── 3축 점수 (범용형, 특정 명식/나이 예외 없음)
     // baseState: delta 계산용 / profileName: 가중치 조합용
@@ -641,6 +641,7 @@ function onProfileChange(profileName) {
 function renderFullAnalysis(profileName = "overall") {
   console.log("\n🎯 전체 분석 렌더링 시작");
   if (!window.SajuResult) { console.warn("⚠️ SajuResult 없음"); return; }
+  if (!window.SajuEngine?.buildState) { console.warn("⚠️ SajuEngine 미로드 — 재시도 대기"); return; }
 
   const baseState = window.SajuEngine.buildState(window.SajuResult.fourPillars);
 
