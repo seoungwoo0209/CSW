@@ -592,25 +592,25 @@ function renderIntuitionPanel(result) {
   const icons   = ["🏢","⚠️","🔍"];
   const weights = ["40%","22%","38%"];
   const subsHtml = `
-    <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#6b7280;padding-left:2px;">세부 3지표</div>
+    <div style="margin-bottom:8px;font-size:13px;font-weight:600;color:#94a3b8;padding-left:2px;">세부 3지표</div>
     <div style="display:flex;flex-direction:column;gap:8px;">
       ${(subs6 || []).map((sub, i) => {
         const bc = sub.score >= 90 ? "#7c3aed"
-                 : sub.score >= 80 ? "#2563eb"
+                 : sub.score >= 80 ? "#6366f1"
                  : sub.score >= 70 ? "#0891b2"
                  : sub.score >= 60 ? "#65a30d" : "#9ca3af";
         return `
-          <div style="background:#f9fafb;border-radius:10px;padding:10px 14px;border:1px solid #e5e7eb;">
+          <div style="background:rgba(18,22,42,.78);border-radius:10px;padding:10px 14px;border:1px solid rgba(255,255,255,.10);">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-              <div style="font-size:13px;font-weight:600;color:#374151;">
+              <div style="font-size:13px;font-weight:600;color:#e2e8f0;">
                 ${icons[i]||"📊"} ${sub.name}
-                <span style="font-size:11px;color:#9ca3af;font-weight:400;margin-left:4px;">(${weights[i]||""})</span>
+                <span style="font-size:11px;color:#64748b;font-weight:400;margin-left:4px;">(${weights[i]||""})</span>
               </div>
               <div style="font-size:18px;font-weight:800;color:${bc};">
-                ${sub.score}<span style="font-size:11px;font-weight:500;color:#9ca3af;margin-left:2px;">${sub.grade}</span>
+                ${sub.score}<span style="font-size:11px;font-weight:500;color:#64748b;margin-left:2px;">${sub.grade}</span>
               </div>
             </div>
-            <div style="background:#e5e7eb;border-radius:4px;height:5px;overflow:hidden;">
+            <div style="background:rgba(255,255,255,.10);border-radius:4px;height:5px;overflow:hidden;">
               <div style="background:${bc};height:100%;width:${sub.score}%;border-radius:4px;transition:width .6s;"></div>
             </div>
           </div>

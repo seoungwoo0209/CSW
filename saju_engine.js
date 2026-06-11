@@ -2530,7 +2530,33 @@ function buildFlowState(basePillars, flowPillars = []) {
   function calcFlowStrength() {
     const monthBranch = basePillars.month.branch;
 
+    // 원국 calculateStrength와 동일: MONTH_COMMAND_PROFILE 우선 적용
+    function _rel(el) {
+      if (!el || !dayEl) return "none";
+      if (el === dayEl)                              return "same";
+      if (D.WUXING_GENERATES[el]    === dayEl)      return "gen_me";
+      if (D.WUXING_GENERATES[dayEl] === el)         return "i_gen";
+      if (D.WUXING_CONTROLS[el]     === dayEl)      return "ctrl_me";
+      if (D.WUXING_CONTROLS[dayEl]  === el)         return "i_ctrl";
+      return "none";
+    }
+
     function seasonScore() {
+      const profile = D.MONTH_COMMAND_PROFILE?.[monthBranch];
+      if (profile) {
+        let idx = 0;
+        Object.entries(profile).forEach(([el, v]) => {
+          if (!v) return;
+          const r = _rel(el);
+          if (r === "same")       idx += v * 1.00;
+          else if (r === "gen_me")  idx += v * 0.60;
+          else if (r === "i_gen")   idx -= v * 0.28;
+          else if (r === "ctrl_me") idx -= v * 0.70;
+          else if (r === "i_ctrl")  idx -= v * 0.22;
+        });
+        return Math.max(-18, Math.min(18, idx * 15));
+      }
+      // fallback: SEASON_MAP 기반
       const season = D.SEASON_MAP[monthBranch];
       if (!season) return 0;
       const se = D.SEASON_ELEMENT[season];
@@ -2789,6 +2815,7 @@ function evaluatePerformanceViabilityNew(state, baseState) {
 
   // ── 신약 관성 과다 페널티 (명리학 보정)
   // 신약 명식에서 관성(克我)이 벡터상 과다하면 실행가능성 저하
+  const strengthScore = state.strength?.score ?? 50;
   if (strengthScore <= 44) {
     const guanAmount = (vectors.tenGods["偏官"]||0) + (vectors.tenGods["正官"]||0);
     const guanRatio  = guanAmount / totalTG;
