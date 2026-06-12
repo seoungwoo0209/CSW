@@ -83,14 +83,13 @@ export default async function handler(req, res) {
     const progRaw     = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
     const progPlanets = extractPlanets(progRaw.observed);
 
-    // [FIX 2] progJD를 progUTC 실제 날짜에서 계산
-    // (이전: jd + ageYears — 년 단위값을 일 단위 JD에 더하는 혼용 제거)
+    // [FIX 2] progJD: 프로그레션 날짜 + 출생 UTC 시각(bHr) 조합
+    // progUTC의 시각(이분법 수렴값)은 태양 경도용이고,
+    // ASC/MC(RAMC 기반) 계산은 출생 시각을 그대로 사용해야 함
     const pY  = progUTC.getUTCFullYear();
     const pM  = progUTC.getUTCMonth() + 1;
     const pD  = progUTC.getUTCDate();
-    const pHr = progUTC.getUTCHours() + progUTC.getUTCMinutes() / 60
-                + progUTC.getUTCSeconds() / 3600;
-    const progJD = calcJulianDay(pY, pM, pD, pHr);
+    const progJD = calcJulianDay(pY, pM, pD, bHr);
 
     const { asc: progAsc, mc: progMc, houses: progHouses } = calcHousesPlacidus(progJD, lat, lng);
     const progPlanetsWithHouse = assignHouses(progPlanets, progHouses);
