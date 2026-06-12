@@ -707,6 +707,135 @@ function renderAstroProgression(astroData) {
   }
 }
 
+
+/* =========================================================
+   오늘의 운세 — 행성 현황 렌더링
+   ========================================================= */
+function renderTodayPlanetPanel(todayData) {
+  const panel     = _$("todayPlanetPanel");
+  const grid      = _$("todayPlanetGrid");
+  const dateLabel = _$("todayDateLabel");
+  if (!panel || !grid) return;
+
+  if (dateLabel) dateLabel.textContent = todayData.todayDate + " 기준";
+
+  const PLANET_KR = {
+    sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
+    mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
+  };
+
+  const natal   = todayData.natal;
+  const transit = todayData.todayTransit;
+
+  grid.innerHTML = Object.entries(PLANET_KR).map(([key, label]) => {
+    const n = natal[key];
+    const t = transit[key];
+    if (!n || !t) return "";
+    const changed = n.signIndex !== t.signIndex;
+    return `
+      <div style="
+        background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(250,200,100,.12);
+      ">
+        <div style="color:#fcd34d;font-size:11px;margin-bottom:2px;">${label}</div>
+        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${t.sign} ${t.degree}°</div>
+        <div style="color:#64748b;font-size:10px;margin-top:2px;">
+          네이탈: ${n.sign}${changed ? ' <span style="color:#fbbf24;">→변화</span>' : ''}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  panel.style.display = "block";
+}
+
+/* =========================================================
+   오늘의 운세 — AI 호출
+   ========================================================= */
+async function requestTodayFortune() {
+  if (!window.SajuResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요.");
+    return;
+  }
+
+  const btn      = _$("todayBtn");
+  const loading  = _$("todayLoading");
+  const resultEl = _$("todayResult");
+  const errorEl  = _$("todayError");
+  const statusEl = _$("todayCalcStatus");
+
+  btn.disabled           = true;
+  btn.style.opacity      = "0.5";
+  loading.style.display  = "block";
+  resultEl.style.display = "none";
+  errorEl.style.display  = "none";
+
+  try {
+    // 캐시 없으면 오늘 트랜짓 계산
+    if (!window.TodayResult) {
+      if (statusEl) statusEl.textContent = "⏳ 오늘 행성 위치 계산 중...";
+
+      const { name, gender, birthDate, birthTime } = window.SajuResult;
+      const cityName = getCitySelectValue();
+      const { lat, lng, utcOffset } = getCityCoords(cityName);
+
+      const calcRes = await fetch("/api/astro-today", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ birthDate, birthTime, lat, lng, name, gender, utcOffset })
+      });
+
+      const todayData = await calcRes.json();
+      if (!calcRes.ok || todayData.error) throw new Error(todayData.error || "오늘 운세 계산 오류");
+
+      window.TodayResult = todayData;
+      renderTodayPlanetPanel(todayData);
+
+      if (statusEl) statusEl.textContent = "✅ 행성 위치 계산 완료";
+    }
+
+    // Gemini 호출
+    if (statusEl) statusEl.textContent = "✨ AI가 오늘 운세를 읽고 있습니다...";
+
+    const geminiRes = await fetch("/api/gemini-today", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ todayData: window.TodayResult })
+    });
+
+    const geminiData = await geminiRes.json();
+    if (!geminiRes.ok || geminiData.error) throw new Error(geminiData.error || "AI 분석 오류");
+
+    const formatted = (geminiData.result || "")
+      .replace(/## (.+)/g, '<h3 style="color:#fcd34d;margin:16px 0 8px;font-size:14px;">$1</h3>')
+      .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
+      .replace(/\n/g, "<br>");
+
+    resultEl.innerHTML = `
+      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
+        ${formatted}
+      </div>
+      <div style="margin-top:12px;text-align:right;">
+        <button onclick="window.TodayResult=null;requestTodayFortune();" style="
+          background:rgba(217,119,6,.2);border:1px solid rgba(217,119,6,.4);
+          color:#fcd34d;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
+        ">🔄 다시 보기</button>
+      </div>
+    `;
+    resultEl.style.display = "block";
+    if (statusEl) statusEl.textContent = "";
+
+  } catch (err) {
+    errorEl.textContent   = "⚠️ " + (err.message || "오늘 운세를 불러오지 못했습니다.");
+    errorEl.style.display = "block";
+    if (statusEl) statusEl.textContent = "";
+  } finally {
+    btn.disabled           = false;
+    btn.style.opacity      = "1";
+    loading.style.display  = "none";
+  }
+}
+
 /* =========================================================
    Gemini AI 운세 호출 (사주)
    ========================================================= */
@@ -933,11 +1062,11 @@ document.addEventListener("DOMContentLoaded", () => {
       el.addEventListener("input",  () => {
         runAll();
         // 핵심 입력값 변경 시 AstroResult 무효화 → 재계산
-        if (["birthDate","birthTime","birthCity"].includes(id)) window.AstroResult = null;
+        if (["birthDate","birthTime","birthCity"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
       el.addEventListener("change", () => {
         runAll();
-        if (["birthDate","birthTime","birthCity"].includes(id)) window.AstroResult = null;
+        if (["birthDate","birthTime","birthCity"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
     });
 

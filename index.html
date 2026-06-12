@@ -64,15 +64,18 @@
 
       <nav class="tabs">
         <button class="tab active" data-tab="tab-saju">사주</button>
-        <button class="tab" data-tab="tab-hidden">지장간</button>
+        <button class="tab" data-tab="tab-today">🌅 오늘의 운세</button>
         <button class="tab" data-tab="tab-lifegraph">🌌 인생 그래프</button>
-        <button class="tab" data-tab="tab-analysis">자원 분석</button>
         <button class="tab" data-tab="tab-astro">⭐ 점성술</button>
       </nav>
 
-      <!-- 사주 탭 -->
+      <!-- ══════════════════════════════════════
+           사주 탭 (사주 + 지장간 + 자원분석 통합)
+           ══════════════════════════════════════ -->
       <section id="tab-saju" class="tabpane active">
-        <div class="grid2">
+
+        <!-- 4주 + 오행 -->
+        <div class="grid2" style="margin-bottom:12px;">
           <div class="card">
             <div class="card-title">4주(연/월/일/시)</div>
             <div class="pillars">
@@ -89,11 +92,9 @@
             <div class="bars" id="barsSurface"></div>
           </div>
         </div>
-      </section>
 
-      <!-- 지장간 탭 -->
-      <section id="tab-hidden" class="tabpane">
-        <div class="grid2">
+        <!-- 지장간 -->
+        <div class="grid2" style="margin-bottom:12px;">
           <div class="card">
             <div class="card-title">지장간(각 지지별)</div>
             <div id="hiddenList" class="hiddenlist">-</div>
@@ -104,26 +105,15 @@
             <div class="bars" id="barsHidden"></div>
           </div>
         </div>
-      </section>
 
-      <!-- 인생 그래프 탭 -->
-      <section id="tab-lifegraph" class="tabpane">
-        <div id="lifeGraphPanel" style="padding:4px 0;">
-          <div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">
-            생년월일과 출생시각을 입력하면 인생 그래프가 표시됩니다.
-          </div>
-        </div>
-      </section>
-
-      <!-- 사주 자원 분석 탭 (격/신강약/원국총점 → 5축 자원 점수형으로 전면 교체) -->
-      <section id="tab-analysis" class="tabpane">
+        <!-- 자원 분석 -->
         <div id="resourcePanel" style="padding:4px 0;">
           <div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">
             생년월일과 출생시각을 입력하면 자원 분석이 표시됩니다.
           </div>
         </div>
 
-        <!-- AI 운세 섹션 -->
+        <!-- AI 운세 -->
         <div id="geminiSection" style="padding:4px 0 16px;">
           <div style="
             background:linear-gradient(135deg,rgba(18,22,42,.92),rgba(30,27,75,.88));
@@ -138,10 +128,8 @@
               background:linear-gradient(135deg,#6366f1,#8b5cf6);
               color:#fff;font-size:13px;font-weight:700;
               border:none;border-radius:10px;padding:10px 22px;
-              cursor:pointer;letter-spacing:.5px;
-              transition:opacity .2s;
+              cursor:pointer;letter-spacing:.5px;transition:opacity .2s;
             ">✨ 운세 보기</button>
-
             <div id="geminiLoading" style="display:none;margin-top:14px;text-align:center;">
               <div style="font-size:13px;color:#a5b4fc;animation:pulse 1.5s ease-in-out infinite;">
                 🔮 사주를 분석하고 있습니다...
@@ -150,9 +138,73 @@
                 ※ 응답이 없으면 다시 눌러주세요. (최대 3~5회)
               </div>
             </div>
-
             <div id="geminiResult" style="display:none;margin-top:16px;"></div>
-            <div id="geminiError"  style="display:none;margin-top:12px;
+            <div id="geminiError" style="display:none;margin-top:12px;
+              color:#ff7a7a;font-size:13px;background:rgba(255,122,122,.08);
+              border:1px solid rgba(255,122,122,.25);border-radius:8px;padding:10px 14px;">
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ══════════════════════════════════════
+           오늘의 운세 탭
+           ══════════════════════════════════════ -->
+      <section id="tab-today" class="tabpane">
+        <div style="padding:4px 0 16px;">
+
+          <!-- 오늘 날짜 + 행성 현황 -->
+          <div id="todayPlanetPanel" style="display:none;">
+            <div style="
+              background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+              border:1px solid rgba(250,200,100,.2);border-radius:16px;
+              padding:20px;margin-bottom:12px;
+            ">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="font-size:12px;color:#fcd34d;letter-spacing:2px;">🌅 오늘의 행성 현황</div>
+                <div id="todayDateLabel" style="font-size:11px;color:#64748b;"></div>
+              </div>
+              <div id="todayPlanetGrid" style="
+                display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;
+              "></div>
+            </div>
+          </div>
+
+          <!-- AI 오늘 운세 카드 -->
+          <div style="
+            background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(30,15,50,.90));
+            border:1px solid rgba(250,200,100,.2);border-radius:16px;
+            padding:20px;
+          ">
+            <div style="font-size:12px;color:#fcd34d;letter-spacing:2px;margin-bottom:6px;">🌅 오늘의 운세</div>
+            <div style="font-size:13px;color:#94a3b8;margin-bottom:14px;line-height:1.6;">
+              오늘 하늘의 행성 위치와 당신의 별자리를 대조해<br>
+              오늘 하루의 흐름을 읽어드립니다.
+              <span style="display:block;color:#a78bfa;font-size:11px;margin-top:4px;">
+                ※ 출생도시를 입력하면 더 정확합니다.
+              </span>
+            </div>
+
+            <div id="todayCalcStatus" style="font-size:12px;color:#94a3b8;padding:4px 2px;min-height:18px;margin-bottom:10px;"></div>
+
+            <button id="todayBtn" onclick="requestTodayFortune()" style="
+              background:linear-gradient(135deg,#d97706,#b45309);
+              color:#fff;font-size:13px;font-weight:700;
+              border:none;border-radius:10px;padding:10px 22px;
+              cursor:pointer;letter-spacing:.5px;transition:opacity .2s;
+            ">🌅 오늘 운세 보기</button>
+
+            <div id="todayLoading" style="display:none;margin-top:14px;text-align:center;">
+              <div style="font-size:13px;color:#fcd34d;animation:pulse 1.5s ease-in-out infinite;">
+                🌅 오늘의 별자리를 읽고 있습니다...
+              </div>
+              <div style="font-size:11px;color:#64748b;margin-top:6px;">
+                ※ 응답이 없으면 다시 눌러주세요.
+              </div>
+            </div>
+            <div id="todayResult" style="display:none;margin-top:16px;"></div>
+            <div id="todayError" style="display:none;margin-top:12px;
               color:#ff7a7a;font-size:13px;background:rgba(255,122,122,.08);
               border:1px solid rgba(255,122,122,.25);border-radius:8px;padding:10px 14px;">
             </div>
@@ -160,14 +212,19 @@
         </div>
       </section>
 
+      <!-- 인생 그래프 탭 -->
+      <section id="tab-lifegraph" class="tabpane">
+        <div id="lifeGraphPanel" style="padding:4px 0;">
+          <div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">
+            생년월일과 출생시각을 입력하면 인생 그래프가 표시됩니다.
+          </div>
+        </div>
+      </section>
+
       <!-- 점성술 탭 -->
       <section id="tab-astro" class="tabpane">
         <div style="padding:4px 0 16px;">
-
-          <!-- 차트 계산 상태 -->
           <div id="astroCalcStatus" style="font-size:12px;color:#94a3b8;padding:6px 2px;min-height:20px;"></div>
-
-          <!-- 행성 위치 카드 -->
           <div id="astroNatalPanel" style="display:none;">
             <div style="
               background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(25,10,60,.90));
@@ -180,8 +237,6 @@
               "></div>
             </div>
           </div>
-
-          <!-- AI 해석 카드 -->
           <div style="
             background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(25,10,60,.90));
             border:1px solid rgba(200,170,255,.2);border-radius:16px;
@@ -198,7 +253,6 @@
               border:none;border-radius:10px;padding:10px 22px;
               cursor:pointer;letter-spacing:.5px;transition:opacity .2s;
             ">⭐ 점성술 리딩 시작</button>
-
             <div id="astroLoading" style="display:none;margin-top:14px;text-align:center;">
               <div style="font-size:13px;color:#c4b5fd;animation:pulse 1.5s ease-in-out infinite;">
                 🪐 행성 위치를 계산하고 있습니다...
@@ -215,19 +269,10 @@
           </div>
         </div>
       </section>
+
     </section>
   </main>
 
-  <!--
-    ┌─────────────────────────────────────────┐
-    │ 로드 순서 (의존성 순)                    │
-    │ 1. saju_data.js  → SajuData 초기화      │
-    │ 2. saju_core.js  → 계산 + getShishen    │
-    │ 3. saju_engine.js → 분석 엔진           │
-    │ 4. saju_ui.js    → 렌더링               │
-    │ 5. app.js        → 앱 초기화/이벤트     │
-    └─────────────────────────────────────────┘
-  -->
   <script src="./saju_data.js?v=3"></script>
   <script src="./saju_core.js?v=3"></script>
   <script src="./saju_engine.js?v=3"></script>
