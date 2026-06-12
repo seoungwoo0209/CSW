@@ -547,6 +547,132 @@ function renderAstroNatal(astroData) {
     </div>
   `;
   panel.style.display = "block";
+
+  // 세컨더리 프로그레션 차트도 함께 렌더링
+  renderAstroProgression(astroData);
+}
+
+/* =========================================================
+   세컨더리 프로그레션 차트 렌더링
+   ========================================================= */
+function renderAstroProgression(astroData) {
+  const prog = astroData.progression;
+  if (!prog) return;
+
+  // 기존 패널 있으면 제거 후 재생성
+  const existing = document.getElementById("astroProgPanel");
+  if (existing) existing.remove();
+
+  const PLANET_KR = {
+    sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
+    mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
+    uranus:"⛢ 천왕성", neptune:"♆ 해왕성", pluto:"♇ 명왕성"
+  };
+
+  const natal = astroData.natal;
+
+  // 나탈 vs 프로그레션 비교 그리드
+  const rowsHtml = Object.entries(PLANET_KR).map(([key, label]) => {
+    const n = natal[key];
+    const p = prog.planets[key];
+    if (!n || !p) return "";
+
+    // 사인이 바뀌었으면 강조
+    const changed = n.signIndex !== p.signIndex;
+    return `
+      <div style="
+        display:grid;grid-template-columns:1fr 1fr 1fr;
+        gap:6px;align-items:center;
+        background:${changed ? 'rgba(165,180,252,.08)' : 'rgba(255,255,255,.03)'};
+        border:1px solid ${changed ? 'rgba(165,180,252,.25)' : 'rgba(255,255,255,.06)'};
+        border-radius:8px;padding:7px 10px;margin-bottom:4px;
+      ">
+        <div style="color:#c4b5fd;font-size:11px;">${label}</div>
+        <div>
+          <div style="color:#94a3b8;font-size:11px;">${n.sign}</div>
+          <div style="color:#64748b;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
+        </div>
+        <div>
+          <div style="color:${changed ? '#a5b4fc' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+            ${p.sign}${changed ? ' ✦' : ''}
+          </div>
+          <div style="color:#64748b;font-size:10px;">${p.degree}°${p.minute}' · ${p.house}H</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  // 프로그레션↔나탈 주요 에스펙트
+  const aspects = prog.aspectsToNatal || [];
+  const aspectsHtml = aspects.length > 0
+    ? aspects.slice(0, 8).map(a => `
+        <div style="
+          background:rgba(255,255,255,.04);border-radius:6px;
+          padding:6px 10px;font-size:11px;color:#94a3b8;
+          border-left:2px solid rgba(165,180,252,.4);
+        ">
+          <span style="color:#c4b5fd;">${a.progPlanet}</span>
+          <span style="color:#64748b;margin:0 4px;">${a.aspect}</span>
+          <span style="color:#94a3b8;">${a.natalPlanet}</span>
+          <span style="color:#475569;margin-left:6px;">orb ${a.orb > 0 ? '+' : ''}${a.orb}°</span>
+        </div>
+      `).join("")
+    : `<div style="color:#475569;font-size:12px;">현재 주요 에스펙트 없음</div>`;
+
+  const panel = document.createElement("div");
+  panel.id = "astroProgPanel";
+  panel.style.cssText = "margin-top:12px;";
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;">🔭 세컨더리 프로그레션</div>
+        <div style="font-size:11px;color:#475569;">
+          기준일 ${prog.meta.progDate} · 나이 ${prog.meta.ageYears}세
+        </div>
+      </div>
+
+      <!-- 헤더 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
+        <div style="font-size:10px;color:#475569;">행성</div>
+        <div style="font-size:10px;color:#475569;">나탈</div>
+        <div style="font-size:10px;color:#a5b4fc;">프로그레션 ✦변화</div>
+      </div>
+
+      <!-- 행성 비교 -->
+      ${rowsHtml}
+
+      <!-- ASC/MC -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px;">
+        <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:#a78bfa;margin-bottom:3px;">프로그레션 ASC</div>
+          <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${prog.angles.asc.sign}</div>
+          <div style="font-size:10px;color:#64748b;">${prog.angles.asc.degree}°${prog.angles.asc.minute}'</div>
+        </div>
+        <div style="background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:8px;padding:8px 10px;">
+          <div style="font-size:10px;color:#a78bfa;margin-bottom:3px;">프로그레션 MC</div>
+          <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${prog.angles.mc.sign}</div>
+          <div style="font-size:10px;color:#64748b;">${prog.angles.mc.degree}°${prog.angles.mc.minute}'</div>
+        </div>
+      </div>
+
+      <!-- 에스펙트 -->
+      <div style="margin-top:14px;">
+        <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">프로그레션 → 나탈 에스펙트</div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${aspectsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 나탈 패널 바로 아래에 삽입
+  const natalPanel = document.getElementById("astroNatalPanel");
+  if (natalPanel) {
+    natalPanel.after(panel);
+  }
 }
 
 /* =========================================================
