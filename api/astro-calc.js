@@ -1,8 +1,8 @@
 /* =========================================================
-   api/astro-calc.js  v3.0
+   api/astro-calc.js  v3.1
    행성 위치 계산 — ephemeris 패키지 (Moshier, 오차 1' 이내)
    하우스: Placidus
-   세컨더리 프로그레션 (전 행성) + 에스펙트
+   세컨더리 프로그레션: 태양 실제 이동 기반 (정밀 공식)
    ========================================================= */
 
 import Ephemeris from 'ephemeris';
@@ -26,32 +26,48 @@ export default async function handler(req, res) {
     const offsetHours      = (utcOffset != null) ? utcOffset : (lng / 15);
     const localDecimalHour = hh + mi / 60;
     const utcDecimalHour   = localDecimalHour - offsetHours;
-
-    // UTC Date 객체 생성
     const utcH  = Math.floor(utcDecimalHour);
     const utcM  = Math.round((utcDecimalHour - utcH) * 60);
     const birthUTC = new Date(Date.UTC(yyyy, mm - 1, dd, utcH, utcM, 0));
 
     // 나탈 행성 계산
-    const natalRaw   = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
-    const planets    = extractPlanets(natalRaw.observed);
+    const natalRaw = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
+    const planets  = extractPlanets(natalRaw.observed);
 
     // 하우스 계산 (Placidus)
     const jd = calcJulianDay(yyyy, mm, dd, utcDecimalHour);
     const { asc, mc, houses } = calcHousesPlacidus(jd, lat, lng);
-
-    // 행성 → 하우스 배정
     const planetsWithHouse = assignHouses(planets, houses);
 
-    // 세컨더리 프로그레션 (1일 = 1년)
+    // ── 세컨더리 프로그레션 (태양 실제 이동 기반 정밀 공식)
+    // 1일 = 1년. 현재 나이(년) = 출생일로부터 경과한 일수
     const now      = new Date();
     const ageYears = (now.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
-    const progDays = ageYears * 365.25;
-    const progUTC  = new Date(birthUTC.getTime() + progDays * 86400000);
 
-    const progRaw          = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
-    const progPlanets      = extractPlanets(progRaw.observed);
-    const progJD           = jd + ageYears;
+    // 출생 태양 경도
+    const birthSunLon = planets.sun.lon;
+    // 목표 태양 경도 = 출생 태양 + 나이(도)
+    const targetSunLon = ((birthSunLon + ageYears) % 360 + 360) % 360;
+
+    // 이분법으로 태양이 targetSunLon에 도달하는 정확한 날짜 계산
+    // 탐색 범위: 출생일 + (ageYears ± 2)일
+    let lo = new Date(birthUTC.getTime() + (ageYears - 2) * 86400000);
+    let hi = new Date(birthUTC.getTime() + (ageYears + 2) * 86400000);
+    for (let i = 0; i < 50; i++) {
+      const mid    = new Date((lo.getTime() + hi.getTime()) / 2);
+      const midRes = Ephemeris.getAllPlanets(mid, lng, lat, 0);
+      const midSun = ((midRes.observed.sun.apparentLongitudeDd % 360) + 360) % 360;
+      let diff = targetSunLon - midSun;
+      if (diff > 180)  diff -= 360;
+      if (diff < -180) diff += 360;
+      if (diff > 0) lo = mid; else hi = mid;
+    }
+    const progUTC = new Date((lo.getTime() + hi.getTime()) / 2);
+
+    // 프로그레션 행성 계산
+    const progRaw    = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
+    const progPlanets = extractPlanets(progRaw.observed);
+    const progJD     = jd + ageYears;
     const { asc: progAsc, mc: progMc, houses: progHouses } = calcHousesPlacidus(progJD, lat, lng);
     const progPlanetsWithHouse = assignHouses(progPlanets, progHouses);
 
@@ -76,7 +92,6 @@ export default async function handler(req, res) {
       };
     }
 
-    // 결과 조립
     const KEYS = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
 
     const natalResult = {};
@@ -95,7 +110,11 @@ export default async function handler(req, res) {
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
       natalAspects,
       progression: {
-        meta:           { progDate: now.toISOString().slice(0, 10), ageYears: Math.round(ageYears * 100) / 100 },
+        meta: {
+          progDate:  progUTC.toISOString().slice(0, 10),
+          ageYears:  Math.round(ageYears * 100) / 100,
+          method:    '태양 실제 이동 기반 (정밀)'
+        },
         planets:        progResult,
         angles:         { asc: toSignInfo(progAsc), mc: toSignInfo(progMc) },
         houses:         progHouses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
@@ -157,12 +176,9 @@ function calcHousesPlacidus(jd, lat, lng) {
   const epsR = rad(eps);
   const latR = rad(lat);
 
-  // MC
   const mc_raw = Math.atan(Math.tan(rad(RAMC)) / Math.cos(epsR)) * 180 / Math.PI;
   const mc     = norm360(Math.cos(rad(RAMC)) < 0 ? mc_raw + 180 : mc_raw);
-
-  // ASC
-  const asc = norm360(
+  const asc    = norm360(
     Math.atan2(Math.cos(rad(RAMC)), -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(RAMC)))) * 180 / Math.PI
   );
 
@@ -178,7 +194,7 @@ function calcHousesPlacidus(jd, lat, lng) {
       const cosH = -Math.tan(latR) * Math.tan(decR);
       if (cosH > 1)  { ra = norm360(baseRAMC_deg);       break; }
       if (cosH < -1) { ra = norm360(baseRAMC_deg + 180); break; }
-      const H    = Math.acos(cosH) * 180 / Math.PI;
+      const H     = Math.acos(cosH) * 180 / Math.PI;
       const newRA = norm360(baseRAMC_deg + frac * H);
       if (Math.abs(newRA - ra) < 0.00001) break;
       ra = (ra + newRA) / 2;
@@ -191,18 +207,19 @@ function calcHousesPlacidus(jd, lat, lng) {
   const c2  = raToEcl(getCuspRA(1/3, norm360(RAMC + 180)));
   const c3  = raToEcl(getCuspRA(2/3, norm360(RAMC + 180)));
 
-  const houses = [
-    asc, c2, c3,
-    norm360(mc + 180),
-    norm360(c11 + 180),
-    norm360(c12 + 180),
-    norm360(asc + 180),
-    norm360(c2 + 180),
-    norm360(c3 + 180),
-    mc, c11, c12,
-  ];
-
-  return { asc, mc, houses };
+  return {
+    asc, mc,
+    houses: [
+      asc, c2, c3,
+      norm360(mc + 180),
+      norm360(c11 + 180),
+      norm360(c12 + 180),
+      norm360(asc + 180),
+      norm360(c2 + 180),
+      norm360(c3 + 180),
+      mc, c11, c12,
+    ]
+  };
 }
 
 /* =========================================================
@@ -261,11 +278,9 @@ function calcAspects(planets) {
       for (const asp of ASPECT_DEFS) {
         if (Math.abs(dist - asp.angle) <= asp.orb) {
           aspects.push({
-            planet1: PLANET_KR[p1],
-            planet2: PLANET_KR[p2],
-            aspect:  asp.name,
-            symbol:  asp.symbol,
-            orb:     Math.round((dist - asp.angle) * 10) / 10
+            planet1: PLANET_KR[p1], planet2: PLANET_KR[p2],
+            aspect: asp.name, symbol: asp.symbol,
+            orb: Math.round((dist - asp.angle) * 10) / 10
           });
         }
       }
@@ -275,8 +290,8 @@ function calcAspects(planets) {
 }
 
 function calcAspectsProgToNatal(progPlanets, natalPlanets) {
-  const aspects   = [];
-  const progKeys  = ['sun','moon','mercury','venus','mars'];
+  const aspects  = [];
+  const progKeys = ['sun','moon','mercury','venus','mars'];
   for (const pk of progKeys) {
     for (const nk of PLANET_KEYS) {
       const dist = angularDistance(progPlanets[pk].lon, natalPlanets[nk].lon);
@@ -285,9 +300,8 @@ function calcAspectsProgToNatal(progPlanets, natalPlanets) {
           aspects.push({
             progPlanet:  `프로그레션 ${PLANET_KR[pk]}`,
             natalPlanet: `네이탈 ${PLANET_KR[nk]}`,
-            aspect:  asp.name,
-            symbol:  asp.symbol,
-            orb:     Math.round((dist - asp.angle) * 10) / 10
+            aspect: asp.name, symbol: asp.symbol,
+            orb: Math.round((dist - asp.angle) * 10) / 10
           });
         }
       }
