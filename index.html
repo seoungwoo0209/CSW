@@ -45,7 +45,19 @@
         </label>
         <label>
           <span>출생도시(점성술용)</span>
-          <select id="birthCity"><option value="서울" selected>서울</option></select>
+          <div style="position:relative;">
+            <input id="birthCityInput" type="text" placeholder="도시 검색..." autocomplete="off"
+              style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+              background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+              oninput="filterCityList(this.value)"
+              onfocus="showCityList()"
+              onblur="setTimeout(hideCityList,200)"
+            />
+            <div id="cityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
+              overflow-y:auto;background:#1e2340;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+              margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
+            <input type="hidden" id="birthCity" value="서울" />
+          </div>
         </label>
         <div id="alert" class="alert hidden"></div>
       </div>

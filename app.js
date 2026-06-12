@@ -471,9 +471,41 @@ function getCityCoords(cityName) {
 /* =========================================================
    출생도시 Select 렌더링
    ========================================================= */
+function filterCityList(val) {
+  const dropdown = _$('cityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showCityList() {
+  const input = _$('birthCityInput');
+  if (input) filterCityList(input.value);
+}
+function hideCityList() {
+  const d = _$('cityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectCity(cityName) {
+  const input  = _$('birthCityInput');
+  const hidden = _$('birthCity');
+  if (input)  input.value  = cityName;
+  if (hidden) { hidden.value = cityName; window.AstroResult = null; runAll(); }
+  hideCityList();
+}
+function getCitySelectValue() {
+  const el = _$('birthCity');
+  return el ? el.value || '서울' : '서울';
+}
 function buildCitySelect() {
-  const el = _$("birthCity");
-  if (!el || el.tagName !== "SELECT") return;
+  const input = _$('birthCityInput');
+  if (input) input.value = '서울';
+  const hidden = _$('birthCity');
+  if (hidden) hidden.value = '서울';
 
   const groups = [
     { label: "서울 자치구", cities: ["서울","종로구","중구(서울)","용산구","성동구","광진구","동대문구","중랑구","성북구","강북구","도봉구","노원구","은평구","서대문구","마포구","양천구","강서구(서울)","구로구","금천구","영등포구","동작구","관악구","서초구","강남구","송파구","강동구"] },
