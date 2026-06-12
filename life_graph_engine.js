@@ -1,17 +1,13 @@
 /* =========================================================
-   인생 그래프 엔진 (life_graph_engine.js)
+   인생 그래프 엔진 (life_graph_engine.js) v2.0
    ─────────────────────────────────────────────────────────
-   3층 점성학 기반 인생 운세 점수 계산
-   Layer 1 (Trend)      : 세컨더리 프로그레션 태양/달 → 10년 큰 흐름
-   Layer 2 (Annual)     : 솔라 리턴 + 프로펙션     → 연간 성취
-   Layer 3 (Trigger)    : 목성/토성 트랜짓         → 상승/하락 타이밍
-
-   행성 계산: VSOP87 축약 (astro-calc.js와 동일 알고리즘)
-   입력: { birthDate, birthTime, lat, lng, utcOffset }
-   출력: 생년 ~ 현재+20년까지 연도별 점수 배열
+   Layer 1 (40%): 프로그레션 태양 사인 — 계절 베이스
+   Layer 2 (35%): 세운 목성/토성 트랜짓 + 리턴 이벤트
+   Layer 3 (25%): 프로그레션 달 에스펙트
+   기간: 출생 ~ 80세
    ========================================================= */
 
-console.log("🔥 life_graph_engine.js 로드 시작");
+console.log("🔥 life_graph_engine.js v2.0 로드 시작");
 
 (function () {
   'use strict';
@@ -33,66 +29,46 @@ console.log("🔥 life_graph_engine.js 로드 시작");
 
   /* ── 행성 계산 (VSOP87 축약) ──────────────────────────── */
   function calcSun(T) {
-    const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
-    const M  = 357.52911 + 35999.05029 * T - 0.0001537 * T * T;
+    const L0 = 280.46646 + 36000.76983*T + 0.0003032*T*T;
+    const M  = 357.52911 + 35999.05029*T - 0.0001537*T*T;
     const mr = rad(M);
-    const C  = (1.914602 - 0.004817*T - 0.000014*T*T) * Math.sin(mr)
-             + (0.019993 - 0.000101*T) * Math.sin(2*mr)
-             + 0.000289 * Math.sin(3*mr);
+    const C  = (1.914602 - 0.004817*T - 0.000014*T*T)*Math.sin(mr)
+             + (0.019993 - 0.000101*T)*Math.sin(2*mr)
+             + 0.000289*Math.sin(3*mr);
     return norm360(L0 + C);
   }
 
   function calcMoon(T) {
     const D  = 297.85036 + 445267.111480*T - 0.0019142*T*T;
-    const M  = 357.52772 + 35999.050340 *T - 0.0001603*T*T;
+    const M  = 357.52772 + 35999.050340*T  - 0.0001603*T*T;
     const Mp = 134.96298 + 477198.867398*T + 0.0086972*T*T;
     const F  = 93.27191  + 483202.017538*T - 0.0036825*T*T;
-    const L1 = 218.3165  + 481267.8813  *T;
+    const L1 = 218.3165  + 481267.8813*T;
     return norm360(L1
-      + 6.289  * Math.sin(rad(Mp))
-      - 1.274  * Math.sin(rad(2*D - Mp))
-      + 0.658  * Math.sin(rad(2*D))
-      - 0.214  * Math.sin(rad(2*Mp))
-      - 0.186  * Math.sin(rad(M))
-      - 0.114  * Math.sin(rad(2*F))
-      + 0.059  * Math.sin(rad(2*D - 2*Mp))
-      + 0.053  * Math.sin(rad(2*D + Mp)));
+      + 6.289*Math.sin(rad(Mp))
+      - 1.274*Math.sin(rad(2*D - Mp))
+      + 0.658*Math.sin(rad(2*D))
+      - 0.214*Math.sin(rad(2*Mp))
+      - 0.186*Math.sin(rad(M))
+      - 0.114*Math.sin(rad(2*F)));
   }
 
   function calcJupiter(T) {
-    const L = 34.351519 + 3036.3027748*T + 0.00022330*T*T;
-    const M = 20.9      + 3034.74      *T;
+    const L = 34.351519  + 3036.3027748*T;
+    const M = 20.9       + 3034.74*T;
     return norm360(L + 5.555*Math.sin(rad(M)) + 0.168*Math.sin(rad(2*M)));
   }
 
   function calcSaturn(T) {
-    const L = 50.077444 + 1223.5110686*T + 0.00051908*T*T;
-    const M = 317.9     + 1222.114     *T;
+    const L = 50.077444  + 1223.5110686*T;
+    const M = 317.9      + 1222.114*T;
     return norm360(L + 6.393*Math.sin(rad(M)) + 0.120*Math.sin(rad(2*M)));
   }
 
   function calcUranus(T) {
-    const L = 314.055005 + 429.8640561*T + 0.00030390*T*T;
-    const M = 142.5      + 428.9       *T;
-    return norm360(L + 5.460*Math.sin(rad(M)) + 0.168*Math.sin(rad(2*M)));
-  }
-
-  function calcMercury(T) {
-    const L = 252.250906 + 149474.0722491*T;
-    const M = 174.7948   + 149472.5159   *T;
-    return norm360(L + 1.912*Math.sin(rad(M)) + 0.120*Math.sin(rad(2*M)));
-  }
-
-  function calcVenus(T) {
-    const L = 181.979801 + 58519.2130302*T;
-    const M = 212.8      + 58517.80     *T;
-    return norm360(L + 0.7758*Math.sin(rad(M)));
-  }
-
-  function calcMars(T) {
-    const L = 355.433 + 19141.6964471*T;
-    const M = 19.373  + 19140.3      *T;
-    return norm360(L + 10.691*Math.sin(rad(M)) + 0.623*Math.sin(rad(2*M)));
+    const L = 314.055005 + 429.8640561*T;
+    const M = 142.5      + 428.9*T;
+    return norm360(L + 5.460*Math.sin(rad(M)));
   }
 
   function getPlanets(jd) {
@@ -100,27 +76,27 @@ console.log("🔥 life_graph_engine.js 로드 시작");
     return {
       sun:     calcSun(T),
       moon:    calcMoon(T),
-      mercury: calcMercury(T),
-      venus:   calcVenus(T),
-      mars:    calcMars(T),
       jupiter: calcJupiter(T),
       saturn:  calcSaturn(T),
       uranus:  calcUranus(T),
     };
   }
 
-  /* ── ASC / Equal House ────────────────────────────────── */
-  function calcAscMC(jd, lat, lng) {
-    const T    = (jd - 2451545.0) / 36525.0;
-    const GMST = norm360(280.46061837 + 360.98564736629*(jd-2451545.0) + 0.000387933*T*T);
-    const LST  = norm360(GMST + lng);
+  /* ── Naibod key 프로그레션 ASC/MC ─────────────────────── */
+  function calcProgAscMC(natalJD, ageYears, lat, lng) {
+    const NAIBOD = 0.98564736629;
+    const T      = (natalJD - 2451545.0) / 36525.0;
+    const GMST   = norm360(280.46061837 + 360.98564736629*(natalJD-2451545.0) + 0.000387933*T*T);
+    const natalRAMC = norm360(GMST + lng);
+    const progRAMC  = norm360(natalRAMC + ageYears * NAIBOD);
     const eps  = 23.4392911 - 0.013004167*T;
     const epsr = rad(eps);
-    const mc   = norm360(Math.atan2(Math.tan(rad(LST)), Math.cos(epsr)) * 180/Math.PI);
     const latR = rad(lat);
-    const RAMC = rad(LST);
-    const asc  = norm360(
-      Math.atan2(Math.cos(RAMC), -(Math.sin(epsr)*Math.tan(latR)+Math.cos(epsr)*Math.sin(RAMC))) * 180/Math.PI
+    const mc  = norm360(Math.atan2(Math.tan(rad(progRAMC)), Math.cos(epsr)) * 180/Math.PI);
+    const asc = norm360(
+      Math.atan2(Math.cos(rad(progRAMC)),
+        -(Math.sin(epsr)*Math.tan(latR)+Math.cos(epsr)*Math.sin(rad(progRAMC)))
+      ) * 180/Math.PI
     );
     return { asc, mc };
   }
@@ -131,27 +107,46 @@ console.log("🔥 life_graph_engine.js 로드 시작");
     return d > 180 ? 360 - d : d;
   }
 
-  /* ── 에스펙트 점수 (-1.0 ~ +1.0) ─────────────────────── */
-  // 트라인(120)·섹스타일(60)·컨정션(0) = 양성
-  // 스퀘어(90)·오포지션(180) = 음성
-  // orb: 컨정션/오포지션 8°, 트라인/스퀘어 6°, 섹스타일 4°
-  const ASPECTS = [
-    { angle:   0, orb: 8, score:  1.0 },  // 컨정션
-    { angle:  60, orb: 4, score:  0.5 },  // 섹스타일
-    { angle: 120, orb: 6, score:  0.8 },  // 트라인
-    { angle:  90, orb: 6, score: -0.7 },  // 스퀘어
-    { angle: 180, orb: 8, score: -1.0 },  // 오포지션
-  ];
+  /* ── 행성 성질 ────────────────────────────────────────── */
+  const PLANET_NATURE = {
+    sun:     0.7,
+    moon:    0.2,
+    mercury: 0.1,
+    venus:   0.6,
+    mars:   -0.5,
+    jupiter: 1.0,
+    saturn: -0.7,
+    uranus:  0.0,
+    neptune:-0.1,
+    pluto:  -0.4,
+  };
 
-  function aspectScore(a, b) {
-    const dist = angDist(a, b);
+  /* ── 에스펙트 점수 (행성 성질 반영) ──────────────────── */
+  const ASPECT_BASE = {
+    0:   { orb: 8, dir:  1.0 },
+    60:  { orb: 4, dir:  0.6 },
+    120: { orb: 6, dir:  0.9 },
+    90:  { orb: 6, dir: -0.8 },
+    180: { orb: 8, dir: -0.9 },
+  };
+
+  function aspectScore(a, b, planetKey) {
+    const dist   = angDist(a, b);
+    const nature = PLANET_NATURE[planetKey] ?? 0;
     let best = 0;
-    for (const asp of ASPECTS) {
-      const diff = Math.abs(dist - asp.angle);
+    for (const [angleStr, asp] of Object.entries(ASPECT_BASE)) {
+      const angle = Number(angleStr);
+      const diff  = Math.abs(dist - angle);
       if (diff <= asp.orb) {
-        // orb 내에서 중심일수록 강함 (선형 감쇠)
         const strength = 1 - diff / asp.orb;
-        const s = asp.score * strength;
+        let s;
+        if (angle === 0) {
+          s = nature * strength;
+        } else if (asp.dir > 0) {
+          s = asp.dir * (nature >= 0 ? 1.0 : 0.3) * strength;
+        } else {
+          s = asp.dir * (nature < 0 ? 1.0 : 0.5) * strength;
+        }
         if (Math.abs(s) > Math.abs(best)) best = s;
       }
     }
@@ -159,286 +154,168 @@ console.log("🔥 life_graph_engine.js 로드 시작");
   }
 
   /* =========================================================
-     LAYER 1: 세컨더리 프로그레션
-     1일 = 1년 치환
-     프로그레션 태양: 연간 약 1° 이동 → 하우스·에스펙트 변화 추적
-     프로그레션 달: 약 12°/년 → 나탈 행성과의 관계
-     가중치: 태양 40% / 달 35% / ASC·MC 25%
+     LAYER 1: 프로그레션 태양 사인 — 계절 베이스 (40%)
+     봄(양·황소·쌍둥이) / 여름(게·사자·처녀)
+     가을(천칭·전갈·사수) / 겨울(염소·물병·물고기)
+     사인 전환 전후 3년: 전환기 보너스
    ========================================================= */
-  // Naibod key: 프로그레션 ASC/MC = 나탈 RAMC + 경과년수 * 0.9856°
-  function calcProgAscMC_Naibod(natalJD, ageYears, lat, lng) {
-    const NAIBOD = 0.98564736629;
-    const T      = (natalJD - 2451545.0) / 36525.0;
-    const GMST   = norm360(280.46061837 + 360.98564736629*(natalJD-2451545.0) + 0.000387933*T*T);
-    const natalRAMC = norm360(GMST + lng);
-    const progRAMC  = norm360(natalRAMC + ageYears * NAIBOD);
-    const eps  = 23.4392911 - 0.013004167*T;
-    const epsr = rad(eps);
-    const latR = rad(lat);
-    const mc   = norm360(Math.atan2(Math.tan(rad(progRAMC)), Math.cos(epsr)) * 180/Math.PI);
-    const asc  = norm360(
-      Math.atan2(Math.cos(rad(progRAMC)), -(Math.sin(epsr)*Math.tan(latR)+Math.cos(epsr)*Math.sin(rad(progRAMC)))) * 180/Math.PI
-    );
-    return { asc, mc };
-  }
+  const SEASON_BASE = {
+    // 봄 (0=양자리, 1=황소, 2=쌍둥이)
+    0: 70, 1: 70, 2: 70,
+    // 여름 (3=게, 4=사자, 5=처녀)
+    3: 65, 4: 65, 5: 65,
+    // 가을 (6=천칭, 7=전갈, 8=사수)
+    6: 58, 7: 58, 8: 58,
+    // 겨울 (9=염소, 10=물병, 11=물고기)
+    9: 52, 10: 52, 11: 52,
+  };
 
-  function calcProgression(natalJD, ageYears, natal, lat, lng) {
-    const progJD     = natalJD + ageYears;           // 1일 = 1년
-    const progPlanets = getPlanets(progJD);
-    const { asc: progAsc, mc: progMC } = calcProgAscMC_Naibod(natalJD, ageYears, lat, lng);
+  function calcSeasonBase(natalJD, ageYears) {
+    // 프로그레션 태양 위치 (1일=1년)
+    const progJD  = natalJD + ageYears;
+    const T       = (progJD - 2451545.0) / 36525.0;
+    const progSun = calcSun(T);
+    const signIdx = Math.floor(progSun / 30);
+    const base    = SEASON_BASE[signIdx] ?? 60;
 
-    // 프로그레션 행성 vs 나탈 행성 에스펙트 점수
-    // 태양: 나탈 태양·달·ASC·MC와의 에스펙트
-    const sunVsSun  = aspectScore(progPlanets.sun, natal.sun);
-    const sunVsMoon = aspectScore(progPlanets.sun, natal.moon);
-    const sunVsAsc  = aspectScore(progPlanets.sun, natal.asc);
-    const sunVsMC   = aspectScore(progPlanets.sun, natal.mc);
+    // 사인 전환 전후 3년 보너스
+    const degInSign = progSun % 30;
+    let bonus = 0;
+    if (degInSign < 3) bonus = 8 * (1 - degInSign / 3);       // 새 사인 진입
+    if (degInSign > 27) bonus = 8 * ((degInSign - 27) / 3);   // 전환 직전
 
-    // 달: 나탈 행성 전체와의 에스펙트
-    const moonVsSun  = aspectScore(progPlanets.moon, natal.sun);
-    const moonVsMoon = aspectScore(progPlanets.moon, natal.moon);
-    const moonVsJup  = aspectScore(progPlanets.moon, natal.jupiter);
-    const moonVsSat  = aspectScore(progPlanets.moon, natal.saturn);
-    const moonVsAsc  = aspectScore(progPlanets.moon, natal.asc);
-    const moonVsMC   = aspectScore(progPlanets.moon, natal.mc);
-
-    // ASC/MC 프로그레션 vs 나탈
-    const ascScore   = aspectScore(progAsc, natal.sun) * 0.5
-                     + aspectScore(progAsc, natal.moon) * 0.3
-                     + aspectScore(progAsc, natal.mc) * 0.2;
-    const mcScore    = aspectScore(progMC, natal.sun) * 0.4
-                     + aspectScore(progMC, natal.jupiter) * 0.35
-                     + aspectScore(progMC, natal.saturn) * 0.25;
-
-    const sunScore  = (sunVsSun*0.30 + sunVsMoon*0.25 + sunVsAsc*0.25 + sunVsMC*0.20);
-    const moonScore = (moonVsSun*0.20 + moonVsMoon*0.15 + moonVsJup*0.20
-                     + moonVsSat*0.15 + moonVsAsc*0.15 + moonVsMC*0.15);
-
-    return clamp(
-      0.40 * sunScore +
-      0.35 * moonScore +
-      0.15 * ascScore +
-      0.10 * mcScore,
-      -1.0, 1.0
-    );
+    return base + bonus;
   }
 
   /* =========================================================
-     LAYER 2: 솔라 리턴 + 프로펙션
-     솔라 리턴: 매년 태양이 나탈 태양 위치로 돌아오는 시점의 차트
-     프로펙션: 나이 % 12 → 활성 하우스 → 하우스 지배 행성 활성
+     LAYER 2: 세운 목성/토성 트랜짓 + 리턴 이벤트 (35%)
    ========================================================= */
-
-  // 솔라 리턴 JD 근사 (해당 연도에 태양이 나탈 태양 경도로 돌아오는 날)
-  function solarReturnJD(natalJD, targetYear, natalSunLon) {
-    // 해당 연도 1월 1일에서 시작해 탐색
-    let jd = calcJD(targetYear, 1, 1, 12);
-    for (let i = 0; i < 370; i++) {
-      const T   = (jd - 2451545.0) / 36525.0;
-      const lon = calcSun(T);
-      const diff = natalSunLon - lon;
-      // 빠른 수렴: 태양은 하루 약 1° 이동
-      const step = ((diff + 540) % 360) - 180;
-      if (Math.abs(step) < 0.01) break;
-      jd += step / 360 * 365.25;
-    }
-    return jd;
-  }
-
-  // 솔라 리턴 차트 점수
-  // 10하우스(커리어) + 2하우스(재물) + 1하우스(자아) 상태 분석
-  function calcSolarReturnScore(srJD, natal, lat, lng) {
-    const srPlanets = getPlanets(srJD);
-    const { asc: srAsc, mc: srMC } = calcAscMC(srJD, lat, lng);
-
-    // SR 목성이 나탈 MC·태양·달과 맺는 에스펙트
-    const jupToMC   = aspectScore(srPlanets.jupiter, natal.mc);
-    const jupToSun  = aspectScore(srPlanets.jupiter, natal.sun);
-    const jupToMoon = aspectScore(srPlanets.jupiter, natal.moon);
-
-    // SR 토성이 나탈 MC·태양과 맺는 에스펙트 (토성은 부담/책임)
-    const satToMC   = aspectScore(srPlanets.saturn, natal.mc);
-    const satToSun  = aspectScore(srPlanets.saturn, natal.sun);
-
-    // SR ASC가 나탈 MC·태양과 맺는 에스펙트 (SR ASC = 올해의 페르소나)
-    const ascToMC  = aspectScore(srAsc, natal.mc);
-    const ascToSun = aspectScore(srAsc, natal.sun);
-
-    // SR MC가 나탈 태양·MC와 맺는 에스펙트
-    const mcToSun = aspectScore(srMC, natal.sun);
-    const mcToMC  = aspectScore(srMC, natal.mc);
-
-    // 긍정: 목성 / 부정: 토성 (토성은 성장통이기도 하므로 절반만 감점)
-    const jupScore = (jupToMC*0.40 + jupToSun*0.35 + jupToMoon*0.25);
-    const satScore = (satToMC*0.55 + satToSun*0.45) * 0.6; // 토성 감점 완화
-    const angleScore = (ascToMC*0.30 + ascToSun*0.30 + mcToSun*0.20 + mcToMC*0.20);
-
-    return clamp(
-      0.45 * jupScore +
-      0.30 * satScore +
-      0.25 * angleScore,
-      -1.0, 1.0
-    );
-  }
-
-  // 프로펙션 점수
-  // 나이 % 12 → 활성 하우스 → 나탈 해당 하우스 커스프의 지배 행성
-  // 목성·태양·금성 하우스 = 상승 / 토성·화성 하우스 = 하락
-  function calcProfectionScore(ageYears, natal) {
-    const activeHouse = (Math.floor(ageYears) % 12) + 1; // 1~12
-
-    // Equal House 커스프: ASC + (house-1)*30
-    const houseCusp = norm360(natal.asc + (activeHouse - 1) * 30);
-
-    // 어느 사인(星座)에 해당하는가 → 지배 행성
-    const signIdx   = Math.floor(houseCusp / 30);
-    // 전통 지배 행성 (현대: 천왕성·해왕성·명왕성 제외)
-    const RULERS = [
-      "mars",    // 양자리 (0)
-      "venus",   // 황소자리 (1)
-      "mercury", // 쌍둥이자리 (2)
-      "moon",    // 게자리 (3)
-      "sun",     // 사자자리 (4)
-      "mercury", // 처녀자리 (5)
-      "venus",   // 천칭자리 (6)
-      "mars",    // 전갈자리 (7)  (전통: 화성)
-      "jupiter", // 사수자리 (8)
-      "saturn",  // 염소자리 (9)
-      "saturn",  // 물병자리 (10) (전통: 토성)
-      "jupiter", // 물고기자리 (11) (전통: 목성)
-    ];
-    const lord = RULERS[signIdx];
-
-    // Lord of the Year의 나탈 위치 → MC·태양·달과의 에스펙트
-    const lordLon = natal[lord];
-    if (lordLon == null) return 0;
-
-    const lordToMC   = aspectScore(lordLon, natal.mc);
-    const lordToSun  = aspectScore(lordLon, natal.sun);
-    const lordToMoon = aspectScore(lordLon, natal.moon);
-
-    // 목성·태양·금성·달이 lord이면 가산, 토성·화성이면 감산
-    const lordBias = {
-      sun: 0.3, moon: 0.15, venus: 0.25, jupiter: 0.35,
-      mercury: 0.05, mars: -0.2, saturn: -0.3
-    }[lord] || 0;
-
-    return clamp(
-      lordToMC*0.35 + lordToSun*0.30 + lordToMoon*0.20 + lordBias * 0.15,
-      -1.0, 1.0
-    );
-  }
-
-  /* =========================================================
-     LAYER 3: 외행성 트랜짓
-     목성(11.86년) · 토성(29.5년) · 천왕성(84년)
-     나탈 태양·달·MC·ASC와의 에스펙트 추적
-     목성 = 확장/기회(+) / 토성 = 시련/성장(-~+) / 천왕성 = 급변
-   ========================================================= */
-  function calcTransitScore(transitJD, natal) {
+  function calcTransitLayer(transitJD, natal) {
     const tr = getPlanets(transitJD);
 
-    // 목성 트랜짓: 나탈 태양·달·MC·ASC
-    const jupToSun  = aspectScore(tr.jupiter, natal.sun);
-    const jupToMoon = aspectScore(tr.jupiter, natal.moon);
-    const jupToMC   = aspectScore(tr.jupiter, natal.mc);
-    const jupToAsc  = aspectScore(tr.jupiter, natal.asc);
+    // 목성 트랜짓 → 나탈 태양·달·MC·ASC
+    const jupToSun  = aspectScore(tr.jupiter, natal.sun,  'jupiter');
+    const jupToMoon = aspectScore(tr.jupiter, natal.moon, 'jupiter');
+    const jupToMC   = aspectScore(tr.jupiter, natal.mc,   'jupiter');
+    const jupToAsc  = aspectScore(tr.jupiter, natal.asc,  'jupiter');
+    const jupScore  = (jupToSun*0.30 + jupToMoon*0.20 + jupToMC*0.30 + jupToAsc*0.20);
 
-    // 토성 트랜짓: 나탈 태양·달·MC·ASC (토성 리턴 포함)
-    const satToSun  = aspectScore(tr.saturn, natal.sun);
-    const satToMoon = aspectScore(tr.saturn, natal.moon);
-    const satToMC   = aspectScore(tr.saturn, natal.mc);
-    const satToAsc  = aspectScore(tr.saturn, natal.asc);
+    // 토성 트랜짓 → 나탈 태양·달·MC·ASC
+    const satToSun  = aspectScore(tr.saturn, natal.sun,  'saturn');
+    const satToMoon = aspectScore(tr.saturn, natal.moon, 'saturn');
+    const satToMC   = aspectScore(tr.saturn, natal.mc,   'saturn');
+    const satToAsc  = aspectScore(tr.saturn, natal.asc,  'saturn');
+    const satScore  = (satToSun*0.30 + satToMoon*0.20 + satToMC*0.30 + satToAsc*0.20);
 
-    // 천왕성 트랜짓: 나탈 태양·MC (급격한 변화)
-    const uraToSun  = aspectScore(tr.uranus, natal.sun);
-    const uraToMC   = aspectScore(tr.uranus, natal.mc);
+    // 천왕성 트랜짓 → 나탈 태양·MC
+    const uraScore  = (aspectScore(tr.uranus, natal.sun, 'uranus')*0.55
+                     + aspectScore(tr.uranus, natal.mc,  'uranus')*0.45) * 0.4;
 
-    const jupScore = (jupToSun*0.30 + jupToMoon*0.20 + jupToMC*0.30 + jupToAsc*0.20);
-    // 토성은 트라인/섹스타일이면 긍정, 스퀘어/오포지션이면 부정 (그대로 반영)
-    const satScore = (satToSun*0.30 + satToMoon*0.20 + satToMC*0.30 + satToAsc*0.20);
-    // 천왕성은 모든 에스펙트가 변동성 (절댓값의 절반만)
-    const uraScore = (uraToSun*0.55 + uraToMC*0.45) * 0.5;
+    // 목성 리턴 (12년 주기) — 나탈 목성과 컨정션
+    const jupReturn = angDist(tr.jupiter, natal.jupiter) < 5 ? 0.6 : 0;
+
+    // 토성 리턴 (29.5년 주기) — 나탈 토성과 컨정션
+    const satReturn = angDist(tr.saturn, natal.saturn) < 5 ? -0.4 : 0;
+
+    // 천왕성 오포지션 (42세 전후) — 나탈 천왕성과 180°
+    const uraOpposition = angDist(tr.uranus, natal.uranus) > 170 ? -0.3 : 0;
+
+    const combined = 0.45*jupScore + 0.35*satScore + 0.10*uraScore
+                   + jupReturn + satReturn + uraOpposition;
+
+    return clamp(combined, -1.0, 1.0);
+  }
+
+  /* =========================================================
+     LAYER 3: 프로그레션 달 에스펙트 (25%)
+   ========================================================= */
+  function calcProgMoon(natalJD, ageYears, natal, lat, lng) {
+    const progJD   = natalJD + ageYears;
+    const T        = (progJD - 2451545.0) / 36525.0;
+    const progMoon = calcMoon(T);
+    const { asc: progAsc, mc: progMC } = calcProgAscMC(natalJD, ageYears, lat, lng);
+
+    const moonVsSun  = aspectScore(progMoon, natal.sun,     'moon');
+    const moonVsMoon = aspectScore(progMoon, natal.moon,    'moon');
+    const moonVsJup  = aspectScore(progMoon, natal.jupiter, 'moon');
+    const moonVsSat  = aspectScore(progMoon, natal.saturn,  'moon');
+    const moonVsAsc  = aspectScore(progMoon, natal.asc,     'moon');
+    const moonVsMC   = aspectScore(progMoon, natal.mc,      'moon');
+    const ascScore   = aspectScore(progAsc,  natal.sun,     'sun') * 0.5
+                     + aspectScore(progAsc,  natal.moon,    'moon') * 0.5;
 
     return clamp(
-      0.50 * jupScore +
-      0.35 * satScore +
-      0.15 * uraScore,
+      moonVsSun*0.20 + moonVsMoon*0.15 + moonVsJup*0.20
+      + moonVsSat*0.15 + moonVsAsc*0.15 + moonVsMC*0.15 + ascScore*0.15,
       -1.0, 1.0
     );
   }
 
   /* =========================================================
      메인: computeLifeGraph
-     입력: { birthDate, birthTime, lat, lng, utcOffset }
-     출력: { scores: [{year, age, score, layer1, layer2, layer3}], natal }
    ========================================================= */
   function computeLifeGraph(input) {
     const { birthDate, birthTime, lat, lng, utcOffset } = input;
     const [by, bm, bd] = birthDate.split('-').map(Number);
     const [bh, bmin]   = birthTime.split(':').map(Number);
-    const localHour    = bh + bmin / 60;
-    const utcHour      = localHour - (utcOffset || 9);
+    const utcHour      = bh + bmin/60 - (utcOffset || 9);
     const natalJD      = calcJD(by, bm, bd, utcHour);
 
-    // 나탈 행성 위치
+    // 나탈 행성
     const natalPlanets = getPlanets(natalJD);
-    const { asc: natalAsc, mc: natalMC } = calcAscMC(natalJD, lat, lng);
-    const natal = {
-      ...natalPlanets,
-      asc: natalAsc,
-      mc:  natalMC,
-    };
+    const { asc: natalAsc, mc: natalMC } = calcProgAscMC(natalJD, 0, lat, lng);
+    const natal = { ...natalPlanets, asc: natalAsc, mc: natalMC };
 
-    const currentYear = new Date().getFullYear();
-    const startYear   = by;                  // 출생년
-    const endYear     = currentYear + 15;    // 현재 +15년
+    // 오늘 날짜 (KST 기준)
+    const nowRaw   = new Date();
+    const todayKST = new Date(Date.UTC(
+      nowRaw.getUTCFullYear(),
+      nowRaw.getUTCMonth(),
+      nowRaw.getUTCDate() + (nowRaw.getUTCHours() >= 15 ? 1 : 0),
+      0, 0, 0
+    ));
+    const currentYear = todayKST.getUTCFullYear();
+    const endYear     = by + 80;
 
     const scores = [];
 
-    for (let year = startYear; year <= endYear; year++) {
-      const ageYears = year - by + 0.5; // 해당 연도 중반 기준
-      if (ageYears < 0) continue;
+    for (let year = by; year <= endYear; year++) {
+      const ageYears  = year - by + 0.5;
 
-      // Layer 1: 세컨더리 프로그레션
-      const l1 = calcProgression(natalJD, ageYears, natal, lat, lng);
+      // Layer 1: 프로그레션 태양 계절 베이스
+      const seasonBase = calcSeasonBase(natalJD, ageYears);
 
-      // Layer 2: 솔라 리턴 + 프로펙션
-      let l2 = 0;
-      try {
-        const srJD   = solarReturnJD(natalJD, year, natal.sun);
-        const srScore = calcSolarReturnScore(srJD, natal, lat, lng);
-        const profScore = calcProfectionScore(ageYears, natal);
-        l2 = 0.60 * srScore + 0.40 * profScore;
-      } catch(e) { l2 = 0; }
-
-      // Layer 3: 외행성 트랜짓 (해당 연도 중반 JD)
+      // Layer 2: 세운 트랜짓 (-1~+1)
       const transitJD = calcJD(year, 7, 1, 12);
-      const l3 = calcTransitScore(transitJD, natal);
+      const l2        = calcTransitLayer(transitJD, natal);
 
-      // 3층 합산 (가중치: Trend 45% / Annual 35% / Trigger 20%)
-      const combined = 0.45*l1 + 0.35*l2 + 0.20*l3;
+      // Layer 3: 프로그레션 달 (-1~+1)
+      const l3 = calcProgMoon(natalJD, ageYears, natal, lat, lng);
 
-      // 0~100 정규화 (−1~+1 → 35~85 범위, 기준선 60)
-      // 인생이 항상 극단이지 않도록 중간값 60 중심 분포
-      const score = Math.round(clamp(60 + combined * 30, 20, 95));
+      // 최종 점수
+      // seasonBase(20~95) + l2 가산감산(최대 ±15) + l3 가산감산(최대 ±8)
+      const score = Math.round(clamp(
+        seasonBase * 0.40 + 60 * 0.60   // 베이스 블렌딩
+        + l2 * 15                        // 트랜짓 가감
+        + l3 * 8,                        // 달 가감
+        20, 95
+      ));
 
       scores.push({
         year,
         age:    Math.floor(ageYears),
         score,
-        layer1: Math.round(clamp(50 + l1*25, 10, 90)),
-        layer2: Math.round(clamp(50 + l2*25, 10, 90)),
+        layer1: Math.round(seasonBase),
+        layer2: Math.round(clamp(50 + l2*30, 10, 90)),
         layer3: Math.round(clamp(50 + l3*25, 10, 90)),
       });
     }
 
-    // 현재 나이 표시용
     const currentAge = currentYear - by;
 
     return { scores, natal, birthYear: by, currentAge, currentYear };
   }
 
   window.LifeGraphEngine = { computeLifeGraph };
-  console.log("✅ life_graph_engine.js 로드 완료");
+  console.log("✅ life_graph_engine.js v2.0 로드 완료");
 })();
