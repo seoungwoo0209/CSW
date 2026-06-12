@@ -1,0 +1,53 @@
+{
+  "_comment": "네이탈 엔진 v1.0 회귀 테스트 — 이 값이 바뀌면 버그 발생",
+  "_verified_against": "Astro-Seek (astro-seek.com) Placidus",
+  "_verified_date": "2026-06-12",
+
+  "input": {
+    "birthDate": "1985-02-09",
+    "birthTime": "01:40",
+    "city": "대구",
+    "lat": 35.8714,
+    "lng": 128.6014,
+    "utcOffset": 9
+  },
+
+  "angles": {
+    "asc": { "sign": "전갈자리", "degree": 25, "minute": 11, "longitude": 235.18 },
+    "mc":  { "sign": "처녀자리", "degree":  5, "minute": 30, "longitude": 155.50 }
+  },
+
+  "houses": [
+    { "house": 1,  "sign": "전갈자리",   "degree": 25, "minute": 11, "longitude": 235.18 },
+    { "house": 2,  "sign": "사수자리",   "degree": 25, "minute": 34, "longitude": 265.57 },
+    { "house": 3,  "sign": "물병자리",   "degree":  0, "minute":  0, "longitude": 300.00 },
+    { "house": 4,  "sign": "물고기자리", "degree":  5, "minute": 30, "longitude": 335.50 },
+    { "house": 5,  "sign": "양자리",     "degree":  7, "minute": 12, "longitude":   7.20 },
+    { "house": 6,  "sign": "황소자리",   "degree":  3, "minute": 19, "longitude":  33.32 },
+    { "house": 7,  "sign": "황소자리",   "degree": 25, "minute": 11, "longitude":  55.18 },
+    { "house": 8,  "sign": "쌍둥이자리", "degree": 25, "minute": 34, "longitude":  85.57 },
+    { "house": 9,  "sign": "게자리",     "degree":  0, "minute":  0, "longitude":  90.00 },
+    { "house": 10, "sign": "처녀자리",   "degree":  5, "minute": 30, "longitude": 155.50 },
+    { "house": 11, "sign": "천칭자리",   "degree":  7, "minute": 12, "longitude": 187.20 },
+    { "house": 12, "sign": "전갈자리",   "degree":  3, "minute": 19, "longitude": 213.32 }
+  ],
+
+  "planets": {
+    "sun":     { "sign": "물병자리",   "degree": 19, "minute": 52, "house": 3  },
+    "moon":    { "sign": "천칭자리",   "degree":  1, "minute": 31, "house": 10 },
+    "mercury": { "sign": "물병자리",   "degree": 12, "minute":  0, "house": 3  },
+    "venus":   { "sign": "양자리",     "degree":  5, "minute": 37, "house": 4  },
+    "mars":    { "sign": "양자리",     "degree":  4, "minute": 29, "house": 4  },
+    "jupiter": { "sign": "물병자리",   "degree":  0, "minute": 28, "house": 3  },
+    "saturn":  { "sign": "전갈자리",   "degree": 27, "minute": 30, "house": 1  },
+    "uranus":  { "sign": "사수자리",   "degree": 17, "minute": 12, "house": 1  },
+    "neptune": { "sign": "염소자리",   "degree":  2, "minute": 47, "house": 2  },
+    "pluto":   { "sign": "전갈자리",   "degree":  4, "minute": 44, "house": 12 }
+  },
+
+  "tolerance": {
+    "_comment": "허용 오차 기준",
+    "angle_degrees": 0.05,
+    "house_assignment": 0
+  }
+}
