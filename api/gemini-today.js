@@ -47,11 +47,11 @@ export default async function handler(req, res) {
         return `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
-    // 오늘 트랜짓 → 네이탈 에스펙트 (강한 것만 — orb 4° 이내)
+    // 오늘 트랜짓 → 네이탈 에스펙트 전체 (orb 기준 정렬)
     const keyAspects = todayAspects
-      .filter(a => a.orb <= 4)
+      
       .sort((a, b) => a.orb - b.orb)
-      .slice(0, 10)
+      
       .map(a => `${a.transitPlanet} ${a.symbol} ${a.natalPlanet} (${a.aspect}, 오브 ${a.orb}°, ${a.applying ? '접근중' : '이탈중'})`)
       .join('\n');
 
