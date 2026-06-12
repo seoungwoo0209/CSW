@@ -116,11 +116,15 @@ export default async function handler(req, res) {
       progResult[k] = { ...toSignInfo(progPlanetsWithHouse[k].lon), house: progPlanetsWithHouse[k].house };
     });
 
+    // 2026년 월별 트랜짓 계산
+    const transits2026 = calcTransits2026(houses);
+
     return res.status(200).json({
       natal:       natalResult,
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
       natalAspects,
+      transits2026,
       progression: {
         meta: {
           progDate:  progUTC.toISOString().slice(0, 10),
@@ -357,6 +361,99 @@ function calcHousesPlacidus(jd, lat, lng) {
       c11, c12,                 // 11H=c11(1/3), 12H=c12(2/3)
     ]
   };
+}
+
+/* =========================================================
+   수성/금성/화성 계산 (트랜짓용)
+   ========================================================= */
+function calcMercury(T) {
+  const L = 252.250906 + 149474.0722491 * T;
+  const M = 174.7948   + 149472.5153    * T;
+  return norm360(L + 23.440*Math.sin(rad(M)) + 2.994*Math.sin(rad(2*M)));
+}
+function calcVenus(T) {
+  const L = 181.979801 + 58519.2130302 * T;
+  const M = 50.4161    + 58517.8039    * T;
+  return norm360(L + 0.7758*Math.sin(rad(M)) + 0.0033*Math.sin(rad(2*M)));
+}
+function calcMars(T) {
+  const L = 355.433275 + 19141.6964746 * T;
+  const M = 19.387     + 19140.30      * T;
+  return norm360(L + 10.691*Math.sin(rad(M)) + 0.623*Math.sin(rad(2*M)));
+}
+function calcJupiterLon(T) {
+  const L = 34.351519  + 3036.3027748 * T;
+  const M = 20.9       + 3034.74      * T;
+  return norm360(L + 5.555*Math.sin(rad(M)) + 0.168*Math.sin(rad(2*M)));
+}
+function calcSaturnLon(T) {
+  const L = 50.077444  + 1223.5110686 * T;
+  const M = 317.9      + 1222.114     * T;
+  return norm360(L + 6.393*Math.sin(rad(M)) + 0.120*Math.sin(rad(2*M)));
+}
+function calcSunLon(T) {
+  const L0 = 280.46646 + 36000.76983*T + 0.0003032*T*T;
+  const M  = 357.52911 + 35999.05029*T - 0.0001537*T*T;
+  const mr = rad(M);
+  const C  = (1.914602-0.004817*T-0.000014*T*T)*Math.sin(mr)
+           + (0.019993-0.000101*T)*Math.sin(2*mr)
+           + 0.000289*Math.sin(3*mr);
+  return norm360(L0+C);
+}
+
+/* =========================================================
+   2026년 월별 트랜짓 계산
+   매달 15일 기준, 나탈 하우스 커스프로 하우스 배정
+   ========================================================= */
+function calcTransits2026(natalHouses) {
+  const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                 '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+  const MONTHS = ['1월','2월','3월','4월','5월','6월',
+                  '7월','8월','9월','10월','11월','12월'];
+
+  function getHouse(lon) {
+    const n = norm360(lon);
+    for (let i=0; i<12; i++) {
+      const s=natalHouses[i], e=natalHouses[(i+1)%12];
+      if(s>e){if(n>=s||n<e)return i+1;}
+      else{if(n>=s&&n<e)return i+1;}
+    }
+    return 12;
+  }
+
+  function signStr(lon) {
+    const n=norm360(lon);
+    return `${SIGNS[Math.floor(n/30)]} ${Math.floor(n%30)}°`;
+  }
+
+  const result = [];
+  for (let m=1; m<=12; m++) {
+    let y=2026, mm=m, d=15;
+    if(mm<=2){y--;mm+=12;}
+    const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
+    const jd=Math.floor(365.25*(y+4716))+Math.floor(30.6001*(mm+1))+d+0.5+B-1524.5;
+    const T=(jd-2451545.0)/36525.0;
+
+    const planets = {
+      sun:     calcSunLon(T),
+      mercury: calcMercury(T),
+      venus:   calcVenus(T),
+      mars:    calcMars(T),
+      jupiter: calcJupiterLon(T),
+      saturn:  calcSaturnLon(T),
+    };
+
+    const monthData = { month: MONTHS[m-1], planets: {} };
+    for (const [key, lon] of Object.entries(planets)) {
+      monthData.planets[key] = {
+        longitude: Math.round(lon * 10) / 10,
+        sign: signStr(lon),
+        house: getHouse(lon)
+      };
+    }
+    result.push(monthData);
+  }
+  return result;
 }
 
 /* =========================================================

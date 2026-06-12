@@ -19,7 +19,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, natalAspects = [], progression, meta } = astroData;
+    const { natal, angles, houses, natalAspects = [], progression, meta, transits2026 = [] } = astroData;
     const progPlanets = progression?.planets || {};
     const progAngles  = progression?.angles  || {};
     const progMeta    = progression?.meta    || {};
@@ -102,6 +102,20 @@ ${progAnglesStr}
 프로그레션↔네이탈 주요 에스펙트:
 ${progAspectStr}`;
 
+    // 2026년 월별 트랜짓 문자열 생성
+    const PLANET_KR_MAP = {
+      sun:'태양', mercury:'수성', venus:'금성',
+      mars:'화성', jupiter:'목성', saturn:'토성'
+    };
+    const transitStr = transits2026.length
+      ? transits2026.map(m => {
+          const planets = Object.entries(m.planets)
+            .map(([k,v]) => `${PLANET_KR_MAP[k]}(${v.sign}·${v.house}하우스)`)
+            .join(', ');
+          return `${m.month}: ${planets}`;
+        }).join('\n')
+      : '(트랜짓 데이터 없음)';
+
     let prompt;
     if (isQuestion) {
       prompt = baseData + `
@@ -114,9 +128,11 @@ ${question}
 
 [답변 지침 — 반드시 준수]
 - 위 점성술 데이터 전체(네이탈·프로그레션·에스펙트)와 이전 리딩을 모두 바탕으로 답하세요.
+- 질문에 직접적으로 답하세요. 질문이 "언제가 가장 좋냐"면 구체적인 시기를 말하고, "어떻게 해야 하냐"면 구체적인 행동을 말하세요.
+- 일반적인 조언이나 뭉뚱그린 답변은 하지 마세요. 이 사람의 데이터에서 근거를 찾아 구체적으로 답하세요.
 - 행성 이름, 사인 이름, 각도 숫자, 기호, 하우스 번호를 절대 쓰지 마세요.
 - 점성술 데이터의 의미를 자연스러운 한국어 문장으로만 표현하세요.
-- 200자 내외로 간결하게 핵심만 답하세요.
+- 150~250자 사이로 핵심만 답하세요.
 - 자기소개나 서두 없이 바로 답변하세요.
 - 친근하고 따뜻한 톤으로 작성하세요.`;
     } else {
@@ -142,14 +158,27 @@ ${question}
 300자 이상 충분히 써주세요.
 
 ## 📅 2026년 운세
-다음 요소를 모두 반영해서 2026년 현재 시점을 구체적으로 써주세요:
-· 프로그레션 태양·달의 현재 사인·하우스 위치가 주는 테마
-· 프로그레션 행성들(수성·금성·화성 등)의 현재 위치와 의미
-· 프로그레션↔네이탈 에스펙트 중 지금 활성화된 것들 (컨정션·트라인·스퀘어 등 각도 관계를 한국어로 풀어서)
-· 이 에스펙트들이 재물·관계·직업·건강 중 어느 영역에 영향을 주는지
-· 2026년 하반기까지 주의할 점과 활용할 기회
-· 지금 이 시기의 핵심 메시지 한 줄
-300자 이상 구체적으로 써주세요.`;
+
+[프로그레션 데이터 — 내면 성장 흐름]
+${progPlanetStr}
+${progAnglesStr}
+프로그레션↔네이탈 에스펙트: ${progAspectStr}
+
+[2026년 실제 행성 위치 — 외부 환경 흐름]
+${transitStr}
+
+위 두 가지 데이터를 모두 활용해서 다음 순서로 작성하세요:
+
+1. 2026년 전체 흐름 요약 (3~4문장)
+2. 월별 운세 (1월~12월, 각 달마다 2~3문장):
+   - 그달의 행성 흐름이 이 사람에게 주는 에너지와 영향
+   - 재물·관계·직업·건강 중 특히 주의하거나 활용할 점
+   - 기회가 되는 달과 조심할 달을 명확히 구분해서 써주세요
+
+[주의]
+- 행성 이름, 사인 이름, 각도 숫자, 하우스 번호를 절대 쓰지 마세요
+- 모든 내용을 자연스러운 한국어 문장으로만 표현하세요
+- 각 달마다 구체적이고 실용적인 내용을 써주세요`;
     }
 
     // 자동 재시도 (최대 3회, 1.5초 간격)
