@@ -811,17 +811,40 @@ async function requestTodayFortune() {
       .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
       .replace(/\n/g, "<br>");
 
+    window.TodayReadingResult = geminiData.result || "";
+
     resultEl.innerHTML = `
       <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
         ${formatted}
       </div>
+
+      <!-- 질문 섹션 -->
+      <div id="todayQuestionSection" style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;">
+        <div style="font-size:12px;color:#fcd34d;letter-spacing:1px;margin-bottom:10px;">💬 추가 질문 (최대 3회)</div>
+        <div style="display:flex;gap:8px;">
+          <input id="todayQuestionInput" type="text" placeholder="오늘 운세에 대해 질문하세요..."
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;"
+            onkeydown="if(event.key==='Enter')askTodayQuestion()"
+          />
+          <button onclick="askTodayQuestion()" style="
+            background:linear-gradient(135deg,#d97706,#b45309);
+            color:#fff;font-size:12px;font-weight:700;
+            border:none;border-radius:8px;padding:8px 14px;cursor:pointer;
+          ">전송</button>
+        </div>
+        <div style="font-size:10px;color:#475569;margin-top:4px;" id="todayQuestionCount">남은 질문: 3회</div>
+        <div id="todayQuestionResult" style="margin-top:12px;"></div>
+      </div>
+
       <div style="margin-top:12px;text-align:right;">
-        <button onclick="window.TodayResult=null;requestTodayFortune();" style="
+        <button onclick="window.TodayResult=null;window.TodayQuestionCount=0;requestTodayFortune();" style="
           background:rgba(217,119,6,.2);border:1px solid rgba(217,119,6,.4);
           color:#fcd34d;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
         ">🔄 다시 보기</button>
       </div>
     `;
+    window.TodayQuestionCount = 0;
     resultEl.style.display = "block";
     if (statusEl) statusEl.textContent = "";
 
@@ -890,6 +913,61 @@ async function requestGeminiFortune() {
     btn.disabled           = false;
     btn.style.opacity      = "1";
     loading.style.display  = "none";
+  }
+}
+
+
+/* =========================================================
+   오늘의 운세 추가 질문
+   ========================================================= */
+async function askTodayQuestion() {
+  if ((window.TodayQuestionCount || 0) >= 3) {
+    alert("질문은 최대 3회까지만 가능합니다.");
+    return;
+  }
+  const input    = _$("todayQuestionInput");
+  const resultEl = _$("todayQuestionResult");
+  const countEl  = _$("todayQuestionCount");
+  if (!input || !input.value.trim()) return;
+
+  const question = input.value.trim();
+  input.value = "";
+  input.disabled = true;
+
+  const qIdx = window.TodayQuestionCount || 0;
+  resultEl.innerHTML += `
+    <div style="margin-bottom:8px;padding:8px 12px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;color:#fcd34d;">
+      Q: ${question}
+    </div>
+    <div id="tqAnswer${qIdx}" style="margin-bottom:16px;font-size:13px;color:#cbd3f0;padding:0 4px;">
+      <span style="color:#64748b;">답변 생성 중...</span>
+    </div>`;
+
+  try {
+    const res = await fetch("/api/gemini-today", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        todayData: window.TodayResult,
+        question,
+        previousReading: window.TodayReadingResult
+      })
+    });
+    const data   = await res.json();
+    const answer = data.result || "답변을 가져오지 못했습니다.";
+    const answerEl = document.getElementById(`tqAnswer${qIdx}`);
+    if (answerEl) answerEl.innerHTML = answer.replace(/\n/g, "<br>");
+
+    window.TodayQuestionCount = qIdx + 1;
+    const remaining = 3 - window.TodayQuestionCount;
+    if (countEl) countEl.textContent = remaining > 0 ? `남은 질문: ${remaining}회` : "질문 횟수를 모두 사용했습니다.";
+    if (remaining === 0 && input) input.disabled = true;
+
+  } catch(e) {
+    const answerEl = document.getElementById(`tqAnswer${qIdx}`);
+    if (answerEl) answerEl.textContent = "오류가 발생했습니다.";
+  } finally {
+    if ((window.TodayQuestionCount || 0) < 3) input.disabled = false;
   }
 }
 
