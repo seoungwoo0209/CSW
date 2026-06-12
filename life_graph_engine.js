@@ -165,10 +165,27 @@ console.log("🔥 life_graph_engine.js 로드 시작");
      프로그레션 달: 약 12°/년 → 나탈 행성과의 관계
      가중치: 태양 40% / 달 35% / ASC·MC 25%
    ========================================================= */
+  // Naibod key: 프로그레션 ASC/MC = 나탈 RAMC + 경과년수 * 0.9856°
+  function calcProgAscMC_Naibod(natalJD, ageYears, lat, lng) {
+    const NAIBOD = 0.98564736629;
+    const T      = (natalJD - 2451545.0) / 36525.0;
+    const GMST   = norm360(280.46061837 + 360.98564736629*(natalJD-2451545.0) + 0.000387933*T*T);
+    const natalRAMC = norm360(GMST + lng);
+    const progRAMC  = norm360(natalRAMC + ageYears * NAIBOD);
+    const eps  = 23.4392911 - 0.013004167*T;
+    const epsr = rad(eps);
+    const latR = rad(lat);
+    const mc   = norm360(Math.atan2(Math.tan(rad(progRAMC)), Math.cos(epsr)) * 180/Math.PI);
+    const asc  = norm360(
+      Math.atan2(Math.cos(rad(progRAMC)), -(Math.sin(epsr)*Math.tan(latR)+Math.cos(epsr)*Math.sin(rad(progRAMC)))) * 180/Math.PI
+    );
+    return { asc, mc };
+  }
+
   function calcProgression(natalJD, ageYears, natal, lat, lng) {
     const progJD     = natalJD + ageYears;           // 1일 = 1년
     const progPlanets = getPlanets(progJD);
-    const { asc: progAsc, mc: progMC } = calcAscMC(progJD, lat, lng);
+    const { asc: progAsc, mc: progMC } = calcProgAscMC_Naibod(natalJD, ageYears, lat, lng);
 
     // 프로그레션 행성 vs 나탈 행성 에스펙트 점수
     // 태양: 나탈 태양·달·ASC·MC와의 에스펙트
@@ -404,7 +421,7 @@ console.log("🔥 life_graph_engine.js 로드 시작");
 
       // 0~100 정규화 (−1~+1 → 35~85 범위, 기준선 60)
       // 인생이 항상 극단이지 않도록 중간값 60 중심 분포
-      const score = Math.round(clamp(60 + combined * 22, 20, 95));
+      const score = Math.round(clamp(60 + combined * 30, 20, 95));
 
       scores.push({
         year,
