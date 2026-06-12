@@ -1,8 +1,16 @@
 /* =========================================================
-   api/astro-calc.js  v3.1
+   api/astro-calc.js  v3.2
    행성 위치 계산 — ephemeris 패키지 (Moshier, 오차 1' 이내)
    하우스: Placidus
    세컨더리 프로그레션: 태양 실제 이동 기반 (정밀 공식)
+
+   [v3.2 수정 내역]
+   FIX 1. UTC 변환 후 birthUTC 기준으로 JD 역산 재계산 (날짜 경계 오류 수정)
+   FIX 2. progJD를 progUTC 실제 날짜에서 직접 계산 (년/일 단위 혼용 제거)
+   FIX 3. GMST T³ 항(-T³/38710000) 추가 (IAU 표준 공식 완성)
+   FIX 4. raToEcl에 적위(dec) 반영하여 황경 변환 정밀도 향상
+   FIX 5. 이분법 탐색 범위 ±3일, 반복 60회로 확장 (수렴 안정성 강화)
+   FIX 6. 에스펙트에 applying/separating 필드 추가
    ========================================================= */
 
 import Ephemeris from 'ephemeris';
@@ -22,20 +30,30 @@ export default async function handler(req, res) {
     const [yyyy, mm, dd] = birthDate.split('-').map(Number);
     const [hh, mi]       = birthTime.split(':').map(Number);
 
-    // UTC 변환
+    // ── UTC 변환
     const offsetHours      = (utcOffset != null) ? utcOffset : (lng / 15);
     const localDecimalHour = hh + mi / 60;
     const utcDecimalHour   = localDecimalHour - offsetHours;
-    const utcH  = Math.floor(utcDecimalHour);
-    const utcM  = Math.round((utcDecimalHour - utcH) * 60);
+
+    // Date.UTC는 utcH/utcM이 범위를 벗어나도 날짜를 자동 조정함
+    const utcH = Math.floor(utcDecimalHour);
+    const utcM = Math.round((utcDecimalHour - utcH) * 60);
     const birthUTC = new Date(Date.UTC(yyyy, mm - 1, dd, utcH, utcM, 0));
+
+    // [FIX 1] birthUTC에서 실제 UTC 날짜/시각을 역산 → JD 계산에 사용
+    // (날짜 경계를 넘는 경우에도 ephemeris와 동일한 시각 기준 보장)
+    const bY  = birthUTC.getUTCFullYear();
+    const bM  = birthUTC.getUTCMonth() + 1;
+    const bD  = birthUTC.getUTCDate();
+    const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60
+                + birthUTC.getUTCSeconds() / 3600;
 
     // 나탈 행성 계산
     const natalRaw = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
     const planets  = extractPlanets(natalRaw.observed);
 
-    // 하우스 계산 (Placidus)
-    const jd = calcJulianDay(yyyy, mm, dd, utcDecimalHour);
+    // 하우스 계산 (Placidus) — birthUTC 기준 JD 사용
+    const jd = calcJulianDay(bY, bM, bD, bHr);
     const { asc, mc, houses } = calcHousesPlacidus(jd, lat, lng);
     const planetsWithHouse = assignHouses(planets, houses);
 
@@ -44,16 +62,13 @@ export default async function handler(req, res) {
     const now      = new Date();
     const ageYears = (now.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
 
-    // 출생 태양 경도
-    const birthSunLon = planets.sun.lon;
-    // 목표 태양 경도 = 출생 태양 + 나이(도)
+    const birthSunLon  = planets.sun.lon;
     const targetSunLon = ((birthSunLon + ageYears) % 360 + 360) % 360;
 
-    // 이분법으로 태양이 targetSunLon에 도달하는 정확한 날짜 계산
-    // 탐색 범위: 출생일 + (ageYears ± 2)일
-    let lo = new Date(birthUTC.getTime() + (ageYears - 2) * 86400000);
-    let hi = new Date(birthUTC.getTime() + (ageYears + 2) * 86400000);
-    for (let i = 0; i < 50; i++) {
+    // [FIX 5] 탐색 범위 ±3일, 반복 60회로 확장
+    let lo = new Date(birthUTC.getTime() + (ageYears - 3) * 86400000);
+    let hi = new Date(birthUTC.getTime() + (ageYears + 3) * 86400000);
+    for (let i = 0; i < 60; i++) {
       const mid    = new Date((lo.getTime() + hi.getTime()) / 2);
       const midRes = Ephemeris.getAllPlanets(mid, lng, lat, 0);
       const midSun = ((midRes.observed.sun.apparentLongitudeDd % 360) + 360) % 360;
@@ -65,9 +80,18 @@ export default async function handler(req, res) {
     const progUTC = new Date((lo.getTime() + hi.getTime()) / 2);
 
     // 프로그레션 행성 계산
-    const progRaw    = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
+    const progRaw     = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
     const progPlanets = extractPlanets(progRaw.observed);
-    const progJD     = jd + ageYears;
+
+    // [FIX 2] progJD를 progUTC 실제 날짜에서 계산
+    // (이전: jd + ageYears — 년 단위값을 일 단위 JD에 더하는 혼용 제거)
+    const pY  = progUTC.getUTCFullYear();
+    const pM  = progUTC.getUTCMonth() + 1;
+    const pD  = progUTC.getUTCDate();
+    const pHr = progUTC.getUTCHours() + progUTC.getUTCMinutes() / 60
+                + progUTC.getUTCSeconds() / 3600;
+    const progJD = calcJulianDay(pY, pM, pD, pHr);
+
     const { asc: progAsc, mc: progMc, houses: progHouses } = calcHousesPlacidus(progJD, lat, lng);
     const progPlanetsWithHouse = assignHouses(progPlanets, progHouses);
 
@@ -168,11 +192,20 @@ function norm360(a) { return ((a % 360) + 360) % 360; }
 function rad(d)     { return d * Math.PI / 180; }
 
 function calcHousesPlacidus(jd, lat, lng) {
-  const T    = (jd - 2451545.0) / 36525.0;
-  const GMST = norm360(280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T);
+  const T = (jd - 2451545.0) / 36525.0;
+
+  // [FIX 3] IAU 표준 GMST 공식 — T³ 항 추가 (수십 년 범위 오차 감소)
+  const GMST = norm360(
+    280.46061837
+    + 360.98564736629 * (jd - 2451545.0)
+    + 0.000387933 * T * T
+    - (T * T * T) / 38710000.0
+  );
   const LST  = norm360(GMST + lng);
   const RAMC = LST;
-  const eps  = 23.4392911 - 0.013004167 * T;
+
+  // 황도 경사 (고차 항 포함)
+  const eps  = 23.4392911 - 0.013004167 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
   const epsR = rad(eps);
   const latR = rad(lat);
 
@@ -182,12 +215,20 @@ function calcHousesPlacidus(jd, lat, lng) {
     Math.atan2(Math.cos(rad(RAMC)), -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(RAMC)))) * 180 / Math.PI
   );
 
-  function raToEcl(ra_deg) {
-    const r = rad(ra_deg);
-    return norm360(Math.atan2(Math.sin(r) * Math.cos(epsR), Math.cos(r)) * 180 / Math.PI);
+  // [FIX 4] 적경(RA) + 적위(Dec) → 황경 변환 (sin(eps) 항 포함 완전 공식)
+  function raDecToEcl(ra_deg, dec_deg) {
+    const aR = rad(ra_deg);
+    const dR = rad(dec_deg);
+    return norm360(
+      Math.atan2(
+        Math.sin(aR) * Math.cos(epsR) + Math.tan(dR) * Math.sin(epsR),
+        Math.cos(aR)
+      ) * 180 / Math.PI
+    );
   }
 
-  function getCuspRA(frac, baseRAMC_deg) {
+  // [FIX 4] getCuspRADec: 수렴된 RA와 해당 Dec을 함께 반환
+  function getCuspRADec(frac, baseRAMC_deg) {
     let ra = norm360(baseRAMC_deg + frac * 180);
     for (let i = 0; i < 100; i++) {
       const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
@@ -199,13 +240,19 @@ function calcHousesPlacidus(jd, lat, lng) {
       if (Math.abs(newRA - ra) < 0.00001) break;
       ra = (ra + newRA) / 2;
     }
-    return ra;
+    const decDeg = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR)) * 180 / Math.PI;
+    return { ra, dec: decDeg };
   }
 
-  const c11 = raToEcl(getCuspRA(1/3, RAMC));
-  const c12 = raToEcl(getCuspRA(2/3, RAMC));
-  const c2  = raToEcl(getCuspRA(1/3, norm360(RAMC + 180)));
-  const c3  = raToEcl(getCuspRA(2/3, norm360(RAMC + 180)));
+  const r11 = getCuspRADec(1/3, RAMC);
+  const r12 = getCuspRADec(2/3, RAMC);
+  const r2  = getCuspRADec(1/3, norm360(RAMC + 180));
+  const r3  = getCuspRADec(2/3, norm360(RAMC + 180));
+
+  const c11 = raDecToEcl(r11.ra, r11.dec);
+  const c12 = raDecToEcl(r12.ra, r12.dec);
+  const c2  = raDecToEcl(r2.ra,  r2.dec);
+  const c3  = raDecToEcl(r3.ra,  r3.dec);
 
   return {
     asc, mc,
@@ -268,6 +315,15 @@ function angularDistance(a, b) {
   return diff > 180 ? 360 - diff : diff;
 }
 
+// [FIX 6] applying/separating 판별용 부호 있는 각거리
+// 반환값 양수: p1에서 p2 방향이 순행(applying 후보), 음수: 역행(separating 후보)
+function signedAngularDiff(lonA, lonB) {
+  let diff = norm360(lonB) - norm360(lonA);
+  if (diff > 180)  diff -= 360;
+  if (diff < -180) diff += 360;
+  return diff;
+}
+
 function calcAspects(planets) {
   const aspects = [];
   for (let i = 0; i < PLANET_KEYS.length; i++) {
@@ -277,10 +333,16 @@ function calcAspects(planets) {
       const dist = angularDistance(planets[p1].lon, planets[p2].lon);
       for (const asp of ASPECT_DEFS) {
         if (Math.abs(dist - asp.angle) <= asp.orb) {
+          const signed = signedAngularDiff(planets[p1].lon, planets[p2].lon);
+          // applying: 두 행성이 아직 정확한 에스펙트 각도에 도달 전
+          const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
           aspects.push({
-            planet1: PLANET_KR[p1], planet2: PLANET_KR[p2],
-            aspect: asp.name, symbol: asp.symbol,
-            orb: Math.round((dist - asp.angle) * 10) / 10
+            planet1:  PLANET_KR[p1],
+            planet2:  PLANET_KR[p2],
+            aspect:   asp.name,
+            symbol:   asp.symbol,
+            orb:      Math.round(Math.abs(dist - asp.angle) * 10) / 10,
+            applying,
           });
         }
       }
@@ -297,11 +359,15 @@ function calcAspectsProgToNatal(progPlanets, natalPlanets) {
       const dist = angularDistance(progPlanets[pk].lon, natalPlanets[nk].lon);
       for (const asp of ASPECT_DEFS) {
         if (Math.abs(dist - asp.angle) <= asp.orb) {
+          const signed   = signedAngularDiff(progPlanets[pk].lon, natalPlanets[nk].lon);
+          const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
           aspects.push({
             progPlanet:  `프로그레션 ${PLANET_KR[pk]}`,
             natalPlanet: `네이탈 ${PLANET_KR[nk]}`,
-            aspect: asp.name, symbol: asp.symbol,
-            orb: Math.round((dist - asp.angle) * 10) / 10
+            aspect:   asp.name,
+            symbol:   asp.symbol,
+            orb:      Math.round(Math.abs(dist - asp.angle) * 10) / 10,
+            applying,
           });
         }
       }
