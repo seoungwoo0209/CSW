@@ -59,27 +59,18 @@ export default async function handler(req, res) {
 
     // ── 세컨더리 프로그레션 (태양 실제 이동 기반 정밀 공식)
     // 1일 = 1년. 현재 나이(년) = 출생일로부터 경과한 일수
-    // KST(UTC+9) 기준 오늘 자정으로 고정 — 서버 시간대 차이 방지
-    const nowRaw = new Date();
-    const now    = new Date(Date.UTC(nowRaw.getUTCFullYear(), nowRaw.getUTCMonth(), nowRaw.getUTCDate(), 0, 0, 0) + 9*3600000);
-    const ageYears = (now.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
+    // 현재 날짜 (KST 기준 오늘 자정)
+    const nowRaw  = new Date();
+    const todayKST = new Date(Date.UTC(
+      nowRaw.getUTCFullYear(),
+      nowRaw.getUTCMonth(),
+      nowRaw.getUTCDate() + (nowRaw.getUTCHours() >= 15 ? 1 : 0), // UTC 15시 = KST 자정
+      0, 0, 0
+    ));
+    const ageYears = (todayKST.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
 
-    const birthSunLon  = planets.sun.lon;
-    const targetSunLon = ((birthSunLon + ageYears) % 360 + 360) % 360;
-
-    // [FIX 5] 탐색 범위 ±3일, 반복 60회로 확장
-    let lo = new Date(birthUTC.getTime() + (ageYears - 3) * 86400000);
-    let hi = new Date(birthUTC.getTime() + (ageYears + 3) * 86400000);
-    for (let i = 0; i < 60; i++) {
-      const mid    = new Date((lo.getTime() + hi.getTime()) / 2);
-      const midRes = Ephemeris.getAllPlanets(mid, lng, lat, 0);
-      const midSun = ((midRes.observed.sun.apparentLongitudeDd % 360) + 360) % 360;
-      let diff = targetSunLon - midSun;
-      if (diff > 180)  diff -= 360;
-      if (diff < -180) diff += 360;
-      if (diff > 0) lo = mid; else hi = mid;
-    }
-    const progUTC = new Date((lo.getTime() + hi.getTime()) / 2);
+    // 프로그레션 날짜: 출생일 + 나이(일수) — astro-seek 방식
+    const progUTC = new Date(birthUTC.getTime() + ageYears * 86400000);
 
     // 프로그레션 행성 계산
     const progRaw     = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
@@ -94,7 +85,7 @@ export default async function handler(req, res) {
 
     // 에스펙트 계산
     const natalAspects       = calcAspects(planets);
-    const progToNatalAspects = calcAspectsProgToNatal(progPlanets, planets);
+    const progToNatalAspects = calcAspectsProgToNatal(progPlanets, planets, { asc, mc });
 
     // 사인 변환
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
@@ -452,19 +443,29 @@ function calcAspects(planets) {
   return aspects;
 }
 
-function calcAspectsProgToNatal(progPlanets, natalPlanets) {
+function calcAspectsProgToNatal(progPlanets, natalPlanets, natalAngles) {
   const aspects  = [];
-  const progKeys = ['sun','moon','mercury','venus','mars'];
+  const progKeys = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+
+  // 네이탈 행성 + ASC/MC 포함
+  const natalPoints = [
+    ...PLANET_KEYS.map(k => ({ key: k, lon: natalPlanets[k].lon, label: `네이탈 ${PLANET_KR[k]}` })),
+    ...(natalAngles ? [
+      { key:'asc', lon: natalAngles.asc, label:'네이탈 ASC' },
+      { key:'mc',  lon: natalAngles.mc,  label:'네이탈 MC'  },
+    ] : [])
+  ];
+
   for (const pk of progKeys) {
-    for (const nk of PLANET_KEYS) {
-      const dist = angularDistance(progPlanets[pk].lon, natalPlanets[nk].lon);
+    for (const np of natalPoints) {
+      const dist = angularDistance(progPlanets[pk].lon, np.lon);
       for (const asp of ASPECT_DEFS) {
         if (Math.abs(dist - asp.angle) <= asp.orb) {
-          const signed   = signedAngularDiff(progPlanets[pk].lon, natalPlanets[nk].lon);
+          const signed   = signedAngularDiff(progPlanets[pk].lon, np.lon);
           const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
           aspects.push({
             progPlanet:  `프로그레션 ${PLANET_KR[pk]}`,
-            natalPlanet: `네이탈 ${PLANET_KR[nk]}`,
+            natalPlanet: np.label,
             aspect:   asp.name,
             symbol:   asp.symbol,
             orb:      Math.round(Math.abs(dist - asp.angle) * 10) / 10,
