@@ -56,6 +56,97 @@ export default async function handler(req, res) {
     // ── 오늘 트랜짓 → 네이탈 에스펙트
     const todayAspects = calcAspectsTransitToNatal(todayPlanets, natalPlanets, { asc, mc });
 
+    // ── 역행 계산 (어제 정오 vs 오늘 정오 경도 비교)
+    const yesterdayKST = new Date(todayKST.getTime() - 86400000);
+    const yesterdayRaw = Ephemeris.getAllPlanets(yesterdayKST, lng, lat, 0);
+    const yesterdayPlanets = extractPlanets(yesterdayRaw.observed);
+
+    const RETRO_KEYS = ['mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+    const retrograde = {};
+    RETRO_KEYS.forEach(k => {
+      const todayLon     = todayPlanets[k].lon;
+      const yesterdayLon = yesterdayPlanets[k].lon;
+      // 경도 차이 계산 (0° 경계 처리)
+      let diff = todayLon - yesterdayLon;
+      if (diff > 180)  diff -= 360;
+      if (diff < -180) diff += 360;
+      retrograde[k] = diff < 0;
+    });
+
+    // ── 달의 VOC 계산
+    // 오늘 1시간 단위로 달 위치를 계산해서
+    // 마지막 에스펙트 시각 ~ 다음 사인 진입 시각 = VOC 구간
+    const ASPECT_ANGLES = [0, 60, 90, 120, 180];
+    const MAJOR_PLANET_KEYS = ['sun','mercury','venus','mars','jupiter','saturn'];
+
+    function getMoonLon(date) {
+      const r = Ephemeris.getAllPlanets(date, lng, lat, 0);
+      return ((r.observed.moon?.apparentLongitudeDd ?? 0) % 360 + 360) % 360;
+    }
+
+    function hasAspect(moonLon, planetLon) {
+      let diff = Math.abs(moonLon - planetLon);
+      if (diff > 180) diff = 360 - diff;
+      return ASPECT_ANGLES.some(a => Math.abs(diff - a) <= 1.0); // orb 1° 이내
+    }
+
+    // 오늘 자정부터 내일 자정까지 1시간 단위 스캔
+    const dayStart = new Date(Date.UTC(
+      todayKST.getUTCFullYear(), todayKST.getUTCMonth(), todayKST.getUTCDate(), 0, 0, 0
+    ));
+
+    let lastAspectHour  = -1;
+    let vocStartHour    = -1;
+    let vocEndHour      = -1;
+    let currentMoonSign = Math.floor(getMoonLon(dayStart) / 30);
+
+    for (let h = 0; h <= 24; h++) {
+      const t       = new Date(dayStart.getTime() + h * 3600000);
+      const moonLon = getMoonLon(t);
+      const moonSign = Math.floor(moonLon / 30);
+
+      // 사인 변경 = VOC 종료
+      if (moonSign !== currentMoonSign && vocStartHour === -1) {
+        vocEndHour = h;
+        break;
+      }
+
+      // 행성과 에스펙트 확인
+      const planets24 = extractPlanets(Ephemeris.getAllPlanets(t, lng, lat, 0).observed);
+      const inAspect = MAJOR_PLANET_KEYS.some(k =>
+        k !== 'moon' && hasAspect(moonLon, planets24[k].lon)
+      );
+
+      if (inAspect) {
+        lastAspectHour = h;
+        vocStartHour   = -1; // 리셋
+      } else if (lastAspectHour >= 0 && vocStartHour === -1) {
+        vocStartHour = h;
+      }
+    }
+
+    const SIGNS_KR = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                      '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+
+    // 다음 달 사인
+    const tomorrowMoonLon  = getMoonLon(new Date(dayStart.getTime() + 25 * 3600000));
+    const nextMoonSignIdx  = Math.floor(tomorrowMoonLon / 30);
+    const nextMoonSign     = SIGNS_KR[nextMoonSignIdx];
+
+    const vocData = vocStartHour >= 0 && vocEndHour > vocStartHour
+      ? {
+          isVoc:      true,
+          startHour:  vocStartHour,   // KST 기준
+          endHour:    vocEndHour,
+          startStr:   `${String(vocStartHour).padStart(2,'0')}:00`,
+          endStr:     `${String(vocEndHour).padStart(2,'0')}:00`,
+          nextSign:   nextMoonSign,
+          desc: `오늘 ${String(vocStartHour).padStart(2,'0')}:00 ~ ${String(vocEndHour).padStart(2,'0')}:00 달이 ${nextMoonSign}으로 넘어가기 전 보이드 오브 코스(VOC) 구간입니다.`
+        }
+      : { isVoc: false, desc: '오늘은 달의 VOC 구간이 없습니다.' };
+
+
+
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
                    '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
 
@@ -94,6 +185,8 @@ export default async function handler(req, res) {
       natalAngles:   { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       todayTransit:  todayResult,
       todayAspects,
+      retrograde,
+      vocData,
       todayDate:     todayStr,
       meta: {
         name:      name || '',
