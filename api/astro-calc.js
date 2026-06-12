@@ -83,15 +83,10 @@ export default async function handler(req, res) {
     const progRaw     = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
     const progPlanets = extractPlanets(progRaw.observed);
 
-    // [FIX 2] progJD: 프로그레션 날짜 + 출생 UTC 시각(bHr) 조합
-    // progUTC의 시각(이분법 수렴값)은 태양 경도용이고,
-    // ASC/MC(RAMC 기반) 계산은 출생 시각을 그대로 사용해야 함
-    const pY  = progUTC.getUTCFullYear();
-    const pM  = progUTC.getUTCMonth() + 1;
-    const pD  = progUTC.getUTCDate();
-    const progJD = calcJulianDay(pY, pM, pD, bHr);
-
-    const { asc: progAsc, mc: progMc, houses: progHouses } = calcHousesPlacidus(progJD, lat, lng);
+    // [FIX 7] 프로그레션 ASC/MC: Naibod key 방식
+    // 네이탈 RAMC + 경과년수 x 0.9856(태양 평균 하루 이동량)으로 계산
+    const { asc: progAsc, mc: progMc, houses: progHouses } =
+      calcProgAnglesNaibod(jd, ageYears, lat, lng);
     const progPlanetsWithHouse = assignHouses(progPlanets, progHouses);
 
     // 에스펙트 계산
@@ -189,6 +184,92 @@ function calcJulianDay(y, m, d, utcHour = 0) {
    ========================================================= */
 function norm360(a) { return ((a % 360) + 360) % 360; }
 function rad(d)     { return d * Math.PI / 180; }
+
+
+/* =========================================================
+   프로그레션 ASC/MC — Naibod key 방식
+   RAMC_prog = RAMC_natal + ageYears * 0.9856°
+   네이탈 RAMC에서 태양 평균 이동량만큼 누적
+   ========================================================= */
+function calcProgAnglesNaibod(natalJD, ageYears, lat, lng) {
+  const NAIBOD = 0.98564736629;  // 태양 하루 평균 이동량(도)
+
+  // 네이탈 RAMC 계산
+  const T = (natalJD - 2451545.0) / 36525.0;
+  const GMST = norm360(
+    280.46061837
+    + 360.98564736629 * (natalJD - 2451545.0)
+    + 0.000387933 * T * T
+    - (T * T * T) / 38710000.0
+  );
+  const natalRAMC = norm360(GMST + lng);
+
+  // 프로그레션 RAMC = 네이탈 RAMC + 경과년수 * Naibod rate
+  const progRAMC = norm360(natalRAMC + ageYears * NAIBOD);
+
+  // 황도 경사 (네이탈 시점 기준)
+  const eps  = 23.4392911 - 0.013004167 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
+  const epsR = rad(eps);
+  const latR = rad(lat);
+
+  // ASC/MC 계산
+  const mc_raw = Math.atan(Math.tan(rad(progRAMC)) / Math.cos(epsR)) * 180 / Math.PI;
+  const mc     = norm360(Math.cos(rad(progRAMC)) < 0 ? mc_raw + 180 : mc_raw);
+  const asc    = norm360(
+    Math.atan2(Math.cos(rad(progRAMC)),
+      -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(progRAMC)))
+    ) * 180 / Math.PI
+  );
+
+  // 하우스 커스프도 progRAMC 기준으로 계산
+  function raDecToEcl(ra, dec) {
+    return norm360(Math.atan2(
+      Math.sin(rad(ra)) * Math.cos(epsR) + Math.tan(rad(dec)) * Math.sin(epsR),
+      Math.cos(rad(ra))
+    ) * 180 / Math.PI);
+  }
+  function getCuspUpper(frac) {
+    let ra = norm360(progRAMC + frac * 180);
+    for (let i = 0; i < 100; i++) {
+      const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
+      const cosH = -Math.tan(latR) * Math.tan(decR);
+      if (cosH > 1) { ra = norm360(progRAMC); break; }
+      if (cosH < -1) { ra = norm360(progRAMC + 180); break; }
+      const newRA = norm360(progRAMC + frac * Math.acos(cosH) * 180 / Math.PI);
+      if (Math.abs(newRA - ra) < 0.00001) break;
+      ra = (ra + newRA) / 2;
+    }
+    return raDecToEcl(ra, Math.asin(Math.sin(rad(ra)) * Math.sin(epsR)) * 180 / Math.PI);
+  }
+  function getCuspLower(frac) {
+    const IC_R = norm360(progRAMC + 180);
+    let ra = norm360(IC_R - frac * 180);
+    for (let i = 0; i < 100; i++) {
+      const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
+      const cosH = -Math.tan(latR) * Math.tan(decR);
+      if (cosH > 1) { ra = norm360(IC_R); break; }
+      if (cosH < -1) { ra = norm360(IC_R + 180); break; }
+      const NSA   = 180 - Math.acos(cosH) * 180 / Math.PI;
+      const newRA = norm360(IC_R - frac * NSA);
+      if (Math.abs(newRA - ra) < 0.00001) break;
+      ra = (ra + newRA) / 2;
+    }
+    return raDecToEcl(ra, Math.asin(Math.sin(rad(ra)) * Math.sin(epsR)) * 180 / Math.PI);
+  }
+
+  const c11 = getCuspUpper(1/3), c12 = getCuspUpper(2/3);
+  const cA  = getCuspLower(1/3), cB  = getCuspLower(2/3);
+
+  return {
+    asc, mc,
+    houses: [
+      asc, cB, cA, norm360(mc + 180),
+      norm360(c11 + 180), norm360(c12 + 180),
+      norm360(asc + 180), norm360(cB + 180), norm360(cA + 180),
+      mc, c11, c12
+    ]
+  };
+}
 
 function calcHousesPlacidus(jd, lat, lng) {
   const T = (jd - 2451545.0) / 36525.0;
