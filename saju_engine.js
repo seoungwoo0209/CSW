@@ -2104,6 +2104,202 @@ function computeResourceScores(state) {
   };
 }
 
+/* =========================================================
+   PART 11: 유형 카드 + 점수 계산 (참조 리포트 스타일)
+   ─────────────────────────────────────────────────────────
+   입력: buildState() 결과 + computeResourceScores() 결과
+   출력: {
+     typeName,      // "압박을 연료로 쓰는 사람"
+     typeDesc,      // 한 줄 부제
+     ilju,          // "己卯일주"
+     scores: [{ label, score, rank }]  // 8개 점수카드
+   }
+   ========================================================= */
+function computePersonalityCard(state, resourceResult) {
+  const D       = window.SajuData;
+  const pillars = state.pillars;
+  const ds      = pillars.day.stem;
+  const db      = pillars.day.branch;
+  const strength = state.strength;
+  const geok     = state.geok;
+  const gods     = state.gods;
+  const axes     = resourceResult?.axes || [];
+
+  // ── 5축 점수 추출 헬퍼
+  function axisScore(key) {
+    return axes.find(a => a.key === key)?.score ?? 80;
+  }
+
+  const 비겁S  = axisScore('비겁');
+  const 식상S  = axisScore('식상');
+  const 재성S  = axisScore('재성');
+  const 관성S  = axisScore('관성');
+  const 인성S  = axisScore('인성');
+
+  // ── 십신 분포
+  const tg = state.vectors?.tenGods || {};
+  const bigeop    = (tg['比肩']||0) + (tg['劫財']||0);
+  const siksang   = (tg['食神']||0) + (tg['傷官']||0);
+  const jaeseong  = (tg['偏財']||0) + (tg['正財']||0);
+  const gwanseong = (tg['偏官']||0) + (tg['正官']||0);
+  const inseong_  = (tg['偏印']||0) + (tg['正印']||0);
+
+  const ss = strength.score;   // 0~100
+  const isGang = ss >= 68, isYak = ss <= 42;
+
+  // ── 8개 점수 산출 (25~100 범위)
+  function clamp(v) { return Math.max(25, Math.min(100, Math.round(v))); }
+
+  // 독립심: 비겁축 점수 + 신강 보너스
+  const 독립심 = clamp(
+    비겁S * 0.7 +
+    (isGang ? 18 : isYak ? 10 : 14) +
+    bigeop * 3
+  );
+
+  // 멘탈: 신약+관성 압박 견딤 역설, 신강은 자체 강함
+  const 멘탈 = clamp(
+    (isYak
+      ? 55 + gwanseong * 6 + bigeop * 3    // 압박 → 단련
+      : isGang
+      ? 비겁S * 0.55 + 30                  // 자아 강함
+      : (비겁S + 관성S) * 0.35 + 20)
+  );
+
+  // 인내심: 비겁+인성 버팀 구조
+  const 인내심 = clamp(
+    (비겁S * 0.45 + 인성S * 0.35) +
+    (isYak ? 12 : 6) +
+    bigeop * 2
+  );
+
+  // 승부욕: 겁재+편관 에너지
+  const 겁재cnt = tg['劫財'] || 0;
+  const 편관cnt = tg['偏官'] || 0;
+  const 승부욕 = clamp(
+    50 + 겁재cnt * 8 + 편관cnt * 6 +
+    (비겁S - 80) * 0.3
+  );
+
+  // 결단력: 관성+비겁 균형
+  const 결단력 = clamp(
+    관성S * 0.4 + 비겁S * 0.35 +
+    (isGang ? 10 : isYak ? 5 : 8)
+  );
+
+  // 사업감각: 식상+재성 조화
+  const 사업감각 = clamp(
+    식상S * 0.45 + 재성S * 0.4 +
+    siksang * 3 + jaeseong * 3
+  );
+
+  // 리더십: 관성+비겁 조합
+  const 리더십 = clamp(
+    관성S * 0.4 + 비겁S * 0.35 +
+    gwanseong * 4 +
+    (isGang ? 8 : 0)
+  );
+
+  // 관계운: 재성+관성 배치 (성별 무관)
+  const 관계운 = clamp(
+    재성S * 0.45 + 관성S * 0.25 +
+    jaeseong * 4 + gwanseong * 2
+  );
+
+  // ── 백분위 라벨
+  function rankLabel(score) {
+    if (score >= 97) return '상위 1%';
+    if (score >= 94) return '상위 3%';
+    if (score >= 90) return '상위 8%';
+    if (score >= 85) return '상위 15%';
+    if (score >= 78) return '상위 25%';
+    if (score >= 68) return '상위 35%';
+    return '';
+  }
+
+  const scores = [
+    { label:'독립심',   score:독립심,   rank:rankLabel(독립심)   },
+    { label:'멘탈',     score:멘탈,     rank:rankLabel(멘탈)     },
+    { label:'인내심',   score:인내심,   rank:rankLabel(인내심)   },
+    { label:'승부욕',   score:승부욕,   rank:rankLabel(승부욕)   },
+    { label:'결단력',   score:결단력,   rank:rankLabel(결단력)   },
+    { label:'사업감각', score:사업감각, rank:rankLabel(사업감각) },
+    { label:'리더십',   score:리더십,   rank:rankLabel(리더십)   },
+    { label:'관계운',   score:관계운,   rank:rankLabel(관계운)   },
+  ];
+
+  // ── 유형명 결정
+  // 우선순위: 신강약 × 格 × 지배 십신 조합
+  const geokMain = geok?.main || '혼합격';
+  const yongTgs  = gods?.yong?.tenGods || [];
+
+  let typeName, typeDesc;
+
+  // 신약 + 관성 강 → 압박 단련형
+  if (isYak && gwanseong >= 3) {
+    typeName = '압박을 연료로 쓰는 사람';
+    typeDesc = '무너지는 대신 단단해지는 구조';
+  }
+  // 신강 + 비겁 강 → 자수성가형
+  else if (isGang && bigeop >= 3) {
+    typeName = '자수성가형';
+    typeDesc = '누구에게도 기대지 않고 자기 힘으로 일어서는 사람';
+  }
+  // 식신격 / 식상 강 → 창조형
+  else if (geokMain === '食神격' || 식상S >= 140) {
+    typeName = '재능으로 길을 여는 사람';
+    typeDesc = '실력이 곧 자본이 되는 구조';
+  }
+  // 편관격 → 개척형
+  else if (geokMain === '偏官격') {
+    typeName = '거친 길을 먼저 걷는 사람';
+    typeDesc = '위험을 감수하고 기회를 만드는 구조';
+  }
+  // 정관격 → 책임형
+  else if (geokMain === '正官격') {
+    typeName = '신뢰로 쌓아 올리는 사람';
+    typeDesc = '원칙과 책임이 최대 자산인 구조';
+  }
+  // 정재격 → 실속형
+  else if (geokMain === '正財격') {
+    typeName = '착실하게 쌓아가는 사람';
+    typeDesc = '서두르지 않아도 결국 도달하는 구조';
+  }
+  // 편재격 → 기회형
+  else if (geokMain === '偏財격') {
+    typeName = '기회를 돈으로 바꾸는 사람';
+    typeDesc = '사람과 흐름을 읽는 재물 감각';
+  }
+  // 인성 강 → 지식형
+  else if (인성S >= 140) {
+    typeName = '깊이로 승부하는 사람';
+    typeDesc = '배움과 통찰이 무기인 구조';
+  }
+  // 식상 + 재성 → 실행형
+  else if (식상S >= 110 && 재성S >= 110) {
+    typeName = '아이디어를 결과로 만드는 사람';
+    typeDesc = '생산과 수확이 맞물리는 구조';
+  }
+  // 중화 균형형
+  else {
+    typeName = '유연하게 길을 찾는 사람';
+    typeDesc = '어떤 환경에서도 적응하는 균형 구조';
+  }
+
+  // ── 일주 표기
+  const ilju = pillars.day.stem + pillars.day.branch + '일주';
+
+  // ── 格 한글
+  const geokKrMap = {
+    '食神격':'식신격','傷官격':'상관격','正財격':'정재격','偏財격':'편재격',
+    '正官격':'정관격','偏官격':'편관격','正印격':'정인격','偏印격':'편인격',
+    '比肩격':'비견격','劫財격':'겁재격','혼합격':'혼합격',
+  };
+  const geokKr = geokKrMap[geokMain] || geokMain;
+
+  return { typeName, typeDesc, ilju, geokKr, strengthLabel: strength.label, scores };
+}
+
 window.SajuEngine = {
   calculateVectors,
   calculateStrength,
@@ -2125,6 +2321,8 @@ window.SajuEngine = {
   // 유용성 지수 계층
   computeTenGodClassicalScores,
   getAxisUsefulnessIndex,
+  // 유형 카드
+  computePersonalityCard,
 };
 
 console.log("✅ saju_engine.js 로드 완료");
