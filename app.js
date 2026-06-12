@@ -768,6 +768,56 @@ async function requestGeminiFortune() {
    점성술 AI 해석 호출
    계산은 이미 window.AstroResult에 있으므로 Gemini만 호출
    ========================================================= */
+async function askAstroQuestion() {
+  if ((window.AstroQuestionCount || 0) >= 3) {
+    alert("질문은 최대 3회까지만 가능합니다.");
+    return;
+  }
+  const input    = _$("astroQuestionInput");
+  const resultEl = _$("astroQuestionResult");
+  const countEl  = _$("astroQuestionCount");
+  if (!input || !input.value.trim()) return;
+
+  const question = input.value.trim();
+  input.value = "";
+  input.disabled = true;
+
+  resultEl.innerHTML += `
+    <div style="margin-bottom:8px;padding:8px 12px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;color:#a5b4fc;">
+      Q: ${question}
+    </div>
+    <div id="qAnswer${window.AstroQuestionCount}" style="margin-bottom:16px;font-size:13px;color:#cbd3f0;padding:0 4px;">
+      <span style="color:#64748b;">답변 생성 중...</span>
+    </div>`;
+
+  try {
+    const res = await fetch("/api/gemini-astro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        astroData: window.AstroResult,
+        question,
+        previousReading: window.AstroReadingResult
+      })
+    });
+    const data = await res.json();
+    const answer = data.result || "답변을 가져오지 못했습니다.";
+    const answerEl = document.getElementById(`qAnswer${window.AstroQuestionCount}`);
+    if (answerEl) answerEl.innerHTML = answer.replace(/\n/g,"<br>");
+
+    window.AstroQuestionCount = (window.AstroQuestionCount || 0) + 1;
+    const remaining = 3 - window.AstroQuestionCount;
+    if (countEl) countEl.textContent = remaining > 0 ? `남은 질문: ${remaining}회` : "질문 횟수를 모두 사용했습니다.";
+    if (remaining === 0 && input) input.disabled = true;
+
+  } catch(e) {
+    const answerEl = document.getElementById(`qAnswer${window.AstroQuestionCount}`);
+    if (answerEl) answerEl.textContent = "오류가 발생했습니다.";
+  } finally {
+    if ((window.AstroQuestionCount || 0) < 3) input.disabled = false;
+  }
+}
+
 async function requestAstroReading() {
   const btn      = _$("astroBtn");
   const loading  = _$("astroLoading");
@@ -823,8 +873,31 @@ async function requestAstroReading() {
       .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
       .replace(/\n/g, "<br>");
 
+    // 리딩 결과 저장 (질문에 활용)
+    window.AstroReadingResult = geminiData.result || "";
+
     resultEl.innerHTML = `
       <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">${formatted}</div>
+
+      <!-- 질문 섹션 -->
+      <div id="astroQuestionSection" style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;">
+        <div style="font-size:12px;color:#a5b4fc;letter-spacing:1px;margin-bottom:10px;">💬 추가 질문 (최대 3회)</div>
+        <div style="display:flex;gap:8px;">
+          <input id="astroQuestionInput" type="text" placeholder="질문을 입력하세요..."
+            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;"
+            onkeydown="if(event.key==='Enter')askAstroQuestion()"
+          />
+          <button onclick="askAstroQuestion()" style="
+            background:linear-gradient(135deg,#7c3aed,#4f46e5);
+            color:#fff;font-size:12px;font-weight:700;
+            border:none;border-radius:8px;padding:8px 14px;cursor:pointer;
+          ">전송</button>
+        </div>
+        <div style="font-size:10px;color:#475569;margin-top:4px;" id="astroQuestionCount">남은 질문: 3회</div>
+        <div id="astroQuestionResult" style="margin-top:12px;"></div>
+      </div>
+
       <div style="margin-top:12px;text-align:right;">
         <button onclick="requestAstroReading()" style="
           background:rgba(124,58,237,.2);border:1px solid rgba(124,58,237,.4);
@@ -832,6 +905,7 @@ async function requestAstroReading() {
         ">🔄 다시 보기</button>
       </div>
     `;
+    window.AstroQuestionCount = 0;
     resultEl.style.display = "block";
 
   } catch (err) {
@@ -858,12 +932,12 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!el) return;
       el.addEventListener("input",  () => {
         runAll();
-        // birthCity 변경 시 AstroResult 무효화 → 재계산
-        if (id === "birthCity") window.AstroResult = null;
+        // 핵심 입력값 변경 시 AstroResult 무효화 → 재계산
+        if (["birthDate","birthTime","birthCity"].includes(id)) window.AstroResult = null;
       });
       el.addEventListener("change", () => {
         runAll();
-        if (id === "birthCity") window.AstroResult = null;
+        if (["birthDate","birthTime","birthCity"].includes(id)) window.AstroResult = null;
       });
     });
 
