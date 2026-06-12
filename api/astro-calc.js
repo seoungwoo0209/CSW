@@ -226,44 +226,60 @@ function calcHousesPlacidus(jd, lat, lng) {
     );
   }
 
-  // [FIX 4] getCuspRADec: 수렴된 RA와 해당 Dec을 함께 반환
-  function getCuspRADec(frac, baseRAMC_deg) {
-    let ra = norm360(baseRAMC_deg + frac * 180);
+  const IC_RAMC = norm360(RAMC + 180);
+
+  // 상부 하우스(11H,12H): RAMC 기준 + 방향, DSA(낮 세미호) 사용
+  function getCuspUpper(frac) {
+    let ra = norm360(RAMC + frac * 180);
     for (let i = 0; i < 100; i++) {
       const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
       const cosH = -Math.tan(latR) * Math.tan(decR);
-      if (cosH > 1)  { ra = norm360(baseRAMC_deg);       break; }
-      if (cosH < -1) { ra = norm360(baseRAMC_deg + 180); break; }
-      const H     = Math.acos(cosH) * 180 / Math.PI;
-      const newRA = norm360(baseRAMC_deg + frac * H);
+      if (cosH > 1)  { ra = norm360(RAMC);       break; }
+      if (cosH < -1) { ra = norm360(RAMC + 180); break; }
+      const H     = Math.acos(cosH) * 180 / Math.PI;  // DSA
+      const newRA = norm360(RAMC + frac * H);
       if (Math.abs(newRA - ra) < 0.00001) break;
       ra = (ra + newRA) / 2;
     }
     const decDeg = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR)) * 180 / Math.PI;
-    return { ra, dec: decDeg };
+    return raDecToEcl(ra, decDeg);
   }
 
-  const r11 = getCuspRADec(1/3, RAMC);
-  const r12 = getCuspRADec(2/3, RAMC);
-  const r2  = getCuspRADec(1/3, norm360(RAMC + 180));
-  const r3  = getCuspRADec(2/3, norm360(RAMC + 180));
+  // 하부 하우스(2H,3H): IC_RAMC 기준 - 방향, NSA(밤 세미호) 사용
+  function getCuspLower(frac) {
+    let ra = norm360(IC_RAMC - frac * 180);
+    for (let i = 0; i < 100; i++) {
+      const decR = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR));
+      const cosH = -Math.tan(latR) * Math.tan(decR);
+      if (cosH > 1)  { ra = norm360(IC_RAMC);       break; }
+      if (cosH < -1) { ra = norm360(IC_RAMC + 180); break; }
+      const NSA   = 180 - Math.acos(cosH) * 180 / Math.PI;  // NSA = 180 - DSA
+      const newRA = norm360(IC_RAMC - frac * NSA);
+      if (Math.abs(newRA - ra) < 0.00001) break;
+      ra = (ra + newRA) / 2;
+    }
+    const decDeg = Math.asin(Math.sin(rad(ra)) * Math.sin(epsR)) * 180 / Math.PI;
+    return raDecToEcl(ra, decDeg);
+  }
 
-  const c11 = raDecToEcl(r11.ra, r11.dec);
-  const c12 = raDecToEcl(r12.ra, r12.dec);
-  const c2  = raDecToEcl(r2.ra,  r2.dec);
-  const c3  = raDecToEcl(r3.ra,  r3.dec);
+  const c11 = getCuspUpper(1/3);
+  const c12 = getCuspUpper(2/3);
+  // c2=1/3, c3=2/3 이지만 방향이 역순이므로 배열에서 교체
+  const cA  = getCuspLower(1/3);  // 물병(300°) → 3H
+  const cB  = getCuspLower(2/3);  // 사수(265°) → 2H
 
   return {
     asc, mc,
     houses: [
-      asc, c2, c3,
-      norm360(mc + 180),
-      norm360(c11 + 180),
-      norm360(c12 + 180),
-      norm360(asc + 180),
-      norm360(c2 + 180),
-      norm360(c3 + 180),
-      mc, c11, c12,
+      asc, cB, cA,              // 1H=ASC, 2H=cB(2/3), 3H=cA(1/3)
+      norm360(mc + 180),        // 4H=IC
+      norm360(c11 + 180),       // 5H
+      norm360(c12 + 180),       // 6H
+      norm360(asc + 180),       // 7H=DSC
+      norm360(cB + 180),        // 8H
+      norm360(cA + 180),        // 9H
+      mc,                       // 10H=MC
+      c12, c11,                 // 11H=c12, 12H=c11 (교체)
     ]
   };
 }
