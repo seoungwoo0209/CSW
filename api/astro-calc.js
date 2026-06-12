@@ -59,7 +59,9 @@ export default async function handler(req, res) {
 
     // ── 세컨더리 프로그레션 (태양 실제 이동 기반 정밀 공식)
     // 1일 = 1년. 현재 나이(년) = 출생일로부터 경과한 일수
-    const now      = new Date();
+    // KST(UTC+9) 기준 오늘 자정으로 고정 — 서버 시간대 차이 방지
+    const nowRaw = new Date();
+    const now    = new Date(Date.UTC(nowRaw.getUTCFullYear(), nowRaw.getUTCMonth(), nowRaw.getUTCDate(), 0, 0, 0) + 9*3600000);
     const ageYears = (now.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
 
     const birthSunLon  = planets.sun.lon;
