@@ -32,7 +32,7 @@ function _drawLifeGraph(container, result) {
   const PL = 44, PR = 20, PT = 28, PB = 48;
   const gW = W - PL - PR;
   const gH = H - PT - PB;
-  const minScore = 20, maxScore = 95;
+  const minScore = 55, maxScore = 100;
 
   function xPos(i)     { return PL + (i / (scores.length - 1)) * gW; }
   function yPos(score) { return PT + gH - ((score - minScore) / (maxScore - minScore)) * gH; }
@@ -50,7 +50,7 @@ function _drawLifeGraph(container, result) {
   ).join(' ')
     + ` L${xPos(scores.length-1).toFixed(1)},${(PT+gH).toFixed(1)} L${PL},${(PT+gH).toFixed(1)} Z`;
 
-  const yLabels = [30, 45, 60, 75, 90].map(v => {
+  const yLabels = [60, 65, 70, 75, 80, 85, 90, 95].map(v => {
     const y = yPos(v).toFixed(1);
     return `<line x1="${PL-4}" y1="${y}" x2="${PL+gW}" y2="${y}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
             <text x="${PL-8}" y="${(parseFloat(y)+4).toFixed(1)}" fill="#475569" font-size="10" text-anchor="end">${v}</text>`;

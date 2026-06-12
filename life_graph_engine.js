@@ -297,8 +297,9 @@ console.log("🔥 life_graph_engine.js v2.0 로드 시작");
       const score = Math.round(clamp(
         seasonBase * 0.40 + 60 * 0.60   // 베이스 블렌딩
         + l2 * 20                        // 트랜짓 가감
-        + l3 * 10,                       // 달 가감
-        20, 100
+        + l3 * 10                        // 달 가감
+        + 20,                            // 전체 +20 보정
+        40, 100
       ));
 
       scores.push({
