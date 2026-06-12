@@ -389,11 +389,11 @@ function assignHouses(planets, houses) {
    에스펙트 계산
    ========================================================= */
 const ASPECT_DEFS = [
-  { name: '합',     angle:   0, orb: 8, symbol: '☌' },
-  { name: '육합',   angle:  60, orb: 4, symbol: '⚹' },
-  { name: '삼합',   angle: 120, orb: 6, symbol: '△' },
-  { name: '스퀘어', angle:  90, orb: 6, symbol: '□' },
-  { name: '충',     angle: 180, orb: 8, symbol: '☍' },
+  { name: '컨정션',  angle:   0, orb: 8, symbol: '☌' },
+  { name: '섹스타일',angle:  60, orb: 4, symbol: '⚹' },
+  { name: '트라인',  angle: 120, orb: 6, symbol: '△' },
+  { name: '스퀘어',  angle:  90, orb: 6, symbol: '□' },
+  { name: '어포지션',angle: 180, orb: 8, symbol: '☍' },
 ];
 
 const PLANET_KEYS = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
