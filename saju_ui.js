@@ -201,7 +201,99 @@ function renderResourcePanel(resourceResult) {
 }
 
 /* =========================================================
-   PART 3: stub 함수들 (export 에러 방지)
+   PART 3: 유형 카드 + 점수 렌더링 (참조 리포트 스타일)
+   ========================================================= */
+function renderPersonalityCard(cardData) {
+  const c = _$('personalityCard');
+  if (!c) return;
+
+  const { typeName, typeDesc, ilju, geokKr, strengthLabel, scores } = cardData;
+
+  // 점수 높은 순 정렬
+  const sorted = [...scores].sort((a, b) => b.score - a.score);
+
+  // 강도 색상
+  function scoreColor(s) {
+    if (s >= 95) return '#78ffa8';
+    if (s >= 88) return '#9ed0ff';
+    if (s >= 78) return '#ffd36a';
+    if (s >= 65) return '#ffb27a';
+    return '#ff9999';
+  }
+
+  // 신강약 배지 색
+  const strengthColor = strengthLabel === '신강'
+    ? 'rgba(120,255,168,.18);border-color:rgba(120,255,168,.5);color:#78ffa8'
+    : strengthLabel === '신약'
+    ? 'rgba(255,180,100,.18);border-color:rgba(255,180,100,.5);color:#ffb47a'
+    : 'rgba(158,208,255,.18);border-color:rgba(158,208,255,.5);color:#9ed0ff';
+
+  c.innerHTML = `
+    <!-- 유형 헤더 -->
+    <div style="
+      background:linear-gradient(135deg,rgba(18,22,42,.95),rgba(40,20,80,.85));
+      border:1px solid rgba(160,100,255,.3);border-radius:18px;
+      padding:24px 20px 20px;margin-bottom:12px;text-align:center;
+    ">
+      <div style="font-size:11px;color:#a5b4fc;letter-spacing:3px;margin-bottom:12px;">당신이 타고난 잠재력</div>
+
+      <div style="font-size:22px;font-weight:900;color:#e2e8f0;letter-spacing:.5px;
+        text-shadow:0 0 20px rgba(180,120,255,.4);margin-bottom:6px;">
+        ${typeName}
+      </div>
+      <div style="font-size:13px;color:rgba(200,180,255,.7);margin-bottom:16px;">
+        ${typeDesc}
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
+        <span style="
+          background:rgba(160,100,255,.18);border:1px solid rgba(160,100,255,.4);
+          color:#c4b5fd;font-size:11px;font-weight:700;
+          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
+        ">${ilju}</span>
+        <span style="
+          background:${strengthColor};
+          font-size:11px;font-weight:700;
+          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
+          border:1px solid transparent;
+        ">${strengthLabel}</span>
+        <span style="
+          background:rgba(255,211,106,.12);border:1px solid rgba(255,211,106,.35);
+          color:#ffd36a;font-size:11px;font-weight:700;
+          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
+        ">${geokKr}</span>
+      </div>
+    </div>
+
+    <!-- 점수 카드 그리드 -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      ${sorted.map(item => `
+        <div style="
+          background:rgba(18,22,42,.78);
+          border:1px solid rgba(255,255,255,.08);
+          border-radius:14px;padding:16px 14px;
+        ">
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">${item.label}</div>
+          <div style="display:flex;align-items:baseline;gap:6px;">
+            <div style="font-size:32px;font-weight:900;color:${scoreColor(item.score)};line-height:1;">
+              ${item.score}
+            </div>
+            ${item.rank ? `
+              <div style="
+                background:rgba(255,255,255,.08);border-radius:6px;
+                font-size:10px;font-weight:700;color:#94a3b8;
+                padding:2px 6px;white-space:nowrap;
+              ">${item.rank}</div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+/* =========================================================
+   PART 3 (기존): stub 함수들
    ========================================================= */
 function renderGeokInfo()     {}
 function renderStrengthInfo() {}
@@ -221,6 +313,12 @@ function renderFullAnalysis() {
   if (window.SajuEngine.computeResourceScores) {
     const resourceResult = window.SajuEngine.computeResourceScores(baseState);
     renderResourcePanel(resourceResult);
+
+    // 유형 카드 + 점수
+    if (window.SajuEngine.computePersonalityCard) {
+      const cardData = window.SajuEngine.computePersonalityCard(baseState, resourceResult);
+      renderPersonalityCard(cardData);
+    }
   }
 }
 
@@ -236,6 +334,7 @@ window.SajuUI = {
   renderGodsInfo,
   renderBaseScore,
   renderResourcePanel,
+  renderPersonalityCard,
   renderFullAnalysis,
 };
 
