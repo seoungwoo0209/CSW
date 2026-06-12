@@ -87,7 +87,8 @@ export default async function handler(req, res) {
     // 네이탈 RAMC + 경과년수 x 0.9856(태양 평균 하루 이동량)으로 계산
     const { asc: progAsc, mc: progMc, houses: progHouses } =
       calcProgAnglesNaibod(jd, ageYears, lat, lng);
-    const progPlanetsWithHouse = assignHouses(progPlanets, progHouses);
+    // 프로그레션 행성 하우스는 네이탈 커스프 기준으로 배정 (점성술 표준)
+    const progPlanetsWithHouse = assignHouses(progPlanets, houses);
 
     // 에스펙트 계산
     const natalAspects       = calcAspects(planets);
