@@ -279,7 +279,7 @@ function calcHousesPlacidus(jd, lat, lng) {
       norm360(cB + 180),        // 8H
       norm360(cA + 180),        // 9H
       mc,                       // 10H=MC
-      c12, c11,                 // 11H=c12, 12H=c11 (교체)
+      c11, c12,                 // 11H=c11(1/3), 12H=c12(2/3)
     ]
   };
 }
