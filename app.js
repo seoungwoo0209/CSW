@@ -605,7 +605,7 @@ function renderAstroProgression(astroData) {
   // 프로그레션↔나탈 주요 에스펙트
   const aspects = prog.aspectsToNatal || [];
   const aspectsHtml = aspects.length > 0
-    ? aspects.slice(0, 8).map(a => `
+    ? aspects.map(a => `
         <div style="
           background:rgba(255,255,255,.04);border-radius:6px;
           padding:6px 10px;font-size:11px;color:#94a3b8;
