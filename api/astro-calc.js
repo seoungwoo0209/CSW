@@ -277,13 +277,15 @@ function assignHouses(planets, houses) {
     for (let i = 0; i < 12; i++) {
       const start = houses[i];
       const end   = houses[(i + 1) % 12];
-      if (start < end) {
-        if (normLon >= start && normLon < end) return i + 1;
-      } else {
+      // 0°/360° 경계를 넘는 하우스 (예: 4H 335°~7°)
+      if (start > end) {
         if (normLon >= start || normLon < end) return i + 1;
+      } else {
+        if (normLon >= start && normLon < end) return i + 1;
       }
     }
-    return 1;
+    // 마지막 하우스(12H)의 끝이 1H 시작(ASC)이므로 여기까지 오면 12H
+    return 12;
   }
   const result = {};
   for (const [key, val] of Object.entries(planets)) {
