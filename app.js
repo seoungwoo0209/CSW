@@ -587,6 +587,29 @@ function renderAstroNatal(astroData) {
 /* =========================================================
    세컨더리 프로그레션 차트 렌더링
    ========================================================= */
+/* =========================================================
+   미드포인트 계산
+   두 경도의 중간점 — 0°/360° 경계 처리 포함
+   반환: "♎ 15°20'" 형태 문자열
+   ========================================================= */
+function calcMidpoint(lonA, lonB) {
+  if (lonA == null || lonB == null) return '-';
+  const SIGNS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+  const SIGN_NAMES = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                      '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+  const a = ((lonA % 360) + 360) % 360;
+  const b = ((lonB % 360) + 360) % 360;
+  let diff = b - a;
+  if (diff > 180)  diff -= 360;
+  if (diff < -180) diff += 360;
+  const mid = ((a + diff / 2) + 360) % 360;
+  const signIdx = Math.floor(mid / 30);
+  const deg     = mid % 30;
+  const d       = Math.floor(deg);
+  const m       = Math.floor((deg - d) * 60);
+  return `${SIGNS[signIdx]} ${d}°${String(m).padStart(2,'0')}'`;
+}
+
 function renderAstroProgression(astroData) {
   const prog = astroData.progression;
   if (!prog) return;
@@ -687,6 +710,37 @@ function renderAstroProgression(astroData) {
           <div style="font-size:10px;color:#a78bfa;margin-bottom:3px;">프로그레션 MC</div>
           <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${prog.angles.mc.sign}</div>
           <div style="font-size:10px;color:#64748b;">${prog.angles.mc.degree}°${prog.angles.mc.minute}'</div>
+        </div>
+      </div>
+
+      <!-- 미드포인트 -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">미드 포인트</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <!-- 네이탈 미드포인트 -->
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#94a3b8;letter-spacing:1px;margin-bottom:8px;">네이탈 행성</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(astroData.angles?.asc?.longitude, astroData.angles?.mc?.longitude)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(natal.sun?.longitude, natal.moon?.longitude)}</div>
+            </div>
+          </div>
+          <!-- 프로그레션 미드포인트 -->
+          <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#a78bfa;letter-spacing:1px;margin-bottom:8px;">프로그레션</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.angles?.asc?.longitude, prog.angles?.mc?.longitude)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.planets?.sun?.longitude, prog.planets?.moon?.longitude)}</div>
+            </div>
+          </div>
         </div>
       </div>
 
