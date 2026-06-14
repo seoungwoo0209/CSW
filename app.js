@@ -151,10 +151,63 @@ function calcLunarNodes(birthDate, birthTime, utcOffset) {
   const northLon = _norm(125.04452 - 1934.136261 * T + 0.0020708 * T * T);
   const southLon = _norm(northLon + 180);
 
-  return {
-    north: _toSignInfo(northLon),
-    south: _toSignInfo(southLon),
-  };
+  const north = _toSignInfo(northLon);
+  const south = _toSignInfo(southLon);
+
+  // ── 노드 ↔ 행성 에스펙트 계산
+  function _calcNodeAspects(natalPlanets) {
+    if (!natalPlanets) return [];
+
+    const ASPECT_DEFS = [
+      { name:'컨정션',   angle:  0, orb:8, symbol:'☌' },
+      { name:'섹스타일', angle: 60, orb:4, symbol:'⚹' },
+      { name:'트라인',   angle:120, orb:6, symbol:'△' },
+      { name:'스퀘어',   angle: 90, orb:6, symbol:'□' },
+      { name:'어포지션', angle:180, orb:8, symbol:'☍' },
+    ];
+    const PLANET_KR = {
+      sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
+      jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
+    };
+
+    function _angDist(a, b) {
+      const d = Math.abs(_norm(a) - _norm(b));
+      return d > 180 ? 360 - d : d;
+    }
+
+    const aspects = [];
+    const points = [
+      { key:'north', lon: northLon, label:'북노드(☊)' },
+      { key:'south', lon: southLon, label:'릴리스(☋)' },
+    ];
+
+    for (const pt of points) {
+      for (const [pk, pData] of Object.entries(natalPlanets)) {
+        if (!PLANET_KR[pk]) continue;
+        const dist = _angDist(pt.lon, pData.longitude ?? pData.lon ?? 0);
+        for (const asp of ASPECT_DEFS) {
+          const diff = Math.abs(dist - asp.angle);
+          if (diff <= asp.orb) {
+            const orbDeg = Math.floor(diff);
+            const orbMin = Math.floor((diff % 1) * 60);
+            aspects.push({
+              node:   pt.label,
+              planet: PLANET_KR[pk],
+              aspect: asp.name,
+              symbol: asp.symbol,
+              orb:    `${orbDeg}°${String(orbMin).padStart(2,'0')}'`,
+              orbRaw: diff,
+            });
+          }
+        }
+      }
+    }
+
+    // 오브 작은 순 정렬
+    return aspects.sort((a, b) => a.orbRaw - b.orbRaw);
+  }
+
+  return { north, south, _calcNodeAspects };
 }
 
 /* =========================================================
@@ -198,7 +251,18 @@ async function runAstroCalc() {
     // 북노드/릴리스 계산 후 붙이기 (기존 astroData 구조 변경 없음)
     const cityName2 = getCitySelectValue();
     const { utcOffset: uo2 } = getCityCoords(cityName2);
-    astroData.nodes = calcLunarNodes(birthDate, birthTime, uo2);
+    const nodesResult = calcLunarNodes(birthDate, birthTime, uo2);
+    astroData.nodes = { north: nodesResult.north, south: nodesResult.south };
+
+    // 노드 ↔ 네이탈 행성 에스펙트 계산
+    // natal 행성의 longitude 필드로 계산 (toSignInfo 반환 구조)
+    const natalForAspect = {};
+    if (astroData.natal) {
+      Object.entries(astroData.natal).forEach(([k, v]) => {
+        natalForAspect[k] = { longitude: v.longitude };
+      });
+    }
+    astroData.nodeAspects = nodesResult._calcNodeAspects(natalForAspect);
 
     window.AstroResult = astroData;
 
@@ -616,6 +680,40 @@ function renderAstroNatal(astroData) {
         <div style="color:#94a3b8;font-size:11px;">${south.degree}°${south.minute}'</div>
       </div>
     `;
+  }
+
+  // 노드 에스펙트 목록 표시
+  if (astroData.nodeAspects && astroData.nodeAspects.length > 0) {
+    const aspectsHtml = astroData.nodeAspects.map(a => `
+      <div style="
+        background:rgba(255,255,255,.04);border-radius:6px;
+        padding:6px 10px;font-size:11px;color:#94a3b8;
+        border-left:2px solid rgba(251,191,36,.4);
+        display:flex;justify-content:space-between;align-items:center;
+      ">
+        <span style="color:#fcd34d;">${a.node}</span>
+        <span style="color:#64748b;margin:0 6px;">${a.symbol} ${a.aspect}</span>
+        <span style="color:#c4b5fd;">${a.planet}</span>
+        <span style="color:#475569;margin-left:6px;">orb ${a.orb}</span>
+      </div>
+    `).join('');
+
+    const nodePanel = document.createElement('div');
+    nodePanel.style.cssText = 'margin-top:12px;';
+    nodePanel.innerHTML = `
+      <div style="
+        background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+        border:1px solid rgba(251,191,36,.2);border-radius:16px;padding:16px 20px;
+      ">
+        <div style="font-size:12px;color:#fcd34d;letter-spacing:2px;margin-bottom:10px;">
+          ☊ 노드 에스펙트 (네이탈 행성)
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          ${aspectsHtml}
+        </div>
+      </div>
+    `;
+    panel.after(nodePanel);
   }
 
   panel.style.display = "block";
