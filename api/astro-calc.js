@@ -87,6 +87,10 @@ export default async function handler(req, res) {
     const natalAspects       = calcAspects(planets);
     const progToNatalAspects = calcAspectsProgToNatal(progPlanets, planets, { asc, mc });
 
+    // ── 북노드/릴리스 계산 (트루 노드, Meeus 섭동 보정)
+    const { northLon, southLon } = calcLunarNodes(jd);
+    const nodeAspects = calcNodeAspects(northLon, southLon, planets);
+
     // 사인 변환
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
                    '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
@@ -124,6 +128,11 @@ export default async function handler(req, res) {
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
       natalAspects,
+      nodes: {
+        north: toSignInfo(northLon),
+        south: toSignInfo(southLon),
+      },
+      nodeAspects,
       transits2026,
       progression: {
         meta: {
@@ -540,7 +549,62 @@ function calcAspects(planets) {
   return aspects;
 }
 
-function calcAspectsProgToNatal(progPlanets, natalPlanets, natalAngles) {
+/* =========================================================
+   북노드/릴리스 계산 (트루 노드, Meeus 섭동 보정)
+   행성과 동일한 JD 기준으로 계산 → 에스펙트 정확도 보장
+   ========================================================= */
+function calcLunarNodes(jd) {
+  const T   = (jd - 2451545.0) / 36525.0;
+  const D   = norm360(297.85036  + 445267.111480 * T - 0.0019142 * T * T);
+  const M   = norm360(357.52772  + 35999.050340  * T - 0.0001603 * T * T);
+  const Mp  = norm360(134.96298  + 477198.867398 * T + 0.0086972 * T * T);
+  const F   = norm360(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
+  const omega = norm360(125.04452 - 1934.136261  * T + 0.0020708 * T * T);
+
+  const northCorr =
+    -1.4979 * Math.sin(rad(2 * (D - F))) +
+    -0.1500 * Math.sin(rad(M)) +
+    -0.1226 * Math.sin(rad(2 * D)) +
+     0.1176 * Math.sin(rad(2 * F)) +
+    -0.0801 * Math.sin(rad(2 * (Mp - F)));
+
+  const northLon = norm360(omega + northCorr);
+  const southLon = norm360(northLon + 180);
+  return { northLon, southLon };
+}
+
+/* =========================================================
+   노드 ↔ 네이탈 행성 에스펙트 계산
+   ========================================================= */
+function calcNodeAspects(northLon, southLon, planets) {
+  const aspects = [];
+  const points = [
+    { label: '북노드(☊)', lon: northLon },
+    { label: '릴리스(☋)', lon: southLon },
+  ];
+
+  for (const pt of points) {
+    for (const pk of PLANET_KEYS) {
+      const dist = angularDistance(pt.lon, planets[pk].lon);
+      for (const asp of ASPECT_DEFS) {
+        const diff = Math.abs(dist - asp.angle);
+        if (diff <= asp.orb) {
+          const orbDeg = Math.floor(diff);
+          const orbMin = Math.floor((diff % 1) * 60);
+          aspects.push({
+            node:   pt.label,
+            planet: PLANET_KR[pk],
+            aspect: asp.name,
+            symbol: asp.symbol,
+            orb:    `${orbDeg}°${String(orbMin).padStart(2, '0')}'`,
+            orbRaw: Math.round(diff * 100) / 100,
+          });
+        }
+      }
+    }
+  }
+  return aspects.sort((a, b) => a.orbRaw - b.orbRaw);
+}
   const aspects  = [];
   const progKeys = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
 
