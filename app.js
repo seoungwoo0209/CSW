@@ -115,6 +115,49 @@ function runAll() {
 }
 
 /* =========================================================
+   북노드 / 릴리스 계산 (순수 수식 — 서버 불필요)
+   평균 달의 교점(Mean Node) 기반
+   ========================================================= */
+function calcLunarNodes(birthDate, birthTime, utcOffset) {
+  const [yyyy, mm, dd] = birthDate.split('-').map(Number);
+  const [hh, mi]       = birthTime.split(':').map(Number);
+  const offset         = utcOffset ?? 9;
+  const utcHour        = hh + mi / 60 - offset;
+
+  // JD 계산 (app.js 내 기존 calcJD와 동일 로직)
+  function _jd(y, m, d, h) {
+    if (m <= 2) { y--; m += 12; }
+    const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + h / 24 + B - 1524.5;
+  }
+  function _norm(a) { return ((a % 360) + 360) % 360; }
+  function _toSignInfo(lon) {
+    const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                   '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+    const n = _norm(lon);
+    const deg = n % 30;
+    return {
+      longitude: n,
+      sign:      SIGNS[Math.floor(n / 30)],
+      degree:    Math.floor(deg),
+      minute:    Math.floor((deg % 1) * 60)
+    };
+  }
+
+  const jd = _jd(yyyy, mm, dd, utcHour);
+  const T  = (jd - 2451545.0) / 36525.0;
+
+  // 평균 북노드 황경 (IAU 공식)
+  const northLon = _norm(125.04452 - 1934.136261 * T + 0.0020708 * T * T);
+  const southLon = _norm(northLon + 180);
+
+  return {
+    north: _toSignInfo(northLon),
+    south: _toSignInfo(southLon),
+  };
+}
+
+/* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
    window.AstroResult에 저장해 둠.
@@ -151,6 +194,11 @@ async function runAstroCalc() {
 
     const astroData = await calcRes.json();
     if (!calcRes.ok || astroData.error) throw new Error(astroData.error || "천문 계산 오류");
+
+    // 북노드/릴리스 계산 후 붙이기 (기존 astroData 구조 변경 없음)
+    const cityName2 = getCitySelectValue();
+    const { utcOffset: uo2 } = getCityCoords(cityName2);
+    astroData.nodes = calcLunarNodes(birthDate, birthTime, uo2);
 
     window.AstroResult = astroData;
 
@@ -546,6 +594,30 @@ function renderAstroNatal(astroData) {
       <div style="color:#94a3b8;font-size:11px;">${astroData.angles.mc.degree}°${astroData.angles.mc.minute}'</div>
     </div>
   `;
+
+  // 북노드/릴리스 표시
+  if (astroData.nodes) {
+    const { north, south } = astroData.nodes;
+    grid.innerHTML += `
+      <div style="
+        background:rgba(251,191,36,.08);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(251,191,36,.3);
+      ">
+        <div style="color:#fcd34d;font-size:11px;margin-bottom:3px;">☊ 북노드 (카르마 방향)</div>
+        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${north.sign}</div>
+        <div style="color:#94a3b8;font-size:11px;">${north.degree}°${north.minute}'</div>
+      </div>
+      <div style="
+        background:rgba(148,163,184,.08);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(148,163,184,.25);
+      ">
+        <div style="color:#94a3b8;font-size:11px;margin-bottom:3px;">☋ 릴리스 (전생 패턴)</div>
+        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${south.sign}</div>
+        <div style="color:#94a3b8;font-size:11px;">${south.degree}°${south.minute}'</div>
+      </div>
+    `;
+  }
+
   panel.style.display = "block";
 
   // 세컨더리 프로그레션 차트도 함께 렌더링
