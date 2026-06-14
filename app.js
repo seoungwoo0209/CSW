@@ -750,10 +750,14 @@ function renderAstroProgression(astroData) {
             <div><div style="color:${changed?'#a5b4fc':'#e2e8f0'};font-size:11px;font-weight:${changed?700:400};">${pText}</div><div style="color:#64748b;font-size:10px;">${pSub}${pH}</div></div>
           </div>`;
         }
+        const pNorth = prog.nodes?.north;
+        const pSouth = prog.nodes?.south;
+        const northChanged = north && pNorth && north.signIndex !== pNorth.signIndex;
+        const southChanged = south && pSouth && south.signIndex !== pSouth.signIndex;
         return row('↑','ASC',nAsc,pAsc,ascChanged,'#a78bfa')
               +row('⊕','MC',nMc,pMc,mcChanged,'#a78bfa')
-              +row('☊','북노드',north,null,false,'#fcd34d')
-              +row('☋','릴리스',south,null,false,'#94a3b8');
+              +row('☊','북노드',north,pNorth,northChanged,'#fcd34d')
+              +row('☋','릴리스',south,pSouth,southChanged,'#94a3b8');
       })()}
 
       <!-- 미드포인트 -->
