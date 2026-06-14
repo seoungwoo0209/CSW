@@ -163,23 +163,8 @@ function calcLunarNodes(birthDate, birthTime, utcOffset) {
     -0.0801 * Math.sin(_rad(2 * (Mp - F)));
   const northLon = _norm(omega + northCorr);
 
-  // ── 릴리스 = 달의 근지점 (원지점+180°)
-  // astro-seek 기준: 릴리스는 남교점이 아닌 달 근지점
-  const bml = _norm(
-    83.3532465 + 4069.0137287 * T - 0.0103200 * T * T
-    - T * T * T / 80053 + T * T * T * T / 18999000
-  );
-  const perigeeCorr =
-     0.4392 * Math.sin(_rad(2 * D - Mp)) +
-     0.0684 * Math.sin(_rad(Mp)) +
-     0.0456 * Math.sin(_rad(2 * D - M)) +
-     0.0426 * Math.sin(_rad(2 * D)) +
-     0.0212 * Math.sin(_rad(2 * Mp)) +
-    -0.0189 * Math.sin(_rad(D)) +
-     0.0144 * Math.sin(_rad(6 * D - Mp)) +
-     0.0113 * Math.sin(_rad(4 * D - Mp)) +
-     0.0047 * Math.sin(_rad(2 * D + Mp));
-  const southLon = _norm(bml + perigeeCorr + 180);
+  // ── 릴리스 = 전통 남노드 (북노드+180°)
+  const southLon = _norm(northLon + 180);
 
   const north = _toSignInfo(northLon);
   const south = _toSignInfo(southLon);
