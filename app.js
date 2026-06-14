@@ -561,7 +561,7 @@ function renderAstroNatal(astroData) {
       ">
         <div style="color:#fcd34d;font-size:11px;margin-bottom:3px;">☊ 북노드 (카르마 방향)</div>
         <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${north.sign}</div>
-        <div style="color:#94a3b8;font-size:11px;">${north.degree}°${north.minute}'</div>
+        <div style="color:#94a3b8;font-size:11px;">${north.degree}°${north.minute}'${north.house != null ? ' · '+north.house+'하우스' : ''}</div>
       </div>
       <div style="
         background:rgba(148,163,184,.08);border-radius:8px;padding:8px 10px;
@@ -569,7 +569,7 @@ function renderAstroNatal(astroData) {
       ">
         <div style="color:#94a3b8;font-size:11px;margin-bottom:3px;">☋ 릴리스 (전생 패턴)</div>
         <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${south.sign}</div>
-        <div style="color:#94a3b8;font-size:11px;">${south.degree}°${south.minute}'</div>
+        <div style="color:#94a3b8;font-size:11px;">${south.degree}°${south.minute}'${south.house != null ? ' · '+south.house+'하우스' : ''}</div>
       </div>
     `;
   }
