@@ -797,6 +797,7 @@ function renderAstroProgression(astroData) {
 
   // 타임라인 렌더링
   renderProgTimeline(astroData);
+  renderProgMoonTimeline(astroData);
 }
 
 /* =========================================================
@@ -890,6 +891,7 @@ function calcProgTimeline(astroData) {
       const exactAge  = (lo + hi) / 2;
       const exactYear = Math.floor(birthYear + exactAge);
       const sunAtAge  = calcSun((natalJD + exactAge - 2451545.0) / 36525.0);
+      const degInSign = sunAtAge % 30;
 
       if (chapters.length > 0) {
         chapters[chapters.length - 1].endAge  = Math.floor(exactAge);
@@ -904,7 +906,8 @@ function calcProgTimeline(astroData) {
         sign:      SIGNS[signIdx],
         signIndex: signIdx,
         house,
-        sunDeg:    (sunAtAge % 30).toFixed(1),
+        degree:    Math.floor(degInSign),
+        minute:    Math.floor((degInSign % 1) * 60),
         isCurrent: false,
       });
 
@@ -969,7 +972,7 @@ function renderProgTimeline(astroData) {
           ${c.startYear}~${c.endYear}
         </td>
         <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
-          <span style="color:${theme.color};font-weight:600;">${c.sign}</span>
+          <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
           <span style="color:#475569;"> · </span>
           <span style="color:${isCur ? '#a5b4fc' : '#64748b'};">${c.house}H</span>
         </td>
@@ -1017,6 +1020,253 @@ function renderProgTimeline(astroData) {
   if (progPanel) progPanel.after(panel);
 }
 
+/* =========================================================
+   프로그레션 타임라인 공통 빌더 (사인/하우스 이동 시점 스캔)
+   lonFn(T): 율리우스세기 T → 황경(0~360)
+   ========================================================= */
+function buildProgressionTimeline(astroData, lonFn, stepYears = 0.1) {
+  const meta   = astroData.meta;
+  const houses = astroData.houses; // 나탈 하우스 커스프 12개
+
+  if (!meta?.birthDate || !meta?.birthTime || !houses) return null;
+
+  const [yyyy, mm, dd] = meta.birthDate.split('-').map(Number);
+  const [hh, mi]       = meta.birthTime.split(':').map(Number);
+  const offsetHours    = meta.utcOffset ?? 9;
+  const utcH           = hh + mi / 60 - offsetHours;
+  const birthUTC       = new Date(Date.UTC(yyyy, mm - 1, dd, Math.floor(utcH), Math.round((utcH % 1) * 60)));
+
+  const bY  = birthUTC.getUTCFullYear();
+  const bM  = birthUTC.getUTCMonth() + 1;
+  const bD  = birthUTC.getUTCDate();
+  const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60;
+
+  function calcJD(y, m, d, h = 0) {
+    if (m <= 2) { y--; m += 12; }
+    const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + h / 24 + B - 1524.5;
+  }
+  function norm360(a) { return ((a % 360) + 360) % 360; }
+
+  // 나탈 하우스 커스프 (절대 경도 배열)
+  const natalCusps = houses.map(h => h.longitude);
+
+  function getHouse(lon) {
+    const n = norm360(lon);
+    for (let i = 0; i < 12; i++) {
+      const s = natalCusps[i], e = natalCusps[(i + 1) % 12];
+      if (s > e) { if (n >= s || n < e) return i + 1; }
+      else       { if (n >= s && n < e) return i + 1; }
+    }
+    return 12;
+  }
+
+  const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                 '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+
+  const natalJD   = calcJD(bY, bM, bD, bHr);
+  const birthYear = bY;
+
+  // 현재 나이
+  const now        = new Date();
+  const currentAge = (now - birthUTC) / (365.25 * 86400000);
+
+  // 0~90세 스캔 → 사인/하우스 변화 시점 기록
+  const chapters = [];
+  let prevSign = -1, prevHouse = -1;
+
+  for (let age = 0; age <= 90; age = Math.round((age + stepYears) * 1000) / 1000) {
+    const progJD  = natalJD + age;
+    const T       = (progJD - 2451545.0) / 36525.0;
+    const lon     = norm360(lonFn(T));
+    const signIdx = Math.floor(lon / 30);
+    const house   = getHouse(lon);
+
+    if (signIdx !== prevSign || house !== prevHouse) {
+      // 이분법으로 정확한 시점 탐색
+      let lo = Math.max(0, age - stepYears), hi = age;
+      for (let i = 0; i < 60; i++) {
+        const mid   = (lo + hi) / 2;
+        const pT    = (natalJD + mid - 2451545.0) / 36525.0;
+        const pLon  = norm360(lonFn(pT));
+        const pSign = Math.floor(pLon / 30);
+        const pH    = getHouse(pLon);
+        if (pSign === signIdx && pH === house) hi = mid;
+        else lo = mid;
+        if (hi - lo < 0.0005) break;
+      }
+      const exactAge  = (lo + hi) / 2;
+      const exactYear = Math.floor(birthYear + exactAge);
+      const lonAtAge  = norm360(lonFn((natalJD + exactAge - 2451545.0) / 36525.0));
+      const degInSign = lonAtAge % 30;
+
+      if (chapters.length > 0) {
+        chapters[chapters.length - 1].endAge  = Math.floor(exactAge);
+        chapters[chapters.length - 1].endYear = exactYear;
+      }
+
+      chapters.push({
+        startAge:  Math.floor(exactAge),
+        startYear: exactYear,
+        endAge:    90,
+        endYear:   birthYear + 90,
+        sign:      SIGNS[signIdx],
+        signIndex: signIdx,
+        house,
+        degree:    Math.floor(degInSign),
+        minute:    Math.floor((degInSign % 1) * 60),
+        isCurrent: false,
+      });
+
+      prevSign  = signIdx;
+      prevHouse = house;
+    }
+  }
+
+  // 현재 챕터 표시
+  chapters.forEach(c => {
+    c.isCurrent = currentAge >= c.startAge && currentAge < c.endAge;
+  });
+
+  return { chapters, birthYear, currentAge: Math.floor(currentAge) };
+}
+
+/* =========================================================
+   달의 황경 근사 계산 (truncated lunar theory, 오차 약 0.3도 이내)
+   ========================================================= */
+function calcMoonLon(T) {
+  const rad     = d => d * Math.PI / 180;
+  const norm360 = a => ((a % 360) + 360) % 360;
+
+  const Lp = 218.3164591 + 481267.88134236 * T;
+  const D  = 297.8502042 + 445267.1115168  * T;
+  const M  = 357.5291092 + 35999.0503      * T;
+  const Mp = 134.9634114 + 477198.8676313  * T;
+  const F  = 93.2720993  + 483202.0175273  * T;
+
+  const lon = Lp
+    + 6.2888 * Math.sin(rad(Mp))
+    + 1.2740 * Math.sin(rad(2 * D - Mp))
+    + 0.6583 * Math.sin(rad(2 * D))
+    + 0.2136 * Math.sin(rad(2 * Mp))
+    - 0.1851 * Math.sin(rad(M))
+    - 0.1143 * Math.sin(rad(2 * F))
+    + 0.0588 * Math.sin(rad(2 * D - 2 * Mp))
+    + 0.0572 * Math.sin(rad(2 * D - M - Mp))
+    + 0.0533 * Math.sin(rad(2 * D + Mp));
+
+  return norm360(lon);
+}
+
+/* =========================================================
+   프로그레션 달 타임라인 계산
+   ========================================================= */
+function calcProgMoonTimeline(astroData) {
+  // 달은 1년에 약 13°씩 이동 → 더 촘촘한 스텝으로 스캔
+  return buildProgressionTimeline(astroData, calcMoonLon, 0.02);
+}
+
+/* =========================================================
+   프로그레션 달 타임라인 UI 렌더링
+   ========================================================= */
+function renderProgMoonTimeline(astroData) {
+  // 기존 패널 제거
+  const existing = document.getElementById("astroMoonTimelinePanel");
+  if (existing) existing.remove();
+
+  const data = calcProgMoonTimeline(astroData);
+  if (!data) return;
+
+  const { chapters, currentAge } = data;
+
+  const HOUSE_THEME = {
+    1:  { label:"자아·외모·시작",     color:"#f87171" },
+    2:  { label:"재물·가치관",        color:"#fb923c" },
+    3:  { label:"지식·소통·학습",     color:"#facc15" },
+    4:  { label:"기반·가정·정체성",   color:"#4ade80" },
+    5:  { label:"창작·표현·즐거움",   color:"#34d399" },
+    6:  { label:"건강·일과·봉사",     color:"#22d3ee" },
+    7:  { label:"관계·파트너십",      color:"#60a5fa" },
+    8:  { label:"변환·심층·공유",     color:"#818cf8" },
+    9:  { label:"탐구·철학·확장",     color:"#a78bfa" },
+    10: { label:"사회·직업·명예",     color:"#c084fc" },
+    11: { label:"이상·공동체·미래",   color:"#e879f9" },
+    12: { label:"은둔·무의식·영성",   color:"#94a3b8" },
+  };
+
+  const rowsHtml = chapters.map((c, i) => {
+    const theme    = HOUSE_THEME[c.house] || { label:"", color:"#94a3b8" };
+    const isCur    = c.isCurrent;
+    const chapterNum = i + 1;
+    return `
+      <tr style="
+        background:${isCur ? 'rgba(165,180,252,.12)' : 'transparent'};
+        border-bottom:1px solid rgba(255,255,255,.05);
+      ">
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#a5b4fc' : '#64748b'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
+          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(165,180,252,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+        </td>
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+          ${c.startAge}~${c.endAge}세
+        </td>
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+          ${c.startYear}~${c.endYear}
+        </td>
+        <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
+          <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
+          <span style="color:#475569;"> · </span>
+          <span style="color:${isCur ? '#a5b4fc' : '#64748b'};">${c.house}H</span>
+        </td>
+        <td style="padding:10px 12px;font-size:11px;color:#64748b;">
+          ${theme.label}
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  const panel = document.createElement('div');
+  panel.id = 'astroMoonTimelinePanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <details style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+    ">
+      <summary style="cursor:pointer;font-size:12px;color:#a5b4fc;letter-spacing:2px;">
+        🌙 프로그레션 달 타임라인 (${chapters.length}개) — 클릭하여 펼치기
+      </summary>
+      <div style="font-size:11px;color:#475569;margin:8px 0 16px;">나탈 하우스 기준 · A방식</div>
+
+      <div style="overflow-x:auto;overflow-y:auto;max-height:420px;">
+        <table style="width:100%;border-collapse:collapse;min-width:420px;">
+          <thead>
+            <tr style="border-bottom:1px solid rgba(255,255,255,.1);">
+              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">챕터</th>
+              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">나이</th>
+              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">연도</th>
+              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">위치</th>
+              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">핵심 주제</th>
+            </tr>
+          </thead>
+          <tbody>${rowsHtml}</tbody>
+        </table>
+      </div>
+
+      <div style="margin-top:12px;font-size:10px;color:#334155;text-align:right;">
+        프로그레스드 달 1년 ≈ 13° 이동 · Placidus 나탈 하우스 고정
+      </div>
+    </details>
+  `;
+
+  // 태양 타임라인 패널 바로 아래 삽입 (없으면 프로그레션 패널 아래)
+  const sunTimelinePanel = document.getElementById("astroTimelinePanel");
+  if (sunTimelinePanel) {
+    sunTimelinePanel.after(panel);
+  } else {
+    const progPanel = document.getElementById("astroProgPanel");
+    if (progPanel) progPanel.after(panel);
+  }
+}
 
 /* =========================================================
    오늘의 운세 — 행성 현황 렌더링
