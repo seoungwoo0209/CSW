@@ -115,118 +115,6 @@ function runAll() {
 }
 
 /* =========================================================
-   북노드 / 릴리스 계산 (순수 수식 — 서버 불필요)
-   평균 달의 교점(Mean Node) 기반
-   ========================================================= */
-function calcLunarNodes(birthDate, birthTime, utcOffset) {
-  // 입력값 없으면 계산 중단
-  if (!birthDate || !birthTime) return null;
-  const [yyyy, mm, dd] = birthDate.split('-').map(Number);
-  const [hh, mi]       = birthTime.split(':').map(Number);
-  const offset         = utcOffset ?? 9;
-  const utcHour        = hh + mi / 60 - offset;
-
-  function _jd(y, m, d, h) {
-    if (m <= 2) { y--; m += 12; }
-    const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
-    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + h / 24 + B - 1524.5;
-  }
-  function _norm(a) { return ((a % 360) + 360) % 360; }
-  function _rad(d)  { return d * Math.PI / 180; }
-  function _toSignInfo(lon) {
-    const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
-                   '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
-    const n = _norm(lon);
-    const deg = n % 30;
-    return {
-      longitude: n,
-      sign:      SIGNS[Math.floor(n / 30)],
-      degree:    Math.floor(deg),
-      minute:    Math.floor((deg % 1) * 60)
-    };
-  }
-
-  const jd = _jd(yyyy, mm, dd, utcHour);
-  const T  = (jd - 2451545.0) / 36525.0;
-
-  // 달 궤도 요소
-  const D   = _norm(297.85036  + 445267.111480 * T - 0.0019142 * T * T);
-  const M   = _norm(357.52772  + 35999.050340  * T - 0.0001603 * T * T);
-  const Mp  = _norm(134.96298  + 477198.867398 * T + 0.0086972 * T * T);
-  const F   = _norm(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
-  const omega = _norm(125.04452 - 1934.136261  * T + 0.0020708 * T * T);
-
-  // ── 트루 북노드 (Meeus 섭동 보정)
-  const northCorr =
-    -1.4979 * Math.sin(_rad(2 * (D - F))) +
-    -0.1500 * Math.sin(_rad(M)) +
-    -0.1226 * Math.sin(_rad(2 * D)) +
-     0.1176 * Math.sin(_rad(2 * F)) +
-    -0.0801 * Math.sin(_rad(2 * (Mp - F)));
-  const northLon = _norm(omega + northCorr);
-
-  // ── 릴리스 = 전통 남노드 (북노드+180°)
-  const southLon = _norm(northLon + 180);
-
-  const north = _toSignInfo(northLon);
-  const south = _toSignInfo(southLon);
-
-  // ── 노드 ↔ 행성 에스펙트 계산
-  function _calcNodeAspects(natalPlanets) {
-    if (!natalPlanets) return [];
-
-    const ASPECT_DEFS = [
-      { name:'컨정션',   angle:  0, orb:8, symbol:'☌' },
-      { name:'섹스타일', angle: 60, orb:4, symbol:'⚹' },
-      { name:'트라인',   angle:120, orb:6, symbol:'△' },
-      { name:'스퀘어',   angle: 90, orb:6, symbol:'□' },
-      { name:'어포지션', angle:180, orb:8, symbol:'☍' },
-    ];
-    const PLANET_KR = {
-      sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
-      jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
-    };
-
-    function _angDist(a, b) {
-      const d = Math.abs(_norm(a) - _norm(b));
-      return d > 180 ? 360 - d : d;
-    }
-
-    const aspects = [];
-    const points = [
-      { key:'north', lon: northLon, label:'북노드(☊)' },
-      { key:'south', lon: southLon, label:'릴리스(☋)' },
-    ];
-
-    for (const pt of points) {
-      for (const [pk, pData] of Object.entries(natalPlanets)) {
-        if (!PLANET_KR[pk]) continue;
-        const dist = _angDist(pt.lon, pData.longitude ?? pData.lon ?? 0);
-        for (const asp of ASPECT_DEFS) {
-          const diff = Math.abs(dist - asp.angle);
-          if (diff <= asp.orb) {
-            const orbDeg = Math.floor(diff);
-            const orbMin = Math.floor((diff % 1) * 60);
-            aspects.push({
-              node:   pt.label,
-              planet: PLANET_KR[pk],
-              aspect: asp.name,
-              symbol: asp.symbol,
-              orb:    `${orbDeg}°${String(orbMin).padStart(2,'0')}'`,
-              orbRaw: diff,
-            });
-          }
-        }
-      }
-    }
-
-    // 오브 작은 순 정렬
-    return aspects.sort((a, b) => a.orbRaw - b.orbRaw);
-  }
-
-  return { north, south, _calcNodeAspects };
-}
-
 /* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
@@ -264,21 +152,6 @@ async function runAstroCalc() {
 
     const astroData = await calcRes.json();
     if (!calcRes.ok || astroData.error) throw new Error(astroData.error || "천문 계산 오류");
-
-    // 북노드/릴리스 계산 후 붙이기 (기존 astroData 구조 변경 없음)
-    const cityName2 = getCitySelectValue();
-    const { utcOffset: uo2 } = getCityCoords(cityName2);
-    const nodesResult = calcLunarNodes(birthDate, birthTime, uo2);
-    if (nodesResult) {
-      astroData.nodes = { north: nodesResult.north, south: nodesResult.south };
-      const natalForAspect = {};
-      if (astroData.natal) {
-        Object.entries(astroData.natal).forEach(([k, v]) => {
-          natalForAspect[k] = { longitude: v.longitude };
-        });
-      }
-      astroData.nodeAspects = nodesResult._calcNodeAspects(natalForAspect);
-    }
 
     window.AstroResult = astroData;
 
@@ -1486,21 +1359,6 @@ async function requestAstroReading() {
 
       const astroData = await calcRes.json();
       if (!calcRes.ok || astroData.error) throw new Error(astroData.error || "천문 계산 오류");
-
-      // 노드 계산 붙이기
-      const _cityName = getCitySelectValue();
-      const { utcOffset: _uo } = getCityCoords(_cityName);
-      const _nodes = calcLunarNodes(birthDate, birthTime, _uo);
-      if (_nodes) {
-        astroData.nodes = { north: _nodes.north, south: _nodes.south };
-        const _natalForAspect = {};
-        if (astroData.natal) {
-          Object.entries(astroData.natal).forEach(([k, v]) => {
-            _natalForAspect[k] = { longitude: v.longitude };
-          });
-        }
-        astroData.nodeAspects = _nodes._calcNodeAspects(_natalForAspect);
-      }
 
       window.AstroResult = astroData;
       renderAstroNatal(astroData);
