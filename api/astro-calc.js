@@ -83,13 +83,8 @@ export default async function handler(req, res) {
     // 프로그레션 행성 하우스는 네이탈 커스프 기준으로 배정 (점성술 표준)
     const progPlanetsWithHouse = assignHouses(progPlanets, houses);
 
-    // 에스펙트 계산
-    const natalAspects       = calcAspects(planets);
-    const progToNatalAspects = calcAspectsProgToNatal(progPlanets, planets, { asc, mc });
-
     // ── 북노드/릴리스 계산 (행성과 동일한 JD 기준)
     const { northLon, southLon } = calcLunarNodes(jd);
-    const nodeAspects = calcNodeAspects(northLon, southLon, planets);
 
     // ── 프로그레션 북노드/릴리스 계산
     const progY  = progUTC.getUTCFullYear();
@@ -98,6 +93,15 @@ export default async function handler(req, res) {
     const progHr = progUTC.getUTCHours() + progUTC.getUTCMinutes() / 60;
     const progJD = calcJulianDay(progY, progM, progD, progHr);
     const { northLon: progNorthLon, southLon: progSouthLon } = calcLunarNodes(progJD);
+
+    // ── 에스펙트 계산 (행성 10개 + ASC + MC + 북노드 + 릴리스 = 12포인트 전부)
+    const natalPoints = buildAspectPoints(planets, asc, mc, northLon, southLon);
+    const progPoints  = buildAspectPoints(progPlanets, progAsc, progMc, progNorthLon, progSouthLon);
+
+    const natalAspectsFull = calcAllAspects(natalPoints, natalPoints, { sameSet: true });
+    const progAspectsFull  = calcAllAspects(progPoints, natalPoints, {
+      labelPrefixA: '프로그레션 ', labelPrefixB: '네이탈 '
+    });
 
     // 사인 변환
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
@@ -135,12 +139,11 @@ export default async function handler(req, res) {
       natal:       natalResult,
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
-      natalAspects,
+      natalAspectsFull,
       nodes: {
         north: { ...toSignInfo(northLon), house: getNodeHouse(northLon, houses) },
         south: { ...toSignInfo(southLon), house: getNodeHouse(southLon, houses) },
       },
-      nodeAspects,
       transits2026,
       progression: {
         meta: {
@@ -151,7 +154,7 @@ export default async function handler(req, res) {
         planets:        progResult,
         angles:         { asc: toSignInfo(progAsc), mc: toSignInfo(progMc) },
         houses:         progHouses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
-        aspectsToNatal: progToNatalAspects,
+        aspectsFull:    progAspectsFull,
         nodes: {
           north: { ...toSignInfo(progNorthLon), house: getNodeHouse(progNorthLon, houses) },
           south: { ...toSignInfo(progSouthLon), house: getNodeHouse(progSouthLon, houses) },
@@ -534,66 +537,62 @@ function signedAngularDiff(lonA, lonB) {
   return diff;
 }
 
-function calcAspects(planets) {
-  const aspects = [];
-  for (let i = 0; i < PLANET_KEYS.length; i++) {
-    for (let j = i + 1; j < PLANET_KEYS.length; j++) {
-      const p1   = PLANET_KEYS[i];
-      const p2   = PLANET_KEYS[j];
-      const dist = angularDistance(planets[p1].lon, planets[p2].lon);
-      for (const asp of ASPECT_DEFS) {
-        if (Math.abs(dist - asp.angle) <= asp.orb) {
-          const signed = signedAngularDiff(planets[p1].lon, planets[p2].lon);
-          // applying: 두 행성이 아직 정확한 에스펙트 각도에 도달 전
-          const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
-          aspects.push({
-            planet1:  PLANET_KR[p1],
-            planet2:  PLANET_KR[p2],
-            aspect:   asp.name,
-            symbol:   asp.symbol,
-            orb:      Math.round(Math.abs(dist - asp.angle) * 10) / 10,
-            applying,
-          });
-        }
-      }
-    }
-  }
-  return aspects;
+/* =========================================================
+   에스펙트 포인트 구성 — 행성 10개 + ASC + MC + 북노드 + 릴리스
+   ========================================================= */
+function buildAspectPoints(planets, asc, mc, northLon, southLon) {
+  return [
+    ...PLANET_KEYS.map(k => ({ key: k, label: PLANET_KR[k], lon: planets[k].lon })),
+    { key: 'asc',       label: 'ASC',      lon: asc },
+    { key: 'mc',        label: 'MC',       lon: mc },
+    { key: 'northNode', label: '북노드(☊)', lon: northLon },
+    { key: 'southNode', label: '릴리스(☋)', lon: southLon },
+  ];
 }
 
-function calcAspectsProgToNatal(progPlanets, natalPlanets, natalAngles) {
-  const aspects  = [];
-  const progKeys = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+/* =========================================================
+   범용 에스펙트 계산
+   sameSet=true: pointsA 내부 조합 (i<j)
+   sameSet=false: pointsA × pointsB 전체 조합
+   ========================================================= */
+function calcAllAspects(pointsA, pointsB, opts = {}) {
+  const { sameSet = false, labelPrefixA = '', labelPrefixB = '' } = opts;
+  const aspects = [];
 
-  // 네이탈 행성 + ASC/MC 포함
-  const natalPoints = [
-    ...PLANET_KEYS.map(k => ({ key: k, lon: natalPlanets[k].lon, label: `네이탈 ${PLANET_KR[k]}` })),
-    ...(natalAngles ? [
-      { key:'asc', lon: natalAngles.asc, label:'네이탈 ASC' },
-      { key:'mc',  lon: natalAngles.mc,  label:'네이탈 MC'  },
-    ] : [])
-  ];
-
-  for (const pk of progKeys) {
-    for (const np of natalPoints) {
-      const dist = angularDistance(progPlanets[pk].lon, np.lon);
-      for (const asp of ASPECT_DEFS) {
-        if (Math.abs(dist - asp.angle) <= asp.orb) {
-          const signed   = signedAngularDiff(progPlanets[pk].lon, np.lon);
-          const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
-          aspects.push({
-            progPlanet:  `프로그레션 ${PLANET_KR[pk]}`,
-            natalPlanet: np.label,
-            aspect:   asp.name,
-            symbol:   asp.symbol,
-            orb:      Math.round(Math.abs(dist - asp.angle) * 10) / 10,
-            applying,
-          });
-        }
+  function tryPush(p1, p2, prefix1, prefix2) {
+    const dist = angularDistance(p1.lon, p2.lon);
+    for (const asp of ASPECT_DEFS) {
+      const diff = Math.abs(dist - asp.angle);
+      if (diff <= asp.orb) {
+        const signed   = signedAngularDiff(p1.lon, p2.lon);
+        const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
+        aspects.push({
+          point1:  prefix1 + p1.label,
+          point2:  prefix2 + p2.label,
+          aspect:  asp.name,
+          symbol:  asp.symbol,
+          orb:     Math.round(diff * 10) / 10,
+          applying,
+        });
       }
     }
   }
-  return aspects;
+
+  if (sameSet) {
+    for (let i = 0; i < pointsA.length; i++) {
+      for (let j = i + 1; j < pointsA.length; j++) {
+        tryPush(pointsA[i], pointsA[j], labelPrefixA, labelPrefixA);
+      }
+    }
+  } else {
+    for (const p1 of pointsA) {
+      for (const p2 of pointsB) {
+        tryPush(p1, p2, labelPrefixA, labelPrefixB);
+      }
+    }
+  }
+
+  return aspects.sort((a, b) => a.orb - b.orb);
 }
 
 /* =========================================================
@@ -639,36 +638,4 @@ function calcLunarNodes(jd) {
   const southLon = norm360(bml + 180);
 
   return { northLon, southLon };
-}
-
-/* =========================================================
-   노드 ↔ 네이탈 행성 에스펙트 계산
-   ========================================================= */
-function calcNodeAspects(northLon, southLon, planets) {
-  const aspects = [];
-  const points  = [
-    { label: '북노드(☊)', lon: northLon },
-    { label: '릴리스(☋)', lon: southLon },
-  ];
-  for (const pt of points) {
-    for (const pk of PLANET_KEYS) {
-      const dist = angularDistance(pt.lon, planets[pk].lon);
-      for (const asp of ASPECT_DEFS) {
-        const diff = Math.abs(dist - asp.angle);
-        if (diff <= asp.orb) {
-          const orbDeg = Math.floor(diff);
-          const orbMin = Math.floor((diff % 1) * 60);
-          aspects.push({
-            node:   pt.label,
-            planet: PLANET_KR[pk],
-            aspect: asp.name,
-            symbol: asp.symbol,
-            orb:    `${orbDeg}°${String(orbMin).padStart(2, '0')}'`,
-            orbRaw: Math.round(diff * 100) / 100,
-          });
-        }
-      }
-    }
-  }
-  return aspects.sort((a, b) => a.orbRaw - b.orbRaw);
 }

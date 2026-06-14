@@ -39,6 +39,9 @@ export default async function handler(req, res) {
     const { asc, mc, houses } = calcHousesPlacidus(jd, lat, lng);
     const natalWithHouse = assignHouses(natalPlanets, houses);
 
+    // ── 네이탈 북노드/릴리스
+    const { northLon: natalNorthLon, southLon: natalSouthLon } = calcLunarNodes(jd);
+
     // ── 오늘 날짜 (KST 자정 기준)
     const nowRaw   = new Date();
     const todayKST = new Date(Date.UTC(
@@ -53,8 +56,20 @@ export default async function handler(req, res) {
     const todayPlanets = extractPlanets(todayRaw.observed);
     const todayWithHouse = assignHouses(todayPlanets, houses); // 네이탈 하우스 기준
 
-    // ── 오늘 트랜짓 → 네이탈 에스펙트
-    const todayAspects = calcAspectsTransitToNatal(todayPlanets, natalPlanets, { asc, mc });
+    // ── 오늘 트랜짓 ASC/MC + 북노드/릴리스
+    const todayJD = calcJulianDay(
+      todayKST.getUTCFullYear(), todayKST.getUTCMonth() + 1, todayKST.getUTCDate(),
+      todayKST.getUTCHours() + todayKST.getUTCMinutes() / 60
+    );
+    const { asc: todayAsc, mc: todayMc } = calcHousesPlacidus(todayJD, lat, lng);
+    const { northLon: todayNorthLon, southLon: todaySouthLon } = calcLunarNodes(todayJD);
+
+    // ── 오늘 트랜짓 → 네이탈 에스펙트 (행성 10개 + ASC + MC + 북노드 + 릴리스 = 12포인트 전부)
+    const natalPoints   = buildAspectPoints(natalPlanets, asc, mc, natalNorthLon, natalSouthLon);
+    const transitPoints = buildAspectPoints(todayPlanets, todayAsc, todayMc, todayNorthLon, todaySouthLon);
+    const todayAspectsFull = calcAllAspects(transitPoints, natalPoints, {
+      labelPrefixA: '오늘 ', labelPrefixB: '네이탈 '
+    });
 
     // ── 역행 계산 (어제 정오 vs 오늘 정오 경도 비교)
     const yesterdayKST = new Date(todayKST.getTime() - 86400000);
@@ -184,7 +199,7 @@ export default async function handler(req, res) {
       natal:         natalResult,
       natalAngles:   { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       todayTransit:  todayResult,
-      todayAspects,
+      todayAspectsFull,
       retrograde,
       vocData,
       todayDate:     todayStr,
@@ -332,36 +347,76 @@ const PLANET_KR   = {
   jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
 };
 
-// 오늘 트랜짓 → 네이탈 에스펙트 (ASC/MC 포함)
-function calcAspectsTransitToNatal(transitPlanets, natalPlanets, natalAngles) {
+/* =========================================================
+   북노드/릴리스 계산 (트루 노드, Meeus 섭동 보정)
+   astro-calc.js와 동일 로직
+   ========================================================= */
+function calcLunarNodes(jd) {
+  const T     = (jd - 2451545.0) / 36525.0;
+  const D     = norm360(297.85036  + 445267.111480 * T - 0.0019142 * T * T);
+  const M     = norm360(357.52772  + 35999.050340  * T - 0.0001603 * T * T);
+  const Mp    = norm360(134.96298  + 477198.867398 * T + 0.0086972 * T * T);
+  const F     = norm360(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
+  const omega = norm360(125.04452  - 1934.136261   * T + 0.0020708 * T * T);
+
+  const northCorr =
+    -1.4979 * Math.sin(rad(2 * (D - F))) +
+    -0.1500 * Math.sin(rad(M)) +
+    -0.1226 * Math.sin(rad(2 * D)) +
+     0.1176 * Math.sin(rad(2 * F)) +
+    -0.0801 * Math.sin(rad(2 * (Mp - F)));
+  const northLon = norm360(omega + northCorr);
+
+  // 릴리스 = 달의 근지점 (Black Moon Lilith + 180°)
+  const bml = norm360(
+    83.3532465 + 4069.0137287 * T - 0.0103200 * T * T
+    - T * T * T / 80053 + T * T * T * T / 18999000
+  );
+  const southLon = norm360(bml + 180);
+
+  return { northLon, southLon };
+}
+
+/* =========================================================
+   에스펙트 포인트 구성 — 행성 10개 + ASC + MC + 북노드 + 릴리스
+   ========================================================= */
+function buildAspectPoints(planets, asc, mc, northLon, southLon) {
+  return [
+    ...PLANET_KEYS.map(k => ({ key: k, label: PLANET_KR[k], lon: planets[k].lon })),
+    { key: 'asc',       label: 'ASC',      lon: asc },
+    { key: 'mc',        label: 'MC',       lon: mc },
+    { key: 'northNode', label: '북노드(☊)', lon: northLon },
+    { key: 'southNode', label: '릴리스(☋)', lon: southLon },
+  ];
+}
+
+/* =========================================================
+   범용 에스펙트 계산 — pointsA × pointsB 전체 조합
+   ========================================================= */
+function calcAllAspects(pointsA, pointsB, opts = {}) {
+  const { labelPrefixA = '', labelPrefixB = '' } = opts;
   const aspects = [];
 
-  const natalPoints = [
-    ...PLANET_KEYS.map(k => ({ key:k, lon: natalPlanets[k].lon, label:`네이탈 ${PLANET_KR[k]}` })),
-    ...(natalAngles ? [
-      { key:'asc', lon: natalAngles.asc, label:'네이탈 ASC' },
-      { key:'mc',  lon: natalAngles.mc,  label:'네이탈 MC'  },
-    ] : [])
-  ];
-
-  for (const tk of PLANET_KEYS) {
-    for (const np of natalPoints) {
-      const dist = angularDistance(transitPlanets[tk].lon, np.lon);
+  for (const p1 of pointsA) {
+    for (const p2 of pointsB) {
+      const dist = angularDistance(p1.lon, p2.lon);
       for (const asp of ASPECT_DEFS) {
-        if (Math.abs(dist - asp.angle) <= asp.orb) {
-          const signed   = signedAngularDiff(transitPlanets[tk].lon, np.lon);
+        const diff = Math.abs(dist - asp.angle);
+        if (diff <= asp.orb) {
+          const signed   = signedAngularDiff(p1.lon, p2.lon);
           const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
           aspects.push({
-            transitPlanet: `오늘 ${PLANET_KR[tk]}`,
-            natalPlanet:   np.label,
+            point1:  labelPrefixA + p1.label,
+            point2:  labelPrefixB + p2.label,
             aspect:  asp.name,
             symbol:  asp.symbol,
-            orb:     Math.round(Math.abs(dist - asp.angle) * 10) / 10,
+            orb:     Math.round(diff * 10) / 10,
             applying,
           });
         }
       }
     }
   }
-  return aspects;
+
+  return aspects.sort((a, b) => a.orb - b.orb);
 }

@@ -502,6 +502,43 @@ function buildCitySelect() {
 }
 
 /* =========================================================
+   에스펙트 아코디언 (클릭하면 펼쳐지는 형태)
+   aspects: [{ point1, point2, aspect, symbol, orb, applying }]
+   ========================================================= */
+function renderAspectAccordion(aspects, title, icon, accentColor) {
+  const list = aspects || [];
+  const itemsHtml = list.length > 0
+    ? list.map(a => `
+        <div style="
+          display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center;
+          background:rgba(255,255,255,.04);border-radius:6px;
+          padding:6px 10px;font-size:11px;color:#94a3b8;
+          border-left:2px solid ${accentColor}66;
+        ">
+          <span style="color:${accentColor};">${a.point1}</span>
+          <span style="color:#64748b;white-space:nowrap;">${a.symbol} ${a.aspect}</span>
+          <span style="color:#e2e8f0;text-align:right;">${a.point2}</span>
+          <span style="color:#475569;white-space:nowrap;">orb ${a.orb}°</span>
+        </div>
+      `).join('')
+    : `<div style="color:#475569;font-size:12px;">에스펙트 없음</div>`;
+
+  return `
+    <details style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid ${accentColor}33;border-radius:16px;padding:16px 20px;margin-top:12px;
+    ">
+      <summary style="cursor:pointer;font-size:12px;color:${accentColor};letter-spacing:2px;">
+        ${icon} ${title} (${list.length}개) — 클릭하여 펼치기
+      </summary>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:12px;">
+        ${itemsHtml}
+      </div>
+    </details>
+  `;
+}
+
+/* =========================================================
    네이탈 차트 렌더링 (나탈만 표시 — 데이터는 풀 패키지)
    ========================================================= */
 function renderAstroNatal(astroData) {
@@ -574,49 +611,24 @@ function renderAstroNatal(astroData) {
     `;
   }
 
-  // 노드 에스펙트 목록 표시
-  if (astroData.nodeAspects && astroData.nodeAspects.length > 0) {
-    const aspectsHtml = astroData.nodeAspects.map(a => `
-      <div style="
-        background:rgba(255,255,255,.04);border-radius:6px;
-        padding:6px 10px;font-size:11px;color:#94a3b8;
-        border-left:2px solid rgba(251,191,36,.4);
-        display:flex;justify-content:space-between;align-items:center;
-      ">
-        <span style="color:#fcd34d;">${a.node}</span>
-        <span style="color:#64748b;margin:0 6px;">${a.symbol} ${a.aspect}</span>
-        <span style="color:#c4b5fd;">${a.planet}</span>
-        <span style="color:#475569;margin-left:6px;">orb ${a.orb}</span>
-      </div>
-    `).join('');
-
-    // 기존 노드 에스펙트 패널 제거 (중복 방지)
-    const existingNodePanel = document.getElementById('astroNodeAspectPanel');
-    if (existingNodePanel) existingNodePanel.remove();
-
-    const nodePanel = document.createElement('div');
-    nodePanel.id = 'astroNodeAspectPanel';
-    nodePanel.style.cssText = 'margin-top:12px;';
-    nodePanel.innerHTML = `
-      <div style="
-        background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-        border:1px solid rgba(251,191,36,.2);border-radius:16px;padding:16px 20px;
-      ">
-        <div style="font-size:12px;color:#fcd34d;letter-spacing:2px;margin-bottom:10px;">
-          ☊ 노드 에스펙트 (네이탈 행성)
-        </div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          ${aspectsHtml}
-        </div>
-      </div>
-    `;
-    panel.after(nodePanel);
-  }
-
   panel.style.display = "block";
 
   // 세컨더리 프로그레션 차트도 함께 렌더링
   renderAstroProgression(astroData);
+
+  // 나탈-나탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
+  // (renderAstroProgression 이후에 삽입해야 나탈 패널 바로 아래에 위치함)
+  {
+    const existingNatalAspectPanel = document.getElementById('astroNatalAspectPanel');
+    if (existingNatalAspectPanel) existingNatalAspectPanel.remove();
+
+    const aspectPanel = document.createElement('div');
+    aspectPanel.id = 'astroNatalAspectPanel';
+    aspectPanel.innerHTML = renderAspectAccordion(
+      astroData.natalAspectsFull, '나탈-나탈 에스펙트', '🔯', '#c4b5fd'
+    );
+    panel.after(aspectPanel);
+  }
 }
 
 /* =========================================================
@@ -684,23 +696,6 @@ function renderAstroProgression(astroData) {
       </div>
     `;
   }).join("");
-
-  // 프로그레션↔나탈 주요 에스펙트
-  const aspects = prog.aspectsToNatal || [];
-  const aspectsHtml = aspects.length > 0
-    ? aspects.map(a => `
-        <div style="
-          background:rgba(255,255,255,.04);border-radius:6px;
-          padding:6px 10px;font-size:11px;color:#94a3b8;
-          border-left:2px solid rgba(165,180,252,.4);
-        ">
-          <span style="color:#c4b5fd;">${a.progPlanet}</span>
-          <span style="color:#64748b;margin:0 4px;">${a.aspect}</span>
-          <span style="color:#94a3b8;">${a.natalPlanet}</span>
-          <span style="color:#475569;margin-left:6px;">orb ${a.orb > 0 ? '+' : ''}${a.orb}°</span>
-        </div>
-      `).join("")
-    : `<div style="color:#475569;font-size:12px;">현재 주요 에스펙트 없음</div>`;
 
   const panel = document.createElement("div");
   panel.id = "astroProgPanel";
@@ -790,12 +785,7 @@ function renderAstroProgression(astroData) {
       </div>
 
       <!-- 에스펙트 -->
-      <div style="margin-top:14px;">
-        <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">프로그레션 → 나탈 에스펙트</div>
-        <div style="display:flex;flex-direction:column;gap:4px;">
-          ${aspectsHtml}
-        </div>
-      </div>
+      ${renderAspectAccordion(prog.aspectsFull, '나탈-프로그레션 에스펙트', '🔭', '#a5b4fc')}
     </div>
   `;
 
@@ -1067,6 +1057,19 @@ function renderTodayPlanetPanel(todayData) {
   }).join("");
 
   panel.style.display = "block";
+
+  // 트랜짓-나탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
+  {
+    const existingTodayAspectPanel = document.getElementById('todayAspectPanel');
+    if (existingTodayAspectPanel) existingTodayAspectPanel.remove();
+
+    const aspectPanel = document.createElement('div');
+    aspectPanel.id = 'todayAspectPanel';
+    aspectPanel.innerHTML = renderAspectAccordion(
+      todayData.todayAspectsFull, '트랜짓-나탈 에스펙트', '🌅', '#fcd34d'
+    );
+    panel.after(aspectPanel);
+  }
 }
 
 /* =========================================================

@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     const {
       natal, natalAngles, todayTransit,
-      todayAspects = [], retrograde = {}, vocData = {},
+      todayAspectsFull = [], retrograde = {}, vocData = {},
       todayDate, meta
     } = todayData;
 
@@ -51,10 +51,11 @@ export default async function handler(req, res) {
         return `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
-    // ── 에스펙트 전체 (orb 기준 정렬)
-    const aspectStr = todayAspects
+    // ── 에스펙트 전체 (orb 기준 정렬, 행성+ASC/MC+북노드/릴리스 전체)
+    const aspectStr = todayAspectsFull
+      .slice()
       .sort((a, b) => a.orb - b.orb)
-      .map(a => `${a.transitPlanet} ${a.symbol} ${a.natalPlanet} (${a.aspect}, 오브 ${a.orb}°, ${a.applying ? '접근중' : '이탈중'})`)
+      .map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, 오브 ${a.orb}°, ${a.applying ? '접근중' : '이탈중'})`)
       .join('\n') || '(주요 에스펙트 없음)';
 
     // ── 역행 행성 문자열

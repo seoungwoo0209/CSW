@@ -18,11 +18,11 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, natalAspects = [], progression, meta, transits2026 = [], nodes, nodeAspects = [] } = astroData;
+    const { natal, angles, houses, natalAspectsFull = [], progression, meta, transits2026 = [], nodes } = astroData;
     const progPlanets = progression?.planets || {};
     const progAngles  = progression?.angles  || {};
     const progMeta    = progression?.meta    || {};
-    const progAspects = progression?.aspectsToNatal || [];
+    const progAspects = progression?.aspectsFull || [];
 
     // ── 행성 위치 문자열
     const PLANET_LABELS = [
@@ -64,12 +64,12 @@ export default async function handler(req, res) {
     ).join('\n');
 
     // ── 에스펙트 문자열 (AI 입력용)
-    const natalAspectStr = natalAspects.length
-      ? natalAspects.map(a => `${a.planet1} ${a.symbol} ${a.planet2} (${a.aspect})`).join('\n')
+    const natalAspectStr = natalAspectsFull.length
+      ? natalAspectsFull.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
       : '(주요 에스펙트 없음)';
 
     const progAspectStr = progAspects.length
-      ? progAspects.map(a => `${a.progPlanet} ${a.symbol} ${a.natalPlanet} (${a.aspect})`).join('\n')
+      ? progAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
       : '(주요 프로그레션 에스펙트 없음)';
 
     // ── 2026년 트랜짓 문자열
@@ -92,11 +92,6 @@ export default async function handler(req, res) {
         `릴리스(☋): ${nodes.south.sign} ${nodes.south.degree}°${nodes.south.minute}'`
       : '';
 
-    // ── 노드 에스펙트 문자열
-    const nodeAspectStr = nodeAspects.length
-      ? nodeAspects.map(a => `${a.node} ${a.symbol} ${a.planet} (${a.aspect}, orb ${a.orb})`).join('\n')
-      : '(노드 에스펙트 없음)';
-
     // ── 공통 분석 데이터 블록
     const baseData =
 `[분석 데이터]
@@ -115,11 +110,8 @@ ${planetStr}
 하우스 커스프:
 ${houseCusps}
 
-네이탈 주요 에스펙트:
+네이탈 주요 에스펙트 (행성+ASC/MC+북노드/릴리스 전체):
 ${natalAspectStr}
-
-달의 교점 에스펙트:
-${nodeAspectStr}
 
 [세컨더리 프로그레션] (기준일: ${progMeta.progDate || '현재'}, 나이 약 ${progMeta.ageYears || '?'}세)
 ${progPlanetStr}
