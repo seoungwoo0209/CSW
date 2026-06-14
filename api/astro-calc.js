@@ -91,6 +91,14 @@ export default async function handler(req, res) {
     const { northLon, southLon } = calcLunarNodes(jd);
     const nodeAspects = calcNodeAspects(northLon, southLon, planets);
 
+    // ── 프로그레션 북노드/릴리스 계산
+    const progY  = progUTC.getUTCFullYear();
+    const progM  = progUTC.getUTCMonth() + 1;
+    const progD  = progUTC.getUTCDate();
+    const progHr = progUTC.getUTCHours() + progUTC.getUTCMinutes() / 60;
+    const progJD = calcJulianDay(progY, progM, progD, progHr);
+    const { northLon: progNorthLon, southLon: progSouthLon } = calcLunarNodes(progJD);
+
     // 사인 변환
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
                    '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
@@ -144,6 +152,10 @@ export default async function handler(req, res) {
         angles:         { asc: toSignInfo(progAsc), mc: toSignInfo(progMc) },
         houses:         progHouses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
         aspectsToNatal: progToNatalAspects,
+        nodes: {
+          north: { ...toSignInfo(progNorthLon), house: getNodeHouse(progNorthLon, houses) },
+          south: { ...toSignInfo(progSouthLon), house: getNodeHouse(progSouthLon, houses) },
+        },
       },
       meta: {
         name:        name || '',
