@@ -124,13 +124,13 @@ function calcLunarNodes(birthDate, birthTime, utcOffset) {
   const offset         = utcOffset ?? 9;
   const utcHour        = hh + mi / 60 - offset;
 
-  // JD 계산 (app.js 내 기존 calcJD와 동일 로직)
   function _jd(y, m, d, h) {
     if (m <= 2) { y--; m += 12; }
     const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
     return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + h / 24 + B - 1524.5;
   }
   function _norm(a) { return ((a % 360) + 360) % 360; }
+  function _rad(d)  { return d * Math.PI / 180; }
   function _toSignInfo(lon) {
     const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
                    '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
@@ -147,9 +147,39 @@ function calcLunarNodes(birthDate, birthTime, utcOffset) {
   const jd = _jd(yyyy, mm, dd, utcHour);
   const T  = (jd - 2451545.0) / 36525.0;
 
-  // 평균 북노드 황경 (IAU 공식)
-  const northLon = _norm(125.04452 - 1934.136261 * T + 0.0020708 * T * T);
-  const southLon = _norm(northLon + 180);
+  // 달 궤도 요소
+  const D   = _norm(297.85036  + 445267.111480 * T - 0.0019142 * T * T);
+  const M   = _norm(357.52772  + 35999.050340  * T - 0.0001603 * T * T);
+  const Mp  = _norm(134.96298  + 477198.867398 * T + 0.0086972 * T * T);
+  const F   = _norm(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
+  const omega = _norm(125.04452 - 1934.136261  * T + 0.0020708 * T * T);
+
+  // ── 트루 북노드 (Meeus 섭동 보정)
+  const northCorr =
+    -1.4979 * Math.sin(_rad(2 * (D - F))) +
+    -0.1500 * Math.sin(_rad(M)) +
+    -0.1226 * Math.sin(_rad(2 * D)) +
+     0.1176 * Math.sin(_rad(2 * F)) +
+    -0.0801 * Math.sin(_rad(2 * (Mp - F)));
+  const northLon = _norm(omega + northCorr);
+
+  // ── 릴리스 = 달의 근지점 (원지점+180°)
+  // astro-seek 기준: 릴리스는 남교점이 아닌 달 근지점
+  const bml = _norm(
+    83.3532465 + 4069.0137287 * T - 0.0103200 * T * T
+    - T * T * T / 80053 + T * T * T * T / 18999000
+  );
+  const perigeeCorr =
+     0.4392 * Math.sin(_rad(2 * D - Mp)) +
+     0.0684 * Math.sin(_rad(Mp)) +
+     0.0456 * Math.sin(_rad(2 * D - M)) +
+     0.0426 * Math.sin(_rad(2 * D)) +
+     0.0212 * Math.sin(_rad(2 * Mp)) +
+    -0.0189 * Math.sin(_rad(D)) +
+     0.0144 * Math.sin(_rad(6 * D - Mp)) +
+     0.0113 * Math.sin(_rad(4 * D - Mp)) +
+     0.0047 * Math.sin(_rad(2 * D + Mp));
+  const southLon = _norm(bml + perigeeCorr + 180);
 
   const north = _toSignInfo(northLon);
   const south = _toSignInfo(southLon);
