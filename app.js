@@ -119,6 +119,8 @@ function runAll() {
    평균 달의 교점(Mean Node) 기반
    ========================================================= */
 function calcLunarNodes(birthDate, birthTime, utcOffset) {
+  // 입력값 없으면 계산 중단
+  if (!birthDate || !birthTime) return null;
   const [yyyy, mm, dd] = birthDate.split('-').map(Number);
   const [hh, mi]       = birthTime.split(':').map(Number);
   const offset         = utcOffset ?? 9;
@@ -267,17 +269,16 @@ async function runAstroCalc() {
     const cityName2 = getCitySelectValue();
     const { utcOffset: uo2 } = getCityCoords(cityName2);
     const nodesResult = calcLunarNodes(birthDate, birthTime, uo2);
-    astroData.nodes = { north: nodesResult.north, south: nodesResult.south };
-
-    // 노드 ↔ 네이탈 행성 에스펙트 계산
-    // natal 행성의 longitude 필드로 계산 (toSignInfo 반환 구조)
-    const natalForAspect = {};
-    if (astroData.natal) {
-      Object.entries(astroData.natal).forEach(([k, v]) => {
-        natalForAspect[k] = { longitude: v.longitude };
-      });
+    if (nodesResult) {
+      astroData.nodes = { north: nodesResult.north, south: nodesResult.south };
+      const natalForAspect = {};
+      if (astroData.natal) {
+        Object.entries(astroData.natal).forEach(([k, v]) => {
+          natalForAspect[k] = { longitude: v.longitude };
+        });
+      }
+      astroData.nodeAspects = nodesResult._calcNodeAspects(natalForAspect);
     }
-    astroData.nodeAspects = nodesResult._calcNodeAspects(natalForAspect);
 
     window.AstroResult = astroData;
 
@@ -635,6 +636,9 @@ function renderAstroNatal(astroData) {
   const grid  = _$("astroNatalGrid");
   if (!panel || !grid) return;
 
+  // 중복 렌더링 방지 — grid 초기화
+  grid.innerHTML = "";
+
   const PLANET_KR = {
     sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
     mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
@@ -713,7 +717,12 @@ function renderAstroNatal(astroData) {
       </div>
     `).join('');
 
+    // 기존 노드 에스펙트 패널 제거 (중복 방지)
+    const existingNodePanel = document.getElementById('astroNodeAspectPanel');
+    if (existingNodePanel) existingNodePanel.remove();
+
     const nodePanel = document.createElement('div');
+    nodePanel.id = 'astroNodeAspectPanel';
     nodePanel.style.cssText = 'margin-top:12px;';
     nodePanel.innerHTML = `
       <div style="
@@ -1477,6 +1486,22 @@ async function requestAstroReading() {
 
       const astroData = await calcRes.json();
       if (!calcRes.ok || astroData.error) throw new Error(astroData.error || "천문 계산 오류");
+
+      // 노드 계산 붙이기
+      const _cityName = getCitySelectValue();
+      const { utcOffset: _uo } = getCityCoords(_cityName);
+      const _nodes = calcLunarNodes(birthDate, birthTime, _uo);
+      if (_nodes) {
+        astroData.nodes = { north: _nodes.north, south: _nodes.south };
+        const _natalForAspect = {};
+        if (astroData.natal) {
+          Object.entries(astroData.natal).forEach(([k, v]) => {
+            _natalForAspect[k] = { longitude: v.longitude };
+          });
+        }
+        astroData.nodeAspects = _nodes._calcNodeAspects(_natalForAspect);
+      }
+
       window.AstroResult = astroData;
       renderAstroNatal(astroData);
     }
