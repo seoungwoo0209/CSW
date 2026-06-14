@@ -596,15 +596,23 @@ function calcLunarNodes(jd) {
   const F     = norm360(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
   const omega = norm360(125.04452  - 1934.136261   * T + 0.0020708 * T * T);
 
+  // 트루 북노드
   const northCorr =
     -1.4979 * Math.sin(rad(2 * (D - F))) +
     -0.1500 * Math.sin(rad(M)) +
     -0.1226 * Math.sin(rad(2 * D)) +
      0.1176 * Math.sin(rad(2 * F)) +
     -0.0801 * Math.sin(rad(2 * (Mp - F)));
-
   const northLon = norm360(omega + northCorr);
-  const southLon = norm360(northLon + 180);
+
+  // 릴리스 = 달의 근지점 (Black Moon Lilith + 180°)
+  // astro-seek 기준: 릴리스는 남노드가 아닌 달 근지점
+  const bml = norm360(
+    83.3532465 + 4069.0137287 * T - 0.0103200 * T * T
+    - T * T * T / 80053 + T * T * T * T / 18999000
+  );
+  const southLon = norm360(bml + 180);
+
   return { northLon, southLon };
 }
 
