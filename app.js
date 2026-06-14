@@ -173,15 +173,6 @@ async function runAstroCalc() {
 }
 
 /* =========================================================
-   도시 Select 값 읽기
-   ========================================================= */
-function getCitySelectValue() {
-  const el = _$("birthCity");
-  if (!el) return "서울";
-  return el.value || "서울";
-}
-
-/* =========================================================
    도시명 → 위도/경도/utcOffset
    ========================================================= */
 const CITY_COORDS = {
@@ -506,30 +497,7 @@ function buildCitySelect() {
   if (input) input.value = '서울';
   const hidden = _$('birthCity');
   if (hidden) hidden.value = '서울';
-
-  const groups = [
-    { label: "서울 자치구", cities: ["서울","종로구","중구(서울)","용산구","성동구","광진구","동대문구","중랑구","성북구","강북구","도봉구","노원구","은평구","서대문구","마포구","양천구","강서구(서울)","구로구","금천구","영등포구","동작구","관악구","서초구","강남구","송파구","강동구"] },
-    { label: "경기도", cities: ["수원","성남","고양","용인","부천","안산","안양","남양주","화성","평택","의정부","파주","김포","광주(경기)","시흥","군포","하남","오산","이천","안성","의왕","양주","구리","포천","양평","동두천","과천","가평","연천","여주"] },
-    { label: "인천", cities: ["인천","부평구","남동구","서구(인천)","연수구","미추홀구","계양구","강화"] },
-    { label: "강원도", cities: ["춘천","원주","강릉","동해","태백","속초","삼척","홍천","횡성","영월","평창","정선","철원","화천","양구","인제","고성(강원)","양양"] },
-    { label: "충청북도", cities: ["청주","충주","제천","보은","옥천","영동","증평","진천","괴산","음성","단양"] },
-    { label: "충청남도/대전/세종", cities: ["대전","세종","천안","공주","보령","아산","서산","논산","계룡","당진","금산","부여","서천","청양","홍성","예산","태안","유성구","서구(대전)"] },
-    { label: "전라북도", cities: ["전주","군산","익산","정읍","남원","김제","완주","진안","무주","장수","임실","순창","고창","부안"] },
-    { label: "광주/전라남도", cities: ["광주","광산구","북구(광주)","목포","여수","순천","나주","광양","담양","곡성","구례","고흥","보성","화순","장흥","강진","해남","영암","무안","함평","영광","장성","완도","진도","신안"] },
-    { label: "경상북도/대구", cities: ["대구","포항","경주","김천","안동","구미","영주","영천","상주","문경","경산","의성","청송","영양","영덕","청도","고령","성주","칠곡","예천","봉화","울진","울릉","달서구","북구(대구)","수성구","동구(대구)","달성"] },
-    { label: "경상남도/울산/부산", cities: ["부산","울산","창원","진주","통영","사천","김해","밀양","거제","양산","의령","함안","창녕","고성(경남)","남해","하동","산청","함양","거창","합천","울주","해운대구","사상구","금정구","북구(부산)","강서구(부산)","기장"] },
-    { label: "제주", cities: ["제주","서귀포"] },
-    { label: "아시아", cities: ["도쿄","오사카","베이징","상하이","홍콩","타이베이","싱가포르","방콕","하노이","호치민","자카르타","마닐라","쿠알라룸푸르","뭄바이","델리"] },
-    { label: "유럽", cities: ["런던","파리","베를린","로마","마드리드","암스테르담","취리히","빈","모스크바"] },
-    { label: "북미", cities: ["뉴욕","LA","시카고","샌프란시스코","시애틀","라스베이거스","달라스","마이애미","워싱턴DC","토론토","밴쿠버"] },
-    { label: "오세아니아/기타", cities: ["시드니","멜버른","오클랜드","두바이","상파울루"] },
-  ];
-
-  el.innerHTML = groups.map(g => `
-    <optgroup label="${g.label}">
-      ${g.cities.map(c => `<option value="${c}"${c === "서울" ? " selected" : ""}>${c}</option>`).join("")}
-    </optgroup>
-  `).join("");
+  // select 엘리먼트는 현재 HTML에 없으므로 더 이상 조작하지 않음
 }
 
 /* =========================================================
@@ -587,6 +555,22 @@ function renderAstroNatal(astroData) {
 /* =========================================================
    세컨더리 프로그레션 차트 렌더링
    ========================================================= */
+function calcMidpoint(lonA, lonB) {
+  if (lonA == null || lonB == null) return '-';
+  const SIGNS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+  const a = ((lonA % 360) + 360) % 360;
+  const b = ((lonB % 360) + 360) % 360;
+  let diff = b - a;
+  if (diff > 180)  diff -= 360;
+  if (diff < -180) diff += 360;
+  const mid = ((a + diff / 2) + 360) % 360;
+  const signIdx = Math.floor(mid / 30);
+  const deg = mid % 30;
+  const d = Math.floor(deg);
+  const m = Math.floor((deg - d) * 60);
+  return `${SIGNS[signIdx]} ${d}°${String(m).padStart(2,'0')}'`;
+}
+
 function renderAstroProgression(astroData) {
   const prog = astroData.progression;
   if (!prog) return;
@@ -690,6 +674,35 @@ function renderAstroProgression(astroData) {
         </div>
       </div>
 
+      <!-- 미드포인트 -->
+      <div style="margin-top:12px;">
+        <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">미드 포인트</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#94a3b8;letter-spacing:1px;margin-bottom:8px;">네이탈 행성</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(astroData.angles?.asc?.longitude, astroData.angles?.mc?.longitude)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(natal.sun?.longitude, natal.moon?.longitude)}</div>
+            </div>
+          </div>
+          <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#a78bfa;letter-spacing:1px;margin-bottom:8px;">프로그레션</div>
+            <div style="margin-bottom:6px;">
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.angles?.asc?.longitude, prog.angles?.mc?.longitude)}</div>
+            </div>
+            <div>
+              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.planets?.sun?.longitude, prog.planets?.moon?.longitude)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- 에스펙트 -->
       <div style="margin-top:14px;">
         <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">프로그레션 → 나탈 에스펙트</div>
@@ -774,11 +787,11 @@ function calcProgTimeline(astroData) {
   const now        = new Date();
   const currentAge = (now - birthUTC) / (365.25 * 86400000);
 
-  // 0~90세 1년 단위 스캔 → 사인/하우스 변화 시점 기록
+  // 0~90세 0.1년 단위 스캔 → 사인/하우스 변화 시점 기록
   const chapters = [];
   let prevSign = -1, prevHouse = -1;
 
-  for (let age = 0; age <= 90; age++) {
+  for (let age = 0; age <= 90; age = Math.round((age + 0.1) * 10) / 10) {
     const progJD  = natalJD + age;
     const T       = (progJD - 2451545.0) / 36525.0;
     const sunLon  = calcSun(T);
@@ -786,18 +799,17 @@ function calcProgTimeline(astroData) {
     const house   = getHouse(sunLon);
 
     if (signIdx !== prevSign || house !== prevHouse) {
-      // 정밀 시점 이분법 탐색
-      let lo = Math.max(0, age - 1), hi = age;
+      // 이분법으로 정확한 시점 탐색
+      let lo = Math.max(0, age - 0.1), hi = age;
       for (let i = 0; i < 60; i++) {
         const mid   = (lo + hi) / 2;
-        const pJD   = natalJD + mid;
-        const pT    = (pJD - 2451545.0) / 36525.0;
+        const pT    = (natalJD + mid - 2451545.0) / 36525.0;
         const pLon  = calcSun(pT);
         const pSign = Math.floor(pLon / 30);
         const pH    = getHouse(pLon);
         if (pSign === signIdx && pH === house) hi = mid;
         else lo = mid;
-        if (hi - lo < 0.01) break;
+        if (hi - lo < 0.001) break;
       }
       const exactAge  = (lo + hi) / 2;
       const exactYear = Math.floor(birthYear + exactAge);
@@ -1361,12 +1373,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!el) return;
       el.addEventListener("input",  () => {
         runAll();
-        // 핵심 입력값 변경 시 AstroResult 무효화 → 재계산
-        if (["birthDate","birthTime","birthCity"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
       el.addEventListener("change", () => {
         runAll();
-        if (["birthDate","birthTime","birthCity"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
     });
 
