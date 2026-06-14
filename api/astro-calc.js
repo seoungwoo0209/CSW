@@ -129,8 +129,8 @@ export default async function handler(req, res) {
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
       natalAspects,
       nodes: {
-        north: toSignInfo(northLon),
-        south: toSignInfo(southLon),
+        north: { ...toSignInfo(northLon), house: getNodeHouse(northLon, houses) },
+        south: { ...toSignInfo(southLon), house: getNodeHouse(southLon, houses) },
       },
       nodeAspects,
       transits2026,
@@ -582,6 +582,19 @@ function calcAspectsProgToNatal(progPlanets, natalPlanets, natalAngles) {
     }
   }
   return aspects;
+}
+
+/* =========================================================
+   노드 하우스 배정 헬퍼
+   ========================================================= */
+function getNodeHouse(lon, houses) {
+  const n = norm360(lon);
+  for (let i = 0; i < 12; i++) {
+    const s = houses[i], e = houses[(i + 1) % 12];
+    if (s > e) { if (n >= s || n < e) return i + 1; }
+    else       { if (n >= s && n < e) return i + 1; }
+  }
+  return 12;
 }
 
 /* =========================================================
