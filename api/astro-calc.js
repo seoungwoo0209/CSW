@@ -609,25 +609,15 @@ function getNodeHouse(lon, houses) {
 }
 
 /* =========================================================
-   북노드/릴리스 계산 (트루 노드, Meeus 섭동 보정)
+   북노드/릴리스 계산 (평균 노드, Mean Node)
    행성과 동일한 JD 기준으로 계산 → 에스펙트 정확도 보장
    ========================================================= */
 function calcLunarNodes(jd) {
   const T     = (jd - 2451545.0) / 36525.0;
-  const D     = norm360(297.85036  + 445267.111480 * T - 0.0019142 * T * T);
-  const M     = norm360(357.52772  + 35999.050340  * T - 0.0001603 * T * T);
-  const Mp    = norm360(134.96298  + 477198.867398 * T + 0.0086972 * T * T);
-  const F     = norm360(93.27191   + 483202.017538 * T - 0.0036825 * T * T);
   const omega = norm360(125.04452  - 1934.136261   * T + 0.0020708 * T * T);
 
-  // 트루 북노드
-  const northCorr =
-    -1.4979 * Math.sin(rad(2 * (D - F))) +
-    -0.1500 * Math.sin(rad(M)) +
-    -0.1226 * Math.sin(rad(2 * D)) +
-     0.1176 * Math.sin(rad(2 * F)) +
-    -0.0801 * Math.sin(rad(2 * (Mp - F)));
-  const northLon = norm360(omega + northCorr);
+  // 평균 북노드 (Mean Node)
+  const northLon = omega;
 
   // 릴리스 = 달의 근지점 (Black Moon Lilith + 180°)
   // astro-seek 기준: 릴리스는 남노드가 아닌 달 근지점
