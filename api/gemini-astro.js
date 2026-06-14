@@ -18,7 +18,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, natalAspects = [], progression, meta, transits2026 = [] } = astroData;
+    const { natal, angles, houses, natalAspects = [], progression, meta, transits2026 = [], nodes } = astroData;
     const progPlanets = progression?.planets || {};
     const progAngles  = progression?.angles  || {};
     const progMeta    = progression?.meta    || {};
@@ -86,6 +86,12 @@ export default async function handler(req, res) {
         }).join('\n')
       : '(트랜짓 데이터 없음)';
 
+    // ── 노드 문자열
+    const nodesStr = nodes
+      ? `북노드(☊): ${nodes.north.sign} ${nodes.north.degree}°${nodes.north.minute}'\n` +
+        `릴리스(☋): ${nodes.south.sign} ${nodes.south.degree}°${nodes.south.minute}'`
+      : '';
+
     // ── 공통 분석 데이터 블록
     const baseData =
 `[분석 데이터]
@@ -96,6 +102,7 @@ export default async function handler(req, res) {
 
 어센던트(ASC): ${angles.asc.sign} ${angles.asc.degree}°${angles.asc.minute}'
 MC(천정): ${angles.mc.sign} ${angles.mc.degree}°${angles.mc.minute}'
+${nodesStr ? `\n달의 교점:\n${nodesStr}` : ''}
 
 네이탈 행성 위치:
 ${planetStr}
@@ -158,6 +165,7 @@ ${question}
 · 주요 하우스(1·4·7·10하우스)에 있는 행성들의 의미
 · 네이탈 에스펙트 중 가장 강한 것들이 만드는 인생의 테마
 · 타고난 강점, 반복되는 과제, 인생에서 중요한 관계·직업·성장 방향
+· 북노드(인생의 카르마 방향)와 릴리스(반복되는 전생 패턴)가 삶의 테마에 미치는 영향
 300자 이상 충분히 써주세요.
 
 ## 📅 2026년 운세
