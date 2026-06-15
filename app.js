@@ -1773,16 +1773,20 @@ async function renderMoonPhasesPanel(astroData) {
   panel.id = 'astroMoonPhasesPanel';
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
-    <div style="
+    <details style="
       background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
       border:1px solid rgba(196,181,253,.2);border-radius:16px;padding:20px;
     ">
-      <div style="font-size:12px;color:#c4b5fd;letter-spacing:2px;margin-bottom:4px;">🌑🌕 2026 신월·만월 캘린더</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
-        2026년 신월/만월(및 일식/월식) 25회 — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
+      <summary id="astroMoonPhasesTitle" style="cursor:pointer;font-size:12px;color:#c4b5fd;letter-spacing:2px;">
+        🌑🌕 신월·만월 캘린더 — 클릭하여 펼치기
+      </summary>
+      <div style="margin-top:12px;">
+        <div id="astroMoonPhasesDesc" style="font-size:11px;color:#475569;margin-bottom:12px;">
+          신월/만월(및 일식/월식) — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
+        </div>
+        <div id="astroMoonPhasesRows" style="font-size:12px;color:#94a3b8;">⏳ 신월/만월 계산 중...</div>
       </div>
-      <div id="astroMoonPhasesRows" style="font-size:12px;color:#94a3b8;">⏳ 신월/만월 계산 중...</div>
-    </div>
+    </details>
   `;
 
   // 루나리턴 패널 바로 아래 삽입
@@ -1814,6 +1818,11 @@ async function renderMoonPhasesPanel(astroData) {
       aspectIcon1: '🌑',
       aspectIcon2: '🔗',
     };
+
+    const titleEl = panel.querySelector('#astroMoonPhasesTitle');
+    const descEl  = panel.querySelector('#astroMoonPhasesDesc');
+    if (titleEl) titleEl.textContent = `🌑🌕 ${data.year} 신월·만월 캘린더 — 클릭하여 펼치기`;
+    if (descEl) descEl.textContent = `${data.year}년 신월/만월(및 일식/월식) ${data.events.length}회 — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)`;
 
     if (rowsEl) {
       rowsEl.innerHTML = data.events.map(ev => renderMoonPhaseEventRow(ev, astroData, mpOpts)).join("");

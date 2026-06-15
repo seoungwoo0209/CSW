@@ -1,9 +1,11 @@
 /* =========================================================
-   api/astro-moon-phases.js  v1.0
-   2026년 신월/만월(+개기/부분 일식·월식) 캘린더 — ephemeris 패키지로 정밀 계산
-   - 25개 이벤트의 "날짜/달의 정확한 황경"만 고정값으로 사용 (2026년 천문 사실)
-   - 종류(신월/만월/일식/월식)는 그 시각 태양 황경과 비교해 자동 판별
-     (차이≈0°면 신월, ≈180°면 만월) + 2026년 실제 식(eclipse) 4개 날짜를 표시
+   api/astro-moon-phases.js  v2.0
+   신월/만월(+개기/부분 일식·월식) 캘린더 — ephemeris 패키지로 연도 무관 직접 탐색
+   - (KST 기준) 올해 1/1~12/31 사이의 신월/만월을 ephemeris로 직접 탐색
+     (태양-달 황경차를 2일 간격으로 스캔 → 0°/180° 교차 구간을 이분탐색으로 정밀화)
+   - 종류(신월/만월/일식/월식)는 그 시각 달의 황위(ecliptic latitude)로 판별
+     (|황위| < 1.5° 이면 달이 노드 근처 → 일식/월식 가능성. 2026년 실제 일식·월식
+     4개 날짜로 검증: 해당 4개는 0.36°~0.93°, 나머지 21개는 모두 1.68° 이상)
    - 달의 "하우스"는 나탈 하우스 휠에 겹쳐서(바이휠) 배정 (솔라리턴/루나리턴과 동일 방식)
    - "네이탈 행성과의 애스펙트"는 그 시각 달의 위치 vs 나탈 10행성+ASC/MC/IC/DSC/북노드/릴리스
      (카이론 제외) 중 0° 컨정션, 오브 3° 이내만 표시
@@ -13,37 +15,8 @@
 
 import Ephemeris from 'ephemeris';
 
-// 2026년 신월/만월 25개: 날짜/시각(KST), 그 시각 달의 정확한 황경(절대 경도, 0~360)
-const EVENTS = [
-  { date: '2026-01-03T19:02:00+09:00', moonLon: 103.0167 },
-  { date: '2026-01-19T04:51:00+09:00', moonLon: 298.7167 },
-  { date: '2026-02-02T07:08:00+09:00', moonLon: 133.05 },
-  { date: '2026-02-17T21:00:00+09:00', moonLon: 328.8167 },
-  { date: '2026-03-03T20:37:00+09:00', moonLon: 162.8833 },
-  { date: '2026-03-19T10:23:00+09:00', moonLon: 358.4333 },
-  { date: '2026-04-02T11:11:00+09:00', moonLon: 192.3333 },
-  { date: '2026-04-17T20:51:00+09:00', moonLon: 27.4667 },
-  { date: '2026-05-02T02:22:00+09:00', moonLon: 221.3333 },
-  { date: '2026-05-17T05:00:00+09:00', moonLon: 55.95 },
-  { date: '2026-05-31T17:44:00+09:00', moonLon: 249.9167 },
-  { date: '2026-06-15T11:53:00+09:00', moonLon: 84.0333 },
-  { date: '2026-06-30T08:56:00+09:00', moonLon: 278.2333 },
-  { date: '2026-07-14T18:43:00+09:00', moonLon: 111.9667 },
-  { date: '2026-07-29T23:35:00+09:00', moonLon: 306.4833 },
-  { date: '2026-08-13T02:36:00+09:00', moonLon: 140.0167 },
-  { date: '2026-08-28T13:18:00+09:00', moonLon: 334.8833 },
-  { date: '2026-09-11T12:26:00+09:00', moonLon: 168.4167 },
-  { date: '2026-09-27T01:48:00+09:00', moonLon: 3.6 },
-  { date: '2026-10-11T00:49:00+09:00', moonLon: 197.35 },
-  { date: '2026-10-26T13:11:00+09:00', moonLon: 32.75 },
-  { date: '2026-11-09T16:01:00+09:00', moonLon: 226.8667 },
-  { date: '2026-11-24T23:53:00+09:00', moonLon: 62.3167 },
-  { date: '2026-12-09T09:51:00+09:00', moonLon: 256.9333 },
-  { date: '2026-12-24T10:27:00+09:00', moonLon: 92.2167 },
-];
-
-// 2026년 실제 일식/월식 날짜 (KST 기준)
-const ECLIPSE_DATES = new Set(['2026-02-17', '2026-03-03', '2026-08-13', '2026-08-28']);
+// |달의 황위| 가 이 값보다 작으면 노드 근접 → 일식/월식으로 판정
+const ECLIPSE_LAT_THRESHOLD = 1.5;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -73,25 +46,26 @@ export default async function handler(req, res) {
     const aLng    = (appLng != null) ? appLng : 126.9780;
     const aOffset = (appUtcOffset != null) ? appUtcOffset : 9;
 
-    const events = EVENTS.map(ev => {
-      const date = new Date(ev.date);
+    // KST 기준 올해의 신월/만월을 직접 탐색
+    const nowKST = new Date(Date.now() + 9 * 3600000);
+    const year   = nowKST.getUTCFullYear();
+    const rawEvents = findMoonPhaseEvents(year, aLng, aLat);
+
+    const events = rawEvents.map(({ date, kind, moonLon, moonLat }) => {
       const jd = calcJulianDay(
         date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate(),
         date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600
       );
-      const T = (jd - 2451545.0) / 36525.0;
-      const sunLon = calcSun(T);
 
-      const isNewMoon = angularDistance(ev.moonLon, sunLon) < 90;
-      const isEclipse = ECLIPSE_DATES.has(ev.date.slice(0, 10));
-      const type = isNewMoon
+      const isEclipse = Math.abs(moonLat) < ECLIPSE_LAT_THRESHOLD;
+      const type = kind === 'new'
         ? (isEclipse ? 'solarEclipse' : 'newMoon')
         : (isEclipse ? 'lunarEclipse' : 'fullMoon');
 
-      const moonHouse = getNodeHouse(ev.moonLon, natalHouseLons);
+      const moonHouse = getNodeHouse(moonLon, natalHouseLons);
 
       const conjunctions = conjTargets
-        .map(p => ({ point: p.label, dist: angularDistance(ev.moonLon, p.lon) }))
+        .map(p => ({ point: p.label, dist: angularDistance(moonLon, p.lon) }))
         .filter(c => c.dist <= 3)
         .sort((a, b) => a.dist - b.dist)
         .map(c => ({
@@ -121,7 +95,7 @@ export default async function handler(req, res) {
       return {
         dateLocal: new Date(date.getTime() + aOffset * 3600000).toISOString(),
         type,
-        moon: { ...toSignInfo(ev.moonLon), house: moonHouse },
+        moon: { ...toSignInfo(moonLon), house: moonHouse },
         conjunctions,
         planets: planetsResult,
         angles: { asc: toSignInfo(asc), mc: toSignInfo(mc) },
@@ -134,7 +108,7 @@ export default async function handler(req, res) {
       };
     });
 
-    return res.status(200).json({ events });
+    return res.status(200).json({ year, events });
 
   } catch (error) {
     console.error('astro-moon-phases error:', error);
@@ -155,15 +129,67 @@ function calcJulianDay(y, m, d, utcHour = 0) {
   return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + utcHour / 24 + B - 1524.5;
 }
 
-// VSOP87 축약 태양 황경 (app.js 프로그레션 타임라인과 동일 공식) — 신월/만월 판별용
-function calcSun(T) {
-  const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
-  const M  = 357.52911 + 35999.05029 * T - 0.0001537 * T * T;
-  const mr = rad(M);
-  const C  = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(mr)
-           + (0.019993 - 0.000101 * T) * Math.sin(2 * mr)
-           + 0.000289 * Math.sin(3 * mr);
-  return norm360(L0 + C);
+// 신월/만월 탐색: 태양-달 황경차(elongation)를 2일 간격으로 스캔하여
+// 0°(신월)/180°(만월) 교차 구간을 찾고 24회 이분탐색으로 분 단위까지 정밀화.
+// moonLat(달의 황위)은 일식/월식 판별용 — geometric.latitude가 실제 황위.
+function findMoonPhaseEvents(year, lng, lat) {
+  function sample(date) {
+    const raw = Ephemeris.getAllPlanets(date, lng, lat, 0);
+    return {
+      moonLon: raw.observed.moon.apparentLongitudeDd,
+      sunLon:  raw.observed.sun.apparentLongitudeDd,
+      moonLat: raw.observed.moon.raw.position.geometric.latitude,
+    };
+  }
+
+  const stepDays = 2;
+  const start = new Date(Date.UTC(year - 1, 11, 10));
+  const end   = new Date(Date.UTC(year + 1, 0, 20));
+
+  const events = [];
+  let prevT = start;
+  let prevS = sample(prevT);
+  let prevElong = norm360(prevS.moonLon - prevS.sunLon);
+
+  for (let t = new Date(start.getTime() + stepDays * 86400000); t <= end; t = new Date(t.getTime() + stepDays * 86400000)) {
+    const s = sample(t);
+    const elong = norm360(s.moonLon - s.sunLon);
+
+    let kind = null;
+    if (elong < prevElong - 180) {
+      kind = 'new';  // 360° -> 0° 래핑
+    } else if (prevElong < 180 && elong >= 180) {
+      kind = 'full'; // 180° 교차
+    }
+
+    if (kind) {
+      let lo = prevT.getTime(), hi = t.getTime();
+      const f = (timeMs) => {
+        const samp = sample(new Date(timeMs));
+        const e = norm360(samp.moonLon - samp.sunLon);
+        return kind === 'new' ? (e > 180 ? e - 360 : e) : (e - 180);
+      };
+      let fLo = f(lo);
+      for (let i = 0; i < 24; i++) {
+        const mid = (lo + hi) / 2;
+        const fm = f(mid);
+        if ((fm < 0) === (fLo < 0)) { lo = mid; fLo = fm; }
+        else { hi = mid; }
+      }
+      const evDate = new Date((lo + hi) / 2);
+      const evSample = sample(evDate);
+      events.push({ date: evDate, kind, moonLon: evSample.moonLon, moonLat: evSample.moonLat });
+    }
+
+    prevT = t;
+    prevElong = elong;
+  }
+
+  // KST 기준으로 해당 연도(1/1~12/31)에 속하는 이벤트만 반환
+  return events.filter(ev => {
+    const kst = new Date(ev.date.getTime() + 9 * 3600000);
+    return kst.getUTCFullYear() === year;
+  });
 }
 
 const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
