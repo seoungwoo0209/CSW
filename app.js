@@ -799,6 +799,7 @@ function renderAstroProgression(astroData) {
   renderProgTimeline(astroData);
   renderProgMoonTimeline(astroData);
   renderSaturnReturnPanel(astroData);
+  renderSolarReturnPanel(astroData);
 }
 
 /* =========================================================
@@ -1414,6 +1415,147 @@ function renderSaturnReturnPanel(astroData) {
   const progPanel         = document.getElementById("astroProgPanel");
   const anchor = moonTimelinePanel || sunTimelinePanel || progPanel;
   if (anchor) anchor.after(panel);
+}
+
+/* =========================================================
+   솔라리턴 적용 도시 선택 (기본값: 출생 도시)
+   ========================================================= */
+let _solarReturnCity = null;
+
+function filterSolarCityList(val) {
+  const dropdown = _$('solarReturnCityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectSolarCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showSolarCityList() {
+  const input = _$('solarReturnCityInput');
+  if (input) filterSolarCityList(input.value);
+}
+function hideSolarCityList() {
+  const d = _$('solarReturnCityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectSolarCity(cityName) {
+  _solarReturnCity = cityName;
+  hideSolarCityList();
+  if (window.AstroResult) renderSolarReturnPanel(window.AstroResult);
+}
+
+/* =========================================================
+   솔라리턴 패널 렌더링
+   ========================================================= */
+function buildSolarReturnRowsHtml(data) {
+  const pad2    = n => String(n).padStart(2, '0');
+  const fmtDate = iso => {
+    const d = new Date(iso);
+    return `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  };
+
+  const rows = [
+    { label: '현재 솔라리턴', tag: '현재', item: data.current },
+    { label: '다음 솔라리턴', tag: null,   item: data.next },
+  ];
+
+  return rows.map(({ label, tag, item }) => {
+    const asc = item.asc;
+    return `
+      <div style="
+        display:flex;justify-content:space-between;align-items:center;gap:12px;
+        background:${tag ? 'rgba(253,224,71,.10)' : 'rgba(255,255,255,.03)'};
+        border:1px solid ${tag ? 'rgba(253,224,71,.25)' : 'rgba(255,255,255,.06)'};
+        border-radius:8px;padding:10px 14px;margin-bottom:6px;
+      ">
+        <div>
+          <div style="font-size:12px;color:${tag ? '#fde047' : '#e2e8f0'};font-weight:${tag ? 700 : 600};">
+            ${label}${tag ? ` <span style="font-size:10px;background:rgba(253,224,71,.25);border-radius:4px;padding:1px 5px;">${tag}</span>` : ''}
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:2px;">만 ${item.age}세 · ASC ${asc.sign} ${asc.degree}°${asc.minute}'</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap;">
+          <div style="font-size:13px;color:#fde047;font-weight:700;">${fmtDate(item.dateLocal)}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function renderSolarReturnPanel(astroData) {
+  const existing = document.getElementById("astroSolarReturnPanel");
+  if (existing) existing.remove();
+
+  const meta = astroData.meta;
+  if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
+
+  const cityName = _solarReturnCity || getCitySelectValue();
+  const { lat: srLat, lng: srLng, utcOffset: srUtcOffset } = getCityCoords(cityName);
+
+  const panel = document.createElement('div');
+  panel.id = 'astroSolarReturnPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(253,224,71,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#fde047;letter-spacing:2px;margin-bottom:4px;">☀️ 솔라리턴</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
+        트랜짓 태양이 나탈 태양 위치로 돌아오는 시점의 어센던트
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">솔라리턴에 적용할 도시</label>
+        <div style="position:relative;">
+          <input id="solarReturnCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+            oninput="filterSolarCityList(this.value)"
+            onfocus="showSolarCityList()"
+            onblur="setTimeout(hideSolarCityList,200)"
+          />
+          <div id="solarReturnCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
+            overflow-y:auto;background:#1e2340;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
+        </div>
+      </div>
+      <div id="astroSolarReturnRows" style="font-size:12px;color:#94a3b8;">⏳ 솔라리턴 계산 중...</div>
+    </div>
+  `;
+
+  // 토성 리턴 패널 바로 아래 삽입 (없으면 달 → 태양 타임라인 → 프로그레션 패널 순)
+  const saturnPanel       = document.getElementById("astroSaturnReturnPanel");
+  const moonTimelinePanel = document.getElementById("astroMoonTimelinePanel");
+  const sunTimelinePanel  = document.getElementById("astroTimelinePanel");
+  const progPanel         = document.getElementById("astroProgPanel");
+  const anchor = saturnPanel || moonTimelinePanel || sunTimelinePanel || progPanel;
+  if (anchor) anchor.after(panel);
+
+  const rowsEl = panel.querySelector('#astroSolarReturnRows');
+  try {
+    const res = await fetch("/api/astro-solar-return", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        birthDate: meta.birthDate,
+        birthTime: meta.birthTime,
+        lat: meta.lat,
+        lng: meta.lng,
+        utcOffset: meta.utcOffset,
+        srLat, srLng, srUtcOffset
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "솔라리턴 계산 오류");
+
+    if (rowsEl) rowsEl.innerHTML = buildSolarReturnRowsHtml(data);
+  } catch (err) {
+    console.warn("솔라리턴 계산 실패:", err.message);
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 솔라리턴 계산 실패: ${err.message}</div>`;
+  }
 }
 
 /* =========================================================
