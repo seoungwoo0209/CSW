@@ -1453,7 +1453,15 @@ function selectSolarCity(cityName) {
 /* =========================================================
    솔라리턴 차트 1건(현재/다음) 렌더링 — 나탈 비교 그리드 + 에스펙트 아코디언
    ========================================================= */
-function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
+function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
+  const {
+    accentColor = '#fde047',
+    headerLabel = '솔라리턴',
+    aspectTitle1 = '솔라리턴-솔라리턴 에스펙트',
+    aspectTitle2 = '솔라리턴-나탈 에스펙트',
+    aspectIcon1 = '☀️',
+    aspectIcon2 = '🔗',
+  } = opts || {};
   const PLANET_KR = {
     sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
     mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
@@ -1462,8 +1470,8 @@ function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
 
   const rowStyle = (changed) => `
     display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;
-    background:${changed ? 'rgba(253,224,71,.08)' : 'rgba(255,255,255,.03)'};
-    border:1px solid ${changed ? 'rgba(253,224,71,.25)' : 'rgba(255,255,255,.06)'};
+    background:${changed ? accentColor + '14' : 'rgba(255,255,255,.03)'};
+    border:1px solid ${changed ? accentColor + '40' : 'rgba(255,255,255,.06)'};
     border-radius:8px;padding:7px 10px;margin-bottom:4px;
   `;
 
@@ -1480,7 +1488,7 @@ function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
           <div style="color:#64748b;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
         </div>
         <div>
-          <div style="color:${changed ? '#fde047' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+          <div style="color:${changed ? accentColor : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
             ${s.sign}${changed ? ' ✦' : ''}
           </div>
           <div style="color:#64748b;font-size:10px;">${s.degree}°${s.minute}' · ${s.house}H</div>
@@ -1501,7 +1509,7 @@ function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
           <div style="color:#64748b;font-size:10px;">${nObj ? `${nObj.degree}°${nObj.minute}'${nH}` : ''}</div>
         </div>
         <div>
-          <div style="color:${changed ? '#fde047' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+          <div style="color:${changed ? accentColor : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
             ${sObj ? sObj.sign : '-'}${changed ? ' ✦' : ''}
           </div>
           <div style="color:#64748b;font-size:10px;">${sObj ? `${sObj.degree}°${sObj.minute}'${sH}` : ''}</div>
@@ -1521,22 +1529,24 @@ function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
   const dateStr = `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
   const asc = item.angles.asc;
 
+  const ageStr = item.age != null ? `만 ${item.age}세 · ` : '';
+
   return `
-    <details style="margin-top:10px;background:rgba(255,255,255,.03);border:1px solid rgba(253,224,71,.15);border-radius:12px;padding:14px 16px;">
-      <summary style="cursor:pointer;font-size:12px;color:#fde047;letter-spacing:1px;">
-        ${label}${tag ? ` <span style="font-size:10px;background:rgba(253,224,71,.25);border-radius:4px;padding:1px 5px;">${tag}</span>` : ''}
-        — 만 ${item.age}세 · ${dateStr} · ASC ${asc.sign} ${asc.degree}°${asc.minute}' — 클릭하여 펼치기
+    <details style="margin-top:10px;background:rgba(255,255,255,.03);border:1px solid ${accentColor}26;border-radius:12px;padding:14px 16px;">
+      <summary style="cursor:pointer;font-size:12px;color:${accentColor};letter-spacing:1px;">
+        ${label}${tag ? ` <span style="font-size:10px;background:${accentColor}40;border-radius:4px;padding:1px 5px;">${tag}</span>` : ''}
+        — ${ageStr}${dateStr} · ASC ${asc.sign} ${asc.degree}°${asc.minute}' — 클릭하여 펼치기
       </summary>
       <div style="margin-top:12px;">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
           <div style="font-size:10px;color:#475569;">행성</div>
           <div style="font-size:10px;color:#475569;">나탈</div>
-          <div style="font-size:10px;color:#fde047;">솔라리턴 ✦변화</div>
+          <div style="font-size:10px;color:${accentColor};">${headerLabel} ✦변화</div>
         </div>
         ${planetRowsHtml}
         ${anglesHtml}
-        ${renderAspectAccordion(item.aspectsFull, '솔라리턴-솔라리턴 에스펙트', '☀️', '#fde047')}
-        ${renderAspectAccordion(item.aspectsToNatal, '솔라리턴-나탈 에스펙트', '🔗', '#fde047')}
+        ${renderAspectAccordion(item.aspectsFull, aspectTitle1, aspectIcon1, accentColor)}
+        ${renderAspectAccordion(item.aspectsToNatal, aspectTitle2, aspectIcon2, accentColor)}
       </div>
     </details>
   `;
@@ -1612,14 +1622,99 @@ async function renderSolarReturnPanel(astroData) {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "솔라리턴 계산 오류");
 
+    const srOpts = {
+      accentColor: '#fde047',
+      headerLabel: '솔라리턴',
+      aspectTitle1: '솔라리턴-솔라리턴 에스펙트',
+      aspectTitle2: '솔라리턴-나탈 에스펙트',
+      aspectIcon1: '☀️',
+      aspectIcon2: '🔗',
+    };
     if (rowsEl) {
       rowsEl.innerHTML =
-        renderSolarReturnChart(data.current, astroData.natal, astroData.angles, astroData.nodes, '현재 솔라리턴', '현재') +
-        renderSolarReturnChart(data.next,    astroData.natal, astroData.angles, astroData.nodes, '다음 솔라리턴', null);
+        renderReturnChart(data.current, astroData.natal, astroData.angles, astroData.nodes, '현재 솔라리턴', '현재', srOpts) +
+        renderReturnChart(data.next,    astroData.natal, astroData.angles, astroData.nodes, '다음 솔라리턴', null, srOpts);
     }
   } catch (err) {
     console.warn("솔라리턴 계산 실패:", err.message);
     if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 솔라리턴 계산 실패: ${err.message}</div>`;
+  }
+
+  // 솔라리턴 패널이 갱신되면 루나리턴 패널도 같은 도시 기준으로 다시 그림
+  if (typeof renderLunarReturnPanel === 'function') renderLunarReturnPanel(astroData);
+}
+
+/* =========================================================
+   루나리턴 패널 렌더링 (솔라리턴과 같은 적용 도시 사용, 별도 도시 선택기 없음)
+   ========================================================= */
+async function renderLunarReturnPanel(astroData) {
+  const existing = document.getElementById("astroLunarReturnPanel");
+  if (existing) existing.remove();
+
+  const meta = astroData.meta;
+  if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
+
+  const cityName = _solarReturnCity || getCitySelectValue();
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityName);
+
+  const panel = document.createElement('div');
+  panel.id = 'astroLunarReturnPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:4px;">🌙 루나리턴</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
+        트랜짓 달이 나탈 달 위치로 돌아오는 시점의 어센던트 (${cityName} 기준, 솔라리턴과 동일 도시)
+      </div>
+      <div id="astroLunarReturnRows" style="font-size:12px;color:#94a3b8;">⏳ 루나리턴 계산 중...</div>
+    </div>
+  `;
+
+  // 솔라리턴 패널 바로 아래 삽입
+  const solarPanel = document.getElementById("astroSolarReturnPanel");
+  if (solarPanel) solarPanel.after(panel);
+  else return;
+
+  const rowsEl = panel.querySelector('#astroLunarReturnRows');
+  try {
+    const res = await fetch("/api/astro-lunar-return", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        birthDate: meta.birthDate,
+        birthTime: meta.birthTime,
+        lat: meta.lat,
+        lng: meta.lng,
+        utcOffset: meta.utcOffset,
+        appLat, appLng, appUtcOffset,
+        natal: astroData.natal,
+        angles: astroData.angles,
+        nodes: astroData.nodes,
+        houses: astroData.houses
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "루나리턴 계산 오류");
+
+    const lrOpts = {
+      accentColor: '#a5b4fc',
+      headerLabel: '루나리턴',
+      aspectTitle1: '루나리턴-루나리턴 에스펙트',
+      aspectTitle2: '루나리턴-나탈 에스펙트',
+      aspectIcon1: '🌙',
+      aspectIcon2: '🔗',
+    };
+    if (rowsEl) {
+      rowsEl.innerHTML =
+        renderReturnChart(data.current, astroData.natal, astroData.angles, astroData.nodes, '현재 루나리턴', '현재', lrOpts) +
+        renderReturnChart(data.next,    astroData.natal, astroData.angles, astroData.nodes, '다음 루나리턴', null, lrOpts);
+    }
+  } catch (err) {
+    console.warn("루나리턴 계산 실패:", err.message);
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 루나리턴 계산 실패: ${err.message}</div>`;
   }
 }
 
