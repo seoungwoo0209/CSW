@@ -132,8 +132,9 @@ export default async function handler(req, res) {
       progResult[k] = { ...toSignInfo(progPlanetsWithHouse[k].lon), house: progPlanetsWithHouse[k].house };
     });
 
-    // 2026년 월별 트랜짓 계산
-    const transits2026 = calcTransits2026(houses);
+    // 올해(KST 기준) 월별 트랜짓 계산
+    const transitsYear = todayKST.getUTCFullYear();
+    const transits = calcTransitsByYear(houses, transitsYear);
 
     return res.status(200).json({
       natal:       natalResult,
@@ -144,7 +145,8 @@ export default async function handler(req, res) {
         north: { ...toSignInfo(northLon), house: getNodeHouse(northLon, houses) },
         south: { ...toSignInfo(southLon), house: getNodeHouse(southLon, houses) },
       },
-      transits2026,
+      transitsYear,
+      transits,
       progression: {
         meta: {
           progDate:  progUTC.toISOString().slice(0, 10),
@@ -426,10 +428,10 @@ function calcSunLon(T) {
 }
 
 /* =========================================================
-   2026년 월별 트랜짓 계산
+   연도별 월별 트랜짓 계산 (연도 무관)
    매달 15일 기준, 나탈 하우스 커스프로 하우스 배정
    ========================================================= */
-function calcTransits2026(natalHouses) {
+function calcTransitsByYear(natalHouses, year) {
   const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
                  '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
   const MONTHS = ['1월','2월','3월','4월','5월','6월',
@@ -452,7 +454,7 @@ function calcTransits2026(natalHouses) {
 
   const result = [];
   for (let m=1; m<=12; m++) {
-    let y=2026, mm=m, d=15;
+    let y=year, mm=m, d=15;
     if(mm<=2){y--;mm+=12;}
     const A=Math.floor(y/100),B=2-A+Math.floor(A/4);
     const jd=Math.floor(365.25*(y+4716))+Math.floor(30.6001*(mm+1))+d+0.5+B-1524.5;

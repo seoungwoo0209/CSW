@@ -18,7 +18,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, natalAspectsFull = [], progression, meta, transits2026 = [], nodes } = astroData;
+    const { natal, angles, houses, natalAspectsFull = [], progression, meta, transits = [], transitsYear, nodes } = astroData;
+    const reportYear = transitsYear || new Date().getFullYear();
     const progPlanets = progression?.planets || {};
     const progAngles  = progression?.angles  || {};
     const progMeta    = progression?.meta    || {};
@@ -72,13 +73,13 @@ export default async function handler(req, res) {
       ? progAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
       : '(주요 프로그레션 에스펙트 없음)';
 
-    // ── 2026년 트랜짓 문자열
+    // ── 올해 트랜짓 문자열
     const PLANET_KR_MAP = {
       sun:'태양', mercury:'수성', venus:'금성',
       mars:'화성', jupiter:'목성', saturn:'토성'
     };
-    const transitStr = transits2026.length
-      ? transits2026.map(m => {
+    const transitStr = transits.length
+      ? transits.map(m => {
           const planets = Object.entries(m.planets)
             .map(([k, v]) => `${PLANET_KR_MAP[k]}(${v.sign}·${v.house}하우스)`)
             .join(', ');
@@ -145,7 +146,7 @@ ${question}
 - 친근하고 따뜻한 톤으로 작성하세요.`;
 
     } else {
-      // 전체 리딩 모드 — 인생 흐름 + 2026년 월별 운세
+      // 전체 리딩 모드 — 인생 흐름 + 올해 월별 운세
       prompt = baseData + `
 
 [리딩 지침 — 반드시 준수]
@@ -168,21 +169,21 @@ ${question}
 · 북노드(인생의 카르마 방향)와 릴리스(반복되는 전생 패턴)가 삶의 테마에 미치는 영향
 300자 이상 충분히 써주세요.
 
-## 📅 2026년 운세
+## 📅 ${reportYear}년 운세
 
 [프로그레션 데이터 — 내면 성장 흐름]
 ${progPlanetStr}
 ${progAnglesStr}
 프로그레션↔네이탈 에스펙트: ${progAspectStr}
 
-[2026년 실제 행성 위치 — 외부 환경 흐름]
+[${reportYear}년 실제 행성 위치 — 외부 환경 흐름]
 ${transitStr}
 
 위 두 가지 데이터를 모두 활용해서 다음 순서로 반드시 작성하세요.
 절대 일반적이거나 누구에게나 해당되는 내용을 쓰지 마세요.
 반드시 이 사람의 나탈 차트와 프로그레션 데이터에서 근거를 찾아 구체적으로 써야 합니다.
 
-**2026년 전체 흐름 요약** (4~5문장)
+**${reportYear}년 전체 흐름 요약** (4~5문장)
 - 이 사람의 나탈 차트 특성과 올해 에너지가 어떻게 맞물리는지
 - 올해 가장 중요한 테마 2가지를 명확히 제시
 - 특히 좋은 시기와 조심할 시기를 언급
