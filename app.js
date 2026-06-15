@@ -1450,39 +1450,96 @@ function selectSolarCity(cityName) {
 /* =========================================================
    솔라리턴 패널 렌더링
    ========================================================= */
-function buildSolarReturnRowsHtml(data) {
-  const pad2    = n => String(n).padStart(2, '0');
-  const fmtDate = iso => {
-    const d = new Date(iso);
-    return `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+/* =========================================================
+   솔라리턴 차트 1건(현재/다음) 렌더링 — 나탈 비교 그리드 + 에스펙트 아코디언
+   ========================================================= */
+function renderSolarReturnChart(item, natal, angles, nodes, label, tag) {
+  const PLANET_KR = {
+    sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
+    mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
+    uranus:"⛢ 천왕성", neptune:"♆ 해왕성", pluto:"♇ 명왕성"
   };
 
-  const rows = [
-    { label: '현재 솔라리턴', tag: '현재', item: data.current },
-    { label: '다음 솔라리턴', tag: null,   item: data.next },
-  ];
+  const rowStyle = (changed) => `
+    display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;
+    background:${changed ? 'rgba(253,224,71,.08)' : 'rgba(255,255,255,.03)'};
+    border:1px solid ${changed ? 'rgba(253,224,71,.25)' : 'rgba(255,255,255,.06)'};
+    border-radius:8px;padding:7px 10px;margin-bottom:4px;
+  `;
 
-  return rows.map(({ label, tag, item }) => {
-    const asc = item.asc;
+  const planetRowsHtml = Object.entries(PLANET_KR).map(([key, plabel]) => {
+    const n = natal[key];
+    const s = item.planets[key];
+    if (!n || !s) return "";
+    const changed = n.signIndex !== s.signIndex;
     return `
-      <div style="
-        display:flex;justify-content:space-between;align-items:center;gap:12px;
-        background:${tag ? 'rgba(253,224,71,.10)' : 'rgba(255,255,255,.03)'};
-        border:1px solid ${tag ? 'rgba(253,224,71,.25)' : 'rgba(255,255,255,.06)'};
-        border-radius:8px;padding:10px 14px;margin-bottom:6px;
-      ">
+      <div style="${rowStyle(changed)}">
+        <div style="color:#c4b5fd;font-size:11px;">${plabel}</div>
         <div>
-          <div style="font-size:12px;color:${tag ? '#fde047' : '#e2e8f0'};font-weight:${tag ? 700 : 600};">
-            ${label}${tag ? ` <span style="font-size:10px;background:rgba(253,224,71,.25);border-radius:4px;padding:1px 5px;">${tag}</span>` : ''}
-          </div>
-          <div style="font-size:11px;color:#64748b;margin-top:2px;">만 ${item.age}세 · ASC ${asc.sign} ${asc.degree}°${asc.minute}'</div>
+          <div style="color:#94a3b8;font-size:11px;">${n.sign}</div>
+          <div style="color:#64748b;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
         </div>
-        <div style="text-align:right;white-space:nowrap;">
-          <div style="font-size:13px;color:#fde047;font-weight:700;">${fmtDate(item.dateLocal)}</div>
+        <div>
+          <div style="color:${changed ? '#fde047' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+            ${s.sign}${changed ? ' ✦' : ''}
+          </div>
+          <div style="color:#64748b;font-size:10px;">${s.degree}°${s.minute}' · ${s.house}H</div>
         </div>
       </div>
     `;
-  }).join('');
+  }).join("");
+
+  function angleRow(icon, rowLabel, nObj, sObj, color) {
+    const changed = !!(nObj && sObj && nObj.signIndex !== sObj.signIndex);
+    const nH = nObj?.house != null ? ` · ${nObj.house}H` : '';
+    const sH = sObj?.house != null ? ` · ${sObj.house}H` : '';
+    return `
+      <div style="${rowStyle(changed)}">
+        <div style="color:${color};font-size:11px;">${icon} ${rowLabel}</div>
+        <div>
+          <div style="color:#94a3b8;font-size:11px;">${nObj ? nObj.sign : '-'}</div>
+          <div style="color:#64748b;font-size:10px;">${nObj ? `${nObj.degree}°${nObj.minute}'${nH}` : ''}</div>
+        </div>
+        <div>
+          <div style="color:${changed ? '#fde047' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+            ${sObj ? sObj.sign : '-'}${changed ? ' ✦' : ''}
+          </div>
+          <div style="color:#64748b;font-size:10px;">${sObj ? `${sObj.degree}°${sObj.minute}'${sH}` : ''}</div>
+        </div>
+      </div>
+    `;
+  }
+
+  const anglesHtml =
+    angleRow('↑','ASC',   angles.asc,  item.angles.asc, '#fcd34d') +
+    angleRow('⊕','MC',    angles.mc,   item.angles.mc,  '#fcd34d') +
+    angleRow('☊','북노드', nodes.north, item.nodes.north, '#fcd34d') +
+    angleRow('☋','릴리스', nodes.south, item.nodes.south, '#94a3b8');
+
+  const pad2 = n => String(n).padStart(2, '0');
+  const d = new Date(item.dateLocal);
+  const dateStr = `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일 ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  const asc = item.angles.asc;
+
+  return `
+    <details style="margin-top:10px;background:rgba(255,255,255,.03);border:1px solid rgba(253,224,71,.15);border-radius:12px;padding:14px 16px;">
+      <summary style="cursor:pointer;font-size:12px;color:#fde047;letter-spacing:1px;">
+        ${label}${tag ? ` <span style="font-size:10px;background:rgba(253,224,71,.25);border-radius:4px;padding:1px 5px;">${tag}</span>` : ''}
+        — 만 ${item.age}세 · ${dateStr} · ASC ${asc.sign} ${asc.degree}°${asc.minute}' — 클릭하여 펼치기
+      </summary>
+      <div style="margin-top:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
+          <div style="font-size:10px;color:#475569;">행성</div>
+          <div style="font-size:10px;color:#475569;">나탈</div>
+          <div style="font-size:10px;color:#fde047;">솔라리턴 ✦변화</div>
+        </div>
+        ${planetRowsHtml}
+        ${anglesHtml}
+        ${renderAspectAccordion(item.aspectsFull, '솔라리턴-솔라리턴 에스펙트', '☀️', '#fde047')}
+        ${renderAspectAccordion(item.aspectsToNatal, '솔라리턴-나탈 에스펙트', '🔗', '#fde047')}
+      </div>
+    </details>
+  `;
 }
 
 async function renderSolarReturnPanel(astroData) {
@@ -1545,13 +1602,21 @@ async function renderSolarReturnPanel(astroData) {
         lat: meta.lat,
         lng: meta.lng,
         utcOffset: meta.utcOffset,
-        srLat, srLng, srUtcOffset
+        srLat, srLng, srUtcOffset,
+        natal: astroData.natal,
+        angles: astroData.angles,
+        nodes: astroData.nodes,
+        houses: astroData.houses
       })
     });
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "솔라리턴 계산 오류");
 
-    if (rowsEl) rowsEl.innerHTML = buildSolarReturnRowsHtml(data);
+    if (rowsEl) {
+      rowsEl.innerHTML =
+        renderSolarReturnChart(data.current, astroData.natal, astroData.angles, astroData.nodes, '현재 솔라리턴', '현재') +
+        renderSolarReturnChart(data.next,    astroData.natal, astroData.angles, astroData.nodes, '다음 솔라리턴', null);
+    }
   } catch (err) {
     console.warn("솔라리턴 계산 실패:", err.message);
     if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 솔라리턴 계산 실패: ${err.message}</div>`;
