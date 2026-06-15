@@ -798,6 +798,7 @@ function renderAstroProgression(astroData) {
   // 타임라인 렌더링
   renderProgTimeline(astroData);
   renderProgMoonTimeline(astroData);
+  renderSaturnReturnPanel(astroData);
 }
 
 /* =========================================================
@@ -1266,6 +1267,153 @@ function renderProgMoonTimeline(astroData) {
     const progPanel = document.getElementById("astroProgPanel");
     if (progPanel) progPanel.after(panel);
   }
+}
+
+/* =========================================================
+   토성의 황경 근사 계산 (평균 + 근점이각 보정, 트랜짓용)
+   ========================================================= */
+function calcSaturnLonApprox(T) {
+  const rad     = d => d * Math.PI / 180;
+  const norm360 = a => ((a % 360) + 360) % 360;
+  const L = 50.077444 + 1223.5110686 * T;
+  const M = 317.9     + 1222.114     * T;
+  return norm360(L + 6.393 * Math.sin(rad(M)) + 0.120 * Math.sin(rad(2 * M)));
+}
+
+/* =========================================================
+   토성 리턴(Saturn Return) 계산 — 실제 시간 기준(1년=1년)으로
+   트랜짓 토성이 나탈 토성 위치로 돌아오는 시점을 탐색
+   ========================================================= */
+function calcSaturnReturns(astroData) {
+  const meta        = astroData.meta;
+  const natalSaturn = astroData.natal?.saturn;
+  if (!meta?.birthDate || !meta?.birthTime || !natalSaturn) return null;
+
+  const [yyyy, mm, dd] = meta.birthDate.split('-').map(Number);
+  const [hh, mi]       = meta.birthTime.split(':').map(Number);
+  const offsetHours    = meta.utcOffset ?? 9;
+  const utcH           = hh + mi / 60 - offsetHours;
+  const birthUTC       = new Date(Date.UTC(yyyy, mm - 1, dd, Math.floor(utcH), Math.round((utcH % 1) * 60)));
+
+  function calcJD(y, m, d, h = 0) {
+    if (m <= 2) { y--; m += 12; }
+    const A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+    return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + h / 24 + B - 1524.5;
+  }
+  function signedDiff(a, b) {
+    let d = (a - b) % 360;
+    if (d <= -180) d += 360;
+    if (d > 180)   d -= 360;
+    return d;
+  }
+
+  const bY  = birthUTC.getUTCFullYear();
+  const bM  = birthUTC.getUTCMonth() + 1;
+  const bD  = birthUTC.getUTCDate();
+  const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60;
+
+  const natalJD   = calcJD(bY, bM, bD, bHr);
+  const birthYear = bY;
+
+  const T0       = (natalJD - 2451545.0) / 36525.0;
+  const natalLon = calcSaturnLonApprox(T0);
+
+  const now        = new Date();
+  const currentAge = (now - birthUTC) / (365.25 * 86400000);
+
+  // 0~90세(실제 연수) 스캔하며 트랜짓 토성이 나탈 토성 위치를 통과하는 시점 탐색
+  const returns = [];
+  const step = 0.05;
+  let prevDiff = null;
+
+  for (let age = 0; age <= 90; age += step) {
+    const T    = ((natalJD + age * 365.25) - 2451545.0) / 36525.0;
+    const diff = signedDiff(calcSaturnLonApprox(T), natalLon);
+
+    if (prevDiff !== null && prevDiff < 0 && diff >= 0) {
+      let lo = age - step, hi = age;
+      for (let i = 0; i < 60; i++) {
+        const mid = (lo + hi) / 2;
+        const Tm  = ((natalJD + mid * 365.25) - 2451545.0) / 36525.0;
+        const dm  = signedDiff(calcSaturnLonApprox(Tm), natalLon);
+        if (dm < 0) lo = mid; else hi = mid;
+      }
+      const exactAge = (lo + hi) / 2;
+      returns.push({
+        age:  Math.round(exactAge),
+        year: birthYear + Math.round(exactAge),
+      });
+    }
+    prevDiff = diff;
+  }
+
+  return { returns, natalSaturn, currentAge };
+}
+
+/* =========================================================
+   토성 리턴 패널 렌더링
+   ========================================================= */
+function renderSaturnReturnPanel(astroData) {
+  const existing = document.getElementById("astroSaturnReturnPanel");
+  if (existing) existing.remove();
+
+  const data = calcSaturnReturns(astroData);
+  if (!data) return;
+
+  const { returns, natalSaturn, currentAge } = data;
+  if (!returns.length) return;
+
+  const THEMES = [
+    '성인기의 시작 — 책임과 인생의 구조를 처음으로 다잡는 시기',
+    '중년의 전환 — 그동안 쌓아온 것을 점검하고 새로운 안정을 다지는 시기',
+    '인생 후반의 결실 — 지혜를 정리하고 마무리해가는 시기',
+  ];
+
+  const rowsHtml = returns.map((r, i) => {
+    const isCur = Math.abs(currentAge - r.age) < 1;
+    return `
+      <div style="
+        display:flex;justify-content:space-between;align-items:center;gap:12px;
+        background:${isCur ? 'rgba(251,191,36,.12)' : 'rgba(255,255,255,.03)'};
+        border:1px solid ${isCur ? 'rgba(251,191,36,.3)' : 'rgba(255,255,255,.06)'};
+        border-radius:8px;padding:10px 14px;margin-bottom:6px;
+      ">
+        <div>
+          <div style="font-size:12px;color:${isCur ? '#fbbf24' : '#e2e8f0'};font-weight:${isCur ? 700 : 600};">
+            ${i + 1}차 토성 리턴${isCur ? ' <span style="font-size:10px;background:rgba(251,191,36,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+          </div>
+          <div style="font-size:11px;color:#64748b;margin-top:2px;">${THEMES[i] || ''}</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap;">
+          <div style="font-size:13px;color:#fbbf24;font-weight:700;">만 ${r.age}세</div>
+          <div style="font-size:11px;color:#64748b;">${r.year}년</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const panel = document.createElement('div');
+  panel.id = 'astroSaturnReturnPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(251,191,36,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#fbbf24;letter-spacing:2px;margin-bottom:4px;">🪐 토성 리턴</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:14px;">
+        트랜짓 토성이 나탈 토성(${natalSaturn.sign} ${natalSaturn.degree}°${natalSaturn.minute}' · ${natalSaturn.house}H) 위치로 돌아오는 시기
+      </div>
+      ${rowsHtml}
+    </div>
+  `;
+
+  // 프로그레션 타임라인(달 → 태양 → 프로그레션 패널 순) 바로 아래 삽입
+  const moonTimelinePanel = document.getElementById("astroMoonTimelinePanel");
+  const sunTimelinePanel  = document.getElementById("astroTimelinePanel");
+  const progPanel         = document.getElementById("astroProgPanel");
+  const anchor = moonTimelinePanel || sunTimelinePanel || progPanel;
+  if (anchor) anchor.after(panel);
 }
 
 /* =========================================================
