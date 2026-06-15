@@ -890,7 +890,7 @@ function calcProgTimeline(astroData) {
         else lo = mid;
         if (hi - lo < 0.001) break;
       }
-      const exactAge  = (lo + hi) / 2;
+      const exactAge  = hi; // hi는 항상 새 사인/하우스(signIdx, house) 쪽 경계 — degInSign과 sign 라벨의 일치를 보장
       const exactYear = Math.floor(birthYear + exactAge);
       const sunAtAge  = calcSun((natalJD + exactAge - 2451545.0) / 36525.0);
       const degInSign = sunAtAge % 30;
@@ -1097,7 +1097,7 @@ function buildProgressionTimeline(astroData, lonFn, stepYears = 0.1) {
         else lo = mid;
         if (hi - lo < 0.0005) break;
       }
-      const exactAge  = (lo + hi) / 2;
+      const exactAge  = hi; // hi는 항상 새 사인/하우스(signIdx, house) 쪽 경계 — degInSign과 sign 라벨의 일치를 보장
       const exactYear = Math.floor(birthYear + exactAge);
       const lonAtAge  = norm360(lonFn((natalJD + exactAge - 2451545.0) / 36525.0));
       const degInSign = lonAtAge % 30;
