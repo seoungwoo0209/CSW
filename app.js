@@ -1716,6 +1716,112 @@ async function renderLunarReturnPanel(astroData) {
     console.warn("루나리턴 계산 실패:", err.message);
     if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 루나리턴 계산 실패: ${err.message}</div>`;
   }
+
+  // 루나리턴 패널이 갱신되면 신월/만월 캘린더 패널도 같은 도시 기준으로 다시 그림
+  if (typeof renderMoonPhasesPanel === 'function') renderMoonPhasesPanel(astroData);
+}
+
+/* =========================================================
+   2026 신월/만월 캘린더 패널 렌더링 (루나리턴과 같은 적용 도시 사용)
+   ========================================================= */
+const MOON_PHASE_TYPE_META = {
+  newMoon:      { icon: '🌑', label: '신월', color: '#94a3b8' },
+  fullMoon:     { icon: '🌕', label: '만월', color: '#fcd34d' },
+  solarEclipse: { icon: '🌑', label: '일식', color: '#f87171' },
+  lunarEclipse: { icon: '🌕', label: '월식', color: '#f87171' },
+};
+
+function renderMoonPhaseEventRow(ev, astroData, opts) {
+  const meta = MOON_PHASE_TYPE_META[ev.type] || MOON_PHASE_TYPE_META.newMoon;
+  const d = new Date(ev.dateLocal);
+  const pad2 = n => String(n).padStart(2, '0');
+  const dateStr = `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${pad2(d.getUTCHours())}:${pad2(d.getUTCMinutes())}`;
+  const moon = ev.moon;
+
+  const conjHtml = ev.conjunctions.length
+    ? ev.conjunctions.map(c => `${c.point} ${c.degree}°${c.minute}'`).join(' · ')
+    : `<span style="color:#475569;">-</span>`;
+
+  return `
+    <div style="
+      background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+      border-radius:10px;padding:10px 12px;margin-bottom:8px;
+    ">
+      <div style="display:grid;grid-template-columns:auto 1.3fr 1.4fr;gap:8px;align-items:center;font-size:12px;">
+        <div style="color:${meta.color};font-weight:700;white-space:nowrap;">${meta.icon} ${dateStr}</div>
+        <div style="color:#e2e8f0;">
+          ${meta.label} · ${moon.sign} ${moon.degree}°${moon.minute}' <span style="color:#64748b;font-size:10px;">${moon.house}H</span>
+        </div>
+        <div style="color:#a5b4fc;font-size:11px;">${conjHtml}</div>
+      </div>
+      ${renderReturnChart(ev, astroData.natal, astroData.angles, astroData.nodes, dateStr, meta.label, opts)}
+    </div>
+  `;
+}
+
+async function renderMoonPhasesPanel(astroData) {
+  const existing = document.getElementById("astroMoonPhasesPanel");
+  if (existing) existing.remove();
+
+  const meta = astroData.meta;
+  if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
+
+  const cityName = _solarReturnCity || getCitySelectValue();
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityName);
+
+  const panel = document.createElement('div');
+  panel.id = 'astroMoonPhasesPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(196,181,253,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#c4b5fd;letter-spacing:2px;margin-bottom:4px;">🌑🌕 2026 신월·만월 캘린더</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
+        2026년 신월/만월(및 일식/월식) 25회 — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
+      </div>
+      <div id="astroMoonPhasesRows" style="font-size:12px;color:#94a3b8;">⏳ 신월/만월 계산 중...</div>
+    </div>
+  `;
+
+  // 루나리턴 패널 바로 아래 삽입
+  const lunarPanel = document.getElementById("astroLunarReturnPanel");
+  if (lunarPanel) lunarPanel.after(panel);
+  else return;
+
+  const rowsEl = panel.querySelector('#astroMoonPhasesRows');
+  try {
+    const res = await fetch("/api/astro-moon-phases", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        natal: astroData.natal,
+        angles: astroData.angles,
+        nodes: astroData.nodes,
+        houses: astroData.houses,
+        appLat, appLng, appUtcOffset
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "신월/만월 계산 오류");
+
+    const mpOpts = {
+      accentColor: '#c4b5fd',
+      headerLabel: '트랜짓',
+      aspectTitle1: '트랜짓-트랜짓 에스펙트',
+      aspectTitle2: '트랜짓-나탈 에스펙트',
+      aspectIcon1: '🌑',
+      aspectIcon2: '🔗',
+    };
+
+    if (rowsEl) {
+      rowsEl.innerHTML = data.events.map(ev => renderMoonPhaseEventRow(ev, astroData, mpOpts)).join("");
+    }
+  } catch (err) {
+    console.warn("신월/만월 계산 실패:", err.message);
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 신월/만월 계산 실패: ${err.message}</div>`;
+  }
 }
 
 /* =========================================================
