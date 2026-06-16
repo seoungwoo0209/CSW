@@ -73,7 +73,7 @@ export default async function handler(req, res) {
     const { northLon: progNorthLon, southLon: progSouthLon } = calcLunarNodes(progJD);
 
     // ── 오늘 트랜짓 행성 계산
-    const todayRaw     = Ephemeris.getAllPlanets(todayKST, lng, lat, 0);
+    const todayRaw     = Ephemeris.getAllPlanets(todayKST, appLng, appLat, 0);
     const todayPlanets = extractPlanets(todayRaw.observed);
     const todayWithHouse = assignHouses(todayPlanets, houses); // 네이탈 하우스 기준
 
@@ -167,7 +167,7 @@ export default async function handler(req, res) {
       const moonSign = Math.floor(moonLon / 30);
 
       // 사인 변경 = VOC 종료
-      if (moonSign !== currentMoonSign && vocStartHour === -1) {
+      if (moonSign !== currentMoonSign) {
         vocEndHour = h;
         break;
       }
