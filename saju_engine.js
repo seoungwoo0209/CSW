@@ -510,8 +510,9 @@ function computeTenGodClassicalScores(state) {
     const usefulness = _clamp(usefulnessRaw, -1.0, 1.0);
 
     // ── 최종 score (0~100)
+    // usefulness(고전 역할) 32 > presence(원국 존재량) 18 — 기신 과다 시 희신 오분류 방지
     const score = _clamp(
-      Math.round(50 + 28 * presence + 16 * (structureNorm - 0.5) * 2 + 22 * usefulness),
+      Math.round(50 + 18 * presence + 16 * (structureNorm - 0.5) * 2 + 32 * usefulness),
       0, 100
     );
 
@@ -1743,7 +1744,9 @@ function resolveRole(score, ui, hrGap, volatility) {
   if (score >= 66) return "용신";
 
   if (score >= 57) {
-    // 부정 방향이 강하면 희신 강제 배정은 보수 처리 → 중립
+    // 부정 방향이 매우 강하면 기신 (기신 과다 시 희신 오분류 방지)
+    if (negativeDir && ui <= -0.20) return "기신";
+    // 부정 방향이 중간이면 보수적으로 중립
     if (negativeDir && ui <= -0.12) return "중립";
     return "희신";
   }
