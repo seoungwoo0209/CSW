@@ -4,7 +4,7 @@
 
 console.log("🔥 life_graph_ui.js 로드 시작");
 
-function renderLifeGraph(input) {
+function renderLifeGraph(input, astroResult) {
   const container = document.getElementById("lifeGraphPanel");
   if (!container) return;
 
@@ -15,7 +15,7 @@ function renderLifeGraph(input) {
 
   setTimeout(() => {
     try {
-      const result = window.LifeGraphEngine.computeLifeGraph(input);
+      const result = window.LifeGraphEngine.computeLifeGraph(input, astroResult);
       _drawLifeGraph(container, result);
     } catch(e) {
       console.error("인생 그래프 계산 오류:", e);
@@ -92,13 +92,13 @@ function _drawLifeGraph(container, result) {
   const avgFuture= future.length ? Math.round(future.reduce((a,b)=>a+b.score,0)/future.length) : 0;
 
   function scoreColor(s) {
-    if (s >= 75) return "#78ffa8";
+    if (s >= 78) return "#78ffa8";
     if (s >= 65) return "#9ed0ff";
     if (s >= 55) return "#ffd36a";
     return "#ffb27a";
   }
   function scoreComment(s) {
-    if (s >= 75) return "상승기 · 확장과 기회의 시기";
+    if (s >= 78) return "상승기 · 확장과 기회의 시기";
     if (s >= 65) return "안정기 · 꾸준한 성장 지속";
     if (s >= 55) return "전환기 · 인내와 준비의 시기";
     return "정비기 · 내실을 다지는 시기";

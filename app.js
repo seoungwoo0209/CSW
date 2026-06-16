@@ -107,7 +107,7 @@ function runAll() {
     if (window.LifeGraphUI) {
       const cityName = getCitySelectValue();
       const { lat, lng, utcOffset } = getCityCoords(cityName);
-      window.LifeGraphUI.renderLifeGraph({ birthDate, birthTime, lat, lng, utcOffset });
+      window.LifeGraphUI.renderLifeGraph({ birthDate, birthTime, lat, lng, utcOffset }, window.AstroResult);
     }
 
     // ── 점성술 차트 미리 계산
@@ -157,6 +157,16 @@ async function runAstroCalc() {
 
     // 나탈 차트 그리드 표시
     renderAstroNatal(astroData);
+
+    // 인생 그래프 재렌더 (AstroResult로 정확도 향상)
+    if (window.LifeGraphUI) {
+      const _city = getCitySelectValue();
+      const { lat: _lat, lng: _lng, utcOffset: _utcOff } = getCityCoords(_city);
+      window.LifeGraphUI.renderLifeGraph(
+        { birthDate, birthTime, lat: _lat, lng: _lng, utcOffset: _utcOff },
+        astroData
+      );
+    }
 
     if (statusEl) {
       statusEl.textContent = "✅ 차트 계산 완료 — AI 해석 버튼을 눌러주세요.";
