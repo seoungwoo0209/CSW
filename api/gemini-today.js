@@ -210,7 +210,8 @@ ${question}
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {
                 temperature: 0.75,
-                maxOutputTokens: 6144,
+                maxOutputTokens: 16384,
+                thinkingConfig: { thinkingBudget: 0 },
               }
             })
           }
