@@ -113,6 +113,9 @@ export default async function handler(req, res) {
       labelPrefixA: '오늘 ', labelPrefixB: '네이탈 '
     });
 
+    // ── 네이탈×네이탈 에스펙트 (출생 차트 고유 패턴)
+    const natalAspectsFull = calcAllAspects(natalPoints, natalPoints, { sameSet: true });
+
     // ── 프로그레션 → 트랜짓 에스펙트 (12포인트 × 12포인트)
     const progPoints = buildAspectPoints(progPlanets, progAsc, progMc, progNorthLon, progSouthLon);
     const progTransitAspects = calcAllAspects(progPoints, transitPoints, {
@@ -245,6 +248,7 @@ export default async function handler(req, res) {
       natal:         natalResult,
       natalAngles:   { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       todayTransit:  todayResult,
+      natalAspectsFull,
       todayAspectsFull,
       progTransitAspects,
       retrograde,
@@ -461,11 +465,14 @@ function buildAspectPoints(planets, asc, mc, northLon, southLon) {
    범용 에스펙트 계산 — pointsA × pointsB 전체 조합
    ========================================================= */
 function calcAllAspects(pointsA, pointsB, opts = {}) {
-  const { labelPrefixA = '', labelPrefixB = '' } = opts;
+  const { labelPrefixA = '', labelPrefixB = '', sameSet = false } = opts;
   const aspects = [];
 
-  for (const p1 of pointsA) {
-    for (const p2 of pointsB) {
+  for (let i = 0; i < pointsA.length; i++) {
+    const p1 = pointsA[i];
+    const jStart = sameSet ? i + 1 : 0;
+    for (let j = jStart; j < pointsB.length; j++) {
+      const p2 = pointsB[j];
       const dist = angularDistance(p1.lon, p2.lon);
       for (const asp of ASPECT_DEFS) {
         const diff = Math.abs(dist - asp.angle);

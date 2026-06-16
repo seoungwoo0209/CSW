@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
     const {
       natal, natalAngles, todayTransit,
+      natalAspectsFull = [],
       todayAspectsFull = [], progTransitAspects = [], retrograde = {}, vocData = {},
       moonPhase = null, progression = null,
       todayDate, currentTime = '', meta
@@ -51,6 +52,13 @@ export default async function handler(req, res) {
         const p = todayTransit[k];
         return `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
+
+    // ── 네이탈 에스펙트 문자열 (orb 4° 이내, 최대 15개)
+    const natalAspectStr = natalAspectsFull
+      .filter(a => a.orb <= 4)
+      .slice(0, 15)
+      .map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, 오브 ${a.orb}°)`)
+      .join('\n') || '(네이탈 에스펙트 없음)';
 
     // ── 프로그레션→트랜짓 에스펙트 문자열
     const progTransitStr = progTransitAspects.length > 0
@@ -130,6 +138,9 @@ ${vocStr}
 [프로그레션 → 오늘 트랜짓 에스펙트 (삶의 현재 챕터 × 오늘 하늘)]
 ${progTransitStr}
 
+[네이탈 에스펙트 (이 사람의 출생 차트 고유 패턴, orb 4° 이내)]
+${natalAspectStr}
+
 [오늘 에스펙트 (트랜짓→네이탈, orb 기준 정렬)]
 ${aspectStr}`;
 
@@ -165,6 +176,7 @@ ${question}
 - 행성 이름, 사인 이름, 각도 숫자, 기호(☌△□☍⚹), 하우스 번호를 결과 텍스트에 절대 쓰지 마세요.
 - 모든 점성술 의미를 자연스러운 한국어 삶의 언어로만 표현하세요.
 - 반드시 이 사람의 네이탈 차트와 오늘 에스펙트에서 근거를 찾아 구체적으로 쓰세요.
+- 네이탈 에스펙트는 이 사람의 타고난 패턴입니다. 오늘 에스펙트가 이 패턴을 건드릴 때(같은 행성, 같은 배치) 특히 강하게 발현된다고 해석하세요.
 - 오브 3° 이내 에스펙트는 각 항목에서 반드시 삶의 언어로 근거로 언급하세요.
 - 역행 중인 행성이 있다면 해당 영역(수성=소통/계약, 금성=관계/소비, 화성=행동력)에서 오늘 주의사항을 구체적으로 쓰세요.
 - 프로그레션 태양의 사인·하우스로 현재 삶의 큰 흐름을, 프로그레션 달의 사인·하우스로 현재 감정적 초점을 "오늘의 전체 에너지" 섹션에 한두 문장으로 자연스럽게 녹여 쓰세요.
