@@ -2012,6 +2012,22 @@ function renderTodayPlanetPanel(todayData) {
       `<span style="color:#94a3b8;font-size:11px;margin-left:8px;">— ${mp.energy}</span>`;
   }
 
+  // 프로그레션 태양/달 뱃지
+  let progEl = document.getElementById('todayProgEl');
+  if (!progEl && moonPhaseEl) {
+    progEl = document.createElement('div');
+    progEl.id = 'todayProgEl';
+    progEl.style.cssText = 'margin-bottom:10px;font-size:11px;padding:7px 12px;background:rgba(52,211,153,.05);border-radius:8px;border:1px solid rgba(52,211,153,.12);display:flex;gap:16px;flex-wrap:wrap;';
+    moonPhaseEl.after(progEl);
+  }
+  if (progEl && todayData.progression) {
+    const pg = todayData.progression;
+    progEl.innerHTML =
+      `<span><span style="color:#34d399;font-size:10px;">☀ 프로그 태양</span> <span style="color:#e2e8f0;">${pg.sun.sign} ${pg.sun.degree}° · ${pg.sun.house}H</span></span>` +
+      `<span><span style="color:#34d399;font-size:10px;">🌙 프로그 달</span> <span style="color:#e2e8f0;">${pg.moon.sign} ${pg.moon.degree}° · ${pg.moon.house}H</span></span>` +
+      `<span><span style="color:#34d399;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#e2e8f0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>`;
+  }
+
   const PLANET_KR = {
     sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
     mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",

@@ -51,6 +51,14 @@ export default async function handler(req, res) {
       12, 0, 0   // 정오 기준
     ));
 
+    // ── 세컨더리 프로그레션 태양/달 (1일=1년, 태양 실제 이동 기반)
+    const ageYears = (todayKST.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
+    const progUTC  = new Date(birthUTC.getTime() + ageYears * 86400000);
+    const progRaw  = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
+    const progPlanets = extractPlanets(progRaw.observed);
+    const progWithHouse = assignHouses(progPlanets, houses);
+    const { asc: progAsc } = calcProgAnglesNaibod(jd, ageYears, lat, lng);
+
     // ── 오늘 트랜짓 행성 계산
     const todayRaw     = Ephemeris.getAllPlanets(todayKST, lng, lat, 0);
     const todayPlanets = extractPlanets(todayRaw.observed);
@@ -224,6 +232,12 @@ export default async function handler(req, res) {
       retrograde,
       vocData,
       moonPhase,
+      progression: {
+        sun:      { ...toSignInfo(progWithHouse.sun.lon),  house: progWithHouse.sun.house  },
+        moon:     { ...toSignInfo(progWithHouse.moon.lon), house: progWithHouse.moon.house },
+        asc:      toSignInfo(progAsc),
+        ageYears: Math.round(ageYears * 100) / 100,
+      },
       todayDate:     todayStr,
       meta: {
         name:      name || '',
@@ -243,6 +257,27 @@ export default async function handler(req, res) {
 /* ── 공통 유틸 (astro-calc.js와 동일) ── */
 function norm360(a) { return ((a % 360) + 360) % 360; }
 function rad(d)     { return d * Math.PI / 180; }
+
+function calcProgAnglesNaibod(natalJD, ageYears, lat, lng) {
+  const NAIBOD = 0.98564736629;
+  const T = (natalJD - 2451545.0) / 36525.0;
+  const GMST = norm360(
+    280.46061837 + 360.98564736629 * (natalJD - 2451545.0)
+    + 0.000387933 * T * T - (T * T * T) / 38710000.0
+  );
+  const natalRAMC = norm360(GMST + lng);
+  const progRAMC  = norm360(natalRAMC + ageYears * NAIBOD);
+  const eps  = 23.4392911 - 0.013004167 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
+  const epsR = rad(eps);
+  const latR = rad(lat);
+  const mc_raw = Math.atan(Math.tan(rad(progRAMC)) / Math.cos(epsR)) * 180 / Math.PI;
+  const mc     = norm360(Math.cos(rad(progRAMC)) < 0 ? mc_raw + 180 : mc_raw);
+  const asc    = norm360(Math.atan2(
+    Math.cos(rad(progRAMC)),
+    -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(progRAMC)))
+  ) * 180 / Math.PI);
+  return { asc, mc };
+}
 
 function calcJulianDay(y, m, d, utcHour = 0) {
   if (m <= 2) { y -= 1; m += 12; }

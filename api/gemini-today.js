@@ -19,7 +19,7 @@ export default async function handler(req, res) {
     const {
       natal, natalAngles, todayTransit,
       todayAspectsFull = [], retrograde = {}, vocData = {},
-      moonPhase = null,
+      moonPhase = null, progression = null,
       todayDate, meta
     } = todayData;
 
@@ -80,6 +80,13 @@ export default async function handler(req, res) {
       ? `${moonPhase.phaseIcon} ${moonPhase.phaseName} · 조도 ${moonPhase.illumination}% · ${moonPhase.energy}`
       : '(달 위상 정보 없음)';
 
+    // ── 프로그레션 문자열
+    const progStr = progression
+      ? `프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}', ${progression.sun.house}하우스 (현재 삶의 챕터와 자아 진화 방향)\n` +
+        `프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}', ${progression.moon.house}하우스 (현재 감정·관심의 초점, 약 2~3개월 단위 흐름)\n` +
+        `프로그레션 ASC: ${progression.asc.sign} ${progression.asc.degree}°${progression.asc.minute}' (현재 세상에 보이는 페르소나)`
+      : '(프로그레션 정보 없음)';
+
     // ── 공통 데이터 블록
     const baseData =
 `[오늘의 운세 분석 데이터]
@@ -99,6 +106,9 @@ ${transitStr}
 
 [역행 행성 현황]
 ${retroStr}
+
+[세컨더리 프로그레션 (현재 삶의 배경 흐름)]
+${progStr}
 
 [달의 위상]
 ${moonPhaseStr}
@@ -143,6 +153,7 @@ ${question}
 - 반드시 이 사람의 네이탈 차트와 오늘 에스펙트에서 근거를 찾아 구체적으로 쓰세요.
 - 오브 3° 이내 에스펙트는 각 항목에서 반드시 삶의 언어로 근거로 언급하세요.
 - 역행 중인 행성이 있다면 해당 영역(수성=소통/계약, 금성=관계/소비, 화성=행동력)에서 오늘 주의사항을 구체적으로 쓰세요.
+- 프로그레션 태양의 사인·하우스로 현재 삶의 큰 흐름을, 프로그레션 달의 사인·하우스로 현재 감정적 초점을 "오늘의 전체 에너지" 섹션에 한두 문장으로 자연스럽게 녹여 쓰세요.
 - 달의 위상(신월~그믐)에 따른 에너지 방향성(확장기/절정/수확/성찰)을 "오늘의 전체 에너지" 섹션에 한 문장으로 자연스럽게 녹여 쓰세요.
 - VOC 구간이 있다면 해당 시간대에 중요한 결정/계약/시작을 피하라고 시간대와 함께 반드시 명시하세요.
 - 에스펙트 "접근중"은 오후~저녁에 강해진다고, "이탈중"은 오전에 피크였다고 시간대에 반영하세요.
