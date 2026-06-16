@@ -409,6 +409,26 @@ function computeTenGodClassicalScores(state) {
 
   const result = {};
 
+  // ── 살중(殺重) 사전 감지: 편관格에서 관살 presence ≥ 0.45 이면 살중 판정
+  // 살중신약: 관살이 일간을 과도하게 극 → 비겁/인성이 용신, 재성은 기신(財滋殺)
+  let isSalJung = false;
+  if (geok?.main === "偏官격") {
+    let _guanRaw = 0;
+    [{ stem: pillars.year.stem, pos:"year" }, { stem: pillars.month.stem, pos:"month" }, { stem: pillars.hour.stem, pos:"hour" }]
+      .forEach(({ stem, pos }) => {
+        if (["偏官","正官"].includes(getShishen(dayStem, stem))) _guanRaw += STEM_POS_W[pos] || 1.0;
+      });
+    [{ branch: pillars.year.branch, pos:"year" }, { branch: pillars.month.branch, pos:"month" },
+     { branch: pillars.day.branch,  pos:"day"  }, { branch: pillars.hour.branch,  pos:"hour" }]
+      .forEach(({ branch, pos }) => {
+        (D.HIDDEN_STEMS_RATIO?.[branch] || []).forEach(({ stem, ratio }) => {
+          if (["偏官","正官"].includes(getShishen(dayStem, stem))) _guanRaw += ratio * (ROOT_POS_W[pos] || 1.0);
+        });
+      });
+    isSalJung = (_guanRaw / 4.5) >= 0.45;
+    if (isSalJung) console.log("⚡ [살중감지] 편관格 관살 과다:", (_guanRaw / 4.5).toFixed(3));
+  }
+
   TEN_GODS.forEach(tg => {
     const notes = [];
 
@@ -506,6 +526,13 @@ function computeTenGodClassicalScores(state) {
     if (geok?.main === "食神격" && tg === "偏印") { usefulnessRaw -= 0.16; notes.push("도식"); }
     if (geok?.main === "正財격" && tg === "劫財") { usefulnessRaw -= 0.16; }
     if (geok?.main === "偏財격" && ["比肩","劫財"].includes(tg)) { usefulnessRaw -= 0.16; }
+    // 살중(殺重) 보정: 편관格 관살 과다 → 비겁↑ 인성↑ 재성↓ 관살 과다 완화
+    if (isSalJung) {
+      if (["比肩","劫財"].includes(tg))  { usefulnessRaw += 0.45; notes.push("살중:비겁보호"); }
+      if (["正印","偏印"].includes(tg))  { usefulnessRaw += 0.30; notes.push("살중:화살인성"); }
+      if (["正財","偏財"].includes(tg))  { usefulnessRaw -= 0.30; notes.push("살중:재자살"); }
+      if (["偏官","正官"].includes(tg))  { usefulnessRaw -= 0.16; notes.push("살중:관살과다완화"); }
+    }
 
     const usefulness = _clamp(usefulnessRaw, -1.0, 1.0);
 
@@ -578,9 +605,23 @@ function getAxisUsefulnessIndex(grp, state, axisProfile, tenGodScores) {
 
   // ── D. presencePenalty: 제거 (존재량 벌점 없앰 — 약한 축 과도 억압 방지)
 
+  // ── E. 살중(殺重) 보정: 편관格 + 관살 비중 ≥ 25% → 비겁/인성 용신, 재성 기신
+  let salJungFit = 0;
+  if (geok?.main === "偏官격") {
+    const _gv   = state.vectors?.tenGods || {};
+    const _guan = (_gv["偏官"] || 0) + (_gv["正官"] || 0);
+    const _tot  = Object.values(_gv).reduce((a, b) => a + b, 0) || 1;
+    if (_guan / _tot >= 0.25) {
+      if (grp === "비겁") { salJungFit = +0.55; reasons.push("살중:비겁보호"); }
+      if (grp === "인성") { salJungFit = +0.40; reasons.push("살중:화살인성"); }
+      if (grp === "재성") { salJungFit = -0.40; reasons.push("살중:재자살기신"); }
+      if (grp === "관성") { salJungFit = -0.22; reasons.push("살중:관살과다완화"); }
+    }
+  }
+
   // ── 최종 index 합산 (가중 평균)
   const index = _clamp(
-    0.50 * strengthFit +
+    0.50 * (strengthFit + salJungFit) +
     0.25 * geokFit     +
     0.25 * stabilityFit,
     -1.0, 1.0
