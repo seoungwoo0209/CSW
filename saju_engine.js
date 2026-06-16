@@ -1589,14 +1589,18 @@ function getGroupRole(grp, gods, GROUP_MAP, usefulnessIndex, structureCoeff) {
   // minScore 단독 조건 제거 — 방향성(ui) 근거 필수
   // ─────────────────────────────────────
   if (grp === "재성") {
-    if ((hasGi || hasHan) && ui <= -0.04 && roleScore <= 46) {
+    // 신약 재성은 roleScore가 44~50 범위에 걸려 중립으로 빠지는 케이스 방지
+    if ((hasGi || hasHan) && ui <= -0.04 && roleScore <= 52) {
       return "기신";
     }
-    if (!hasYong && !hasHee && ui < 0 && roleScore <= 45) {
+    if (!hasYong && !hasHee && ui < 0 && roleScore <= 54) {
       return "기신";
     }
-    // 기존: hasHan && ui <= -0.10 && minScore <= 42 → minScore 단독 트리거 제거
-    if (ui <= -0.10 && roleScore <= 43) {
+    if (ui <= -0.10 && roleScore <= 52) {
+      return "기신";
+    }
+    // 신약에서 ui가 강하게 음수면 roleScore 높아도 기신
+    if (ui <= -0.15 && roleScore <= 58) {
       return "기신";
     }
   }
@@ -1833,6 +1837,8 @@ function mergeAxisRole(groupRoleFull, resolvedRole, ui, hrGap, volatility) {
     if (resolvedRole === "기신" || resolvedRole === "한신") return resolvedRole;
     // resolvedRole이 희신/용신이면 채택
     if (resolvedRole === "희신" || resolvedRole === "용신") return resolvedRole;
+    // 둘 다 중립인데 방향성이 명확히 음수면 기신 (신약 기신축 중립 잔류 방지)
+    if (negativeDir && ui <= -0.15) return "기신";
     return "중립";
   }
 
