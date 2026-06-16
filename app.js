@@ -1996,6 +1996,22 @@ function renderTodayPlanetPanel(todayData) {
 
   if (dateLabel) dateLabel.textContent = todayData.todayDate + " 기준";
 
+  // 달의 위상 뱃지
+  let moonPhaseEl = document.getElementById('todayMoonPhaseEl');
+  if (!moonPhaseEl && dateLabel) {
+    moonPhaseEl = document.createElement('div');
+    moonPhaseEl.id = 'todayMoonPhaseEl';
+    moonPhaseEl.style.cssText = 'margin:6px 0 10px;font-size:12px;padding:7px 12px;background:rgba(165,180,252,.07);border-radius:8px;border:1px solid rgba(165,180,252,.15);';
+    dateLabel.after(moonPhaseEl);
+  }
+  if (moonPhaseEl && todayData.moonPhase) {
+    const mp = todayData.moonPhase;
+    moonPhaseEl.innerHTML =
+      `${mp.phaseIcon} <span style="color:#a5b4fc;font-weight:600;">${mp.phaseName}</span>` +
+      `<span style="color:#64748b;font-size:10px;margin-left:6px;">조도 ${mp.illumination}%</span>` +
+      `<span style="color:#94a3b8;font-size:11px;margin-left:8px;">— ${mp.energy}</span>`;
+  }
+
   const PLANET_KR = {
     sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
     mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",

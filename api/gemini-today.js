@@ -19,6 +19,7 @@ export default async function handler(req, res) {
     const {
       natal, natalAngles, todayTransit,
       todayAspectsFull = [], retrograde = {}, vocData = {},
+      moonPhase = null,
       todayDate, meta
     } = todayData;
 
@@ -74,6 +75,11 @@ export default async function handler(req, res) {
     // ── VOC 문자열
     const vocStr = vocData.desc || '오늘은 달의 VOC 구간 정보 없음';
 
+    // ── 달의 위상 문자열
+    const moonPhaseStr = moonPhase
+      ? `${moonPhase.phaseIcon} ${moonPhase.phaseName} · 조도 ${moonPhase.illumination}% · ${moonPhase.energy}`
+      : '(달 위상 정보 없음)';
+
     // ── 공통 데이터 블록
     const baseData =
 `[오늘의 운세 분석 데이터]
@@ -93,6 +99,9 @@ ${transitStr}
 
 [역행 행성 현황]
 ${retroStr}
+
+[달의 위상]
+${moonPhaseStr}
 
 [달의 보이드 오브 코스(VOC)]
 ${vocStr}
@@ -134,6 +143,7 @@ ${question}
 - 반드시 이 사람의 네이탈 차트와 오늘 에스펙트에서 근거를 찾아 구체적으로 쓰세요.
 - 오브 3° 이내 에스펙트는 각 항목에서 반드시 삶의 언어로 근거로 언급하세요.
 - 역행 중인 행성이 있다면 해당 영역(수성=소통/계약, 금성=관계/소비, 화성=행동력)에서 오늘 주의사항을 구체적으로 쓰세요.
+- 달의 위상(신월~그믐)에 따른 에너지 방향성(확장기/절정/수확/성찰)을 "오늘의 전체 에너지" 섹션에 한 문장으로 자연스럽게 녹여 쓰세요.
 - VOC 구간이 있다면 해당 시간대에 중요한 결정/계약/시작을 피하라고 시간대와 함께 반드시 명시하세요.
 - 에스펙트 "접근중"은 오후~저녁에 강해진다고, "이탈중"은 오전에 피크였다고 시간대에 반영하세요.
 - 누구에게나 해당되는 일반적인 조언 금지.

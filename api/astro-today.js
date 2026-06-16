@@ -56,6 +56,27 @@ export default async function handler(req, res) {
     const todayPlanets = extractPlanets(todayRaw.observed);
     const todayWithHouse = assignHouses(todayPlanets, houses); // 네이탈 하우스 기준
 
+    // ── 달의 위상 계산
+    const moonElongation   = norm360(todayPlanets.moon.lon - todayPlanets.sun.lon);
+    const moonIllumination = Math.round((1 - Math.cos(moonElongation * Math.PI / 180)) / 2 * 100);
+    let moonPhaseName, moonPhaseIcon, moonPhaseEnergy;
+    if      (moonElongation < 22.5)  { moonPhaseName='신월';    moonPhaseIcon='🌑'; moonPhaseEnergy='새로운 시작과 의도 설정의 시기 — 에너지가 내부로 축적됨'; }
+    else if (moonElongation < 67.5)  { moonPhaseName='초승달';  moonPhaseIcon='🌒'; moonPhaseEnergy='씨앗 발아 단계 — 행동 개시와 추진 시작에 유리'; }
+    else if (moonElongation < 112.5) { moonPhaseName='상현달';  moonPhaseIcon='🌓'; moonPhaseEnergy='결단과 도전의 시기 — 장애를 넘어 추진력이 강해짐'; }
+    else if (moonElongation < 157.5) { moonPhaseName='보름 전'; moonPhaseIcon='🌔'; moonPhaseEnergy='에너지 절정을 향해 상승 — 확장과 가시화에 좋음'; }
+    else if (moonElongation < 202.5) { moonPhaseName='보름달';  moonPhaseIcon='🌕'; moonPhaseEnergy='에너지 절정 — 성취·완성·감정이 최고조에 달함'; }
+    else if (moonElongation < 247.5) { moonPhaseName='보름 후'; moonPhaseIcon='🌖'; moonPhaseEnergy='수확과 나눔의 시기 — 감사·공유·관계 강화에 좋음'; }
+    else if (moonElongation < 292.5) { moonPhaseName='하현달';  moonPhaseIcon='🌗'; moonPhaseEnergy='정리와 놓아주기 — 불필요한 것을 내려놓는 시기'; }
+    else if (moonElongation < 337.5) { moonPhaseName='그믐달';  moonPhaseIcon='🌘'; moonPhaseEnergy='내면 성찰과 휴식 — 재충전과 다음 시작 준비'; }
+    else                              { moonPhaseName='신월';    moonPhaseIcon='🌑'; moonPhaseEnergy='새로운 시작과 의도 설정의 시기 — 에너지가 내부로 축적됨'; }
+    const moonPhase = {
+      elongation:    Math.round(moonElongation * 10) / 10,
+      illumination:  moonIllumination,
+      phaseName:     moonPhaseName,
+      phaseIcon:     moonPhaseIcon,
+      energy:        moonPhaseEnergy,
+    };
+
     // ── 오늘 트랜짓 ASC/MC + 북노드/릴리스
     const todayJD = calcJulianDay(
       todayKST.getUTCFullYear(), todayKST.getUTCMonth() + 1, todayKST.getUTCDate(),
@@ -202,6 +223,7 @@ export default async function handler(req, res) {
       todayAspectsFull,
       retrograde,
       vocData,
+      moonPhase,
       todayDate:     todayStr,
       meta: {
         name:      name || '',
