@@ -45,14 +45,17 @@ export default async function handler(req, res) {
     // ── 네이탈 북노드/릴리스
     const { northLon: natalNorthLon, southLon: natalSouthLon } = calcLunarNodes(jd);
 
-    // ── 오늘 날짜 (KST 자정 기준)
-    const nowRaw   = new Date();
-    const todayKST = new Date(Date.UTC(
-      nowRaw.getUTCFullYear(),
-      nowRaw.getUTCMonth(),
-      nowRaw.getUTCDate() + (nowRaw.getUTCHours() >= 15 ? 1 : 0),
-      12, 0, 0   // 정오 기준
-    ));
+    // ── 현재 KST 시각으로 트랜짓 계산
+    const nowRaw  = new Date();
+    const kstMs   = nowRaw.getTime() + 9 * 3600000;
+    const kstDate = new Date(kstMs);
+    const kstY    = kstDate.getUTCFullYear();
+    const kstM    = kstDate.getUTCMonth() + 1;
+    const kstD    = kstDate.getUTCDate();
+    const kstH    = kstDate.getUTCHours();
+    const kstMin  = kstDate.getUTCMinutes();
+    const currentKSTTimeStr = `${String(kstH).padStart(2,'0')}:${String(kstMin).padStart(2,'0')}`;
+    const todayKST = nowRaw; // 트랜짓 계산용 현재 UTC
 
     // ── 세컨더리 프로그레션 태양/달 (1일=1년, 태양 실제 이동 기반)
     const ageYears = (todayKST.getTime() - birthUTC.getTime()) / (365.25 * 86400000);
@@ -150,10 +153,8 @@ export default async function handler(req, res) {
       return ASPECT_ANGLES.some(a => Math.abs(diff - a) <= 1.0); // orb 1° 이내
     }
 
-    // 오늘 자정부터 내일 자정까지 1시간 단위 스캔
-    const dayStart = new Date(Date.UTC(
-      todayKST.getUTCFullYear(), todayKST.getUTCMonth(), todayKST.getUTCDate(), 0, 0, 0
-    ));
+    // KST 자정(00:00 KST)부터 24시간 스캔
+    const dayStart = new Date(Date.UTC(kstY, kstM - 1, kstD, 0, 0, 0) - 9 * 3600000);
 
     let lastAspectHour  = -1;
     let vocStartHour    = -1;
@@ -237,8 +238,8 @@ export default async function handler(req, res) {
       todayResult[k] = { ...toSignInfo(todayWithHouse[k].lon), house: todayWithHouse[k].house };
     });
 
-    // 오늘 날짜 문자열 (KST)
-    const todayStr = `${todayKST.getUTCFullYear()}-${String(todayKST.getUTCMonth()+1).padStart(2,'0')}-${String(todayKST.getUTCDate()).padStart(2,'0')}`;
+    // 오늘 날짜/시각 문자열 (KST)
+    const todayStr = `${kstY}-${String(kstM).padStart(2,'0')}-${String(kstD).padStart(2,'0')}`;
 
     return res.status(200).json({
       natal:         natalResult,
@@ -256,6 +257,7 @@ export default async function handler(req, res) {
         ageYears: Math.round(ageYears * 100) / 100,
       },
       todayDate:     todayStr,
+      currentTime:   currentKSTTimeStr,
       meta: {
         name:      name || '',
         gender:    gender || 'M',

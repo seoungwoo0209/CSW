@@ -20,7 +20,7 @@ export default async function handler(req, res) {
       natal, natalAngles, todayTransit,
       todayAspectsFull = [], progTransitAspects = [], retrograde = {}, vocData = {},
       moonPhase = null, progression = null,
-      todayDate, meta
+      todayDate, currentTime = '', meta
     } = todayData;
 
     const PLANET_LABELS = [
@@ -104,6 +104,7 @@ export default async function handler(req, res) {
 성별: ${meta.gender === 'M' ? '남성' : '여성'}
 출생: ${meta.birthDate} ${meta.birthTime}
 오늘 날짜: ${todayDate}
+현재 시각 (KST): ${currentTime || '알 수 없음'}
 
 어센던트(ASC): ${natalAngles?.asc?.sign || ''} ${natalAngles?.asc?.degree || ''}°
 MC(천정): ${natalAngles?.mc?.sign || ''} ${natalAngles?.mc?.degree || ''}°
@@ -170,7 +171,8 @@ ${question}
 - 프로그레션→트랜짓 에스펙트 중 orb 2° 이내 항목이 있다면 "이 사람의 삶의 흐름이 오늘 하늘과 맞닿는 순간"으로 삶의 언어로 표현해 "오늘의 전체 에너지" 섹션에 녹여 쓰세요 (점성술 용어 사용 금지).
 - 달의 위상(신월~그믐)에 따른 에너지 방향성(확장기/절정/수확/성찰)을 "오늘의 전체 에너지" 섹션에 한 문장으로 자연스럽게 녹여 쓰세요.
 - VOC 구간이 있다면 해당 시간대에 중요한 결정/계약/시작을 피하라고 시간대와 함께 반드시 명시하세요.
-- 에스펙트 "접근중"은 오후~저녁에 강해진다고, "이탈중"은 오전에 피크였다고 시간대에 반영하세요.
+- 현재 시각(KST)을 기준으로, 이미 지나간 시간대의 에너지는 "오늘 오전에 이미..." 같은 과거형으로, 앞으로 남은 시간대는 미래형으로 구분해 쓰세요. 현재 시각 이후 에너지에 더 집중해 주세요.
+- 에스펙트 "접근중"은 앞으로 강해진다고, "이탈중"은 이미 피크를 지났다고 현재 시각에 맞춰 해석하세요.
 - 누구에게나 해당되는 일반적인 조언 금지.
 - 완성된 문장으로 끝까지 마무리하세요.
 

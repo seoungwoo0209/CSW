@@ -2025,7 +2025,10 @@ function renderTodayPlanetPanel(todayData) {
   const dateLabel = _$("todayDateLabel");
   if (!panel) return;
 
-  if (dateLabel) dateLabel.textContent = todayData.todayDate + " 기준";
+  if (dateLabel) {
+    const timeStr = todayData.currentTime ? ` ${todayData.currentTime}` : '';
+    dateLabel.textContent = todayData.todayDate + timeStr + " KST 기준";
+  }
 
   // 달의 위상 뱃지
   let moonPhaseEl = document.getElementById('todayMoonPhaseEl');
