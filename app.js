@@ -1831,6 +1831,158 @@ async function renderMoonPhasesPanel(astroData) {
     console.warn("신월/만월 계산 실패:", err.message);
     if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 신월/만월 계산 실패: ${err.message}</div>`;
   }
+
+  if (typeof renderTransitPanel === 'function') renderTransitPanel(astroData);
+}
+
+/* =========================================================
+   트랜짓 차트 패널 렌더링
+   ========================================================= */
+let _transitCity = null;
+
+function filterTransitCityList(val) {
+  const dropdown = _$('transitCityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectTransitCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showTransitCityList() {
+  const input = _$('transitCityInput');
+  if (input) filterTransitCityList(input.value);
+}
+function hideTransitCityList() {
+  const d = _$('transitCityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectTransitCity(cityName) {
+  _transitCity = cityName;
+  const input = _$('transitCityInput');
+  if (input) input.value = cityName;
+  hideTransitCityList();
+}
+
+async function renderTransitPanel(astroData) {
+  const existing = document.getElementById('astroTransitPanel');
+  if (existing) existing.remove();
+
+  const meta = astroData.meta;
+  if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
+
+  const nowKST = new Date(Date.now() + 9 * 3600000);
+  const defaultDate = nowKST.toISOString().slice(0, 10);
+  const defaultTime = nowKST.toISOString().slice(11, 16);
+  const cityName = _transitCity || getCitySelectValue();
+
+  const panel = document.createElement('div');
+  panel.id = 'astroTransitPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(52,211,153,.2);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#34d399;letter-spacing:2px;margin-bottom:4px;">🪐 트랜짓 차트</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:14px;">
+        특정 날짜/시각의 트랜짓 행성을 나탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 날짜</label>
+          <input id="transitDateInput" type="date" value="${defaultDate}"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+        </div>
+        <div>
+          <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 시각</label>
+          <input id="transitTimeInput" type="time" value="${defaultTime}"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+        </div>
+      </div>
+      <div style="margin-bottom:14px;">
+        <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 적용 도시</label>
+        <div style="position:relative;">
+          <input id="transitCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+            oninput="filterTransitCityList(this.value)"
+            onfocus="showTransitCityList()"
+            onblur="setTimeout(hideTransitCityList,200)"
+          />
+          <div id="transitCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
+            overflow-y:auto;background:#1e2340;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
+        </div>
+      </div>
+      <button onclick="calcTransitChart()" style="
+        background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);color:#34d399;
+        border-radius:8px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:14px;letter-spacing:1px;
+      ">🪐 트랜짓 차트 계산하기</button>
+      <div id="astroTransitRows" style="font-size:12px;color:#94a3b8;">⏳ 트랜짓 계산 중...</div>
+    </div>
+  `;
+
+  const moonPanel = document.getElementById('astroMoonPhasesPanel');
+  if (moonPanel) moonPanel.after(panel);
+  else return;
+
+  await calcTransitChart();
+}
+
+async function calcTransitChart() {
+  if (!window.AstroResult) return;
+  const astroData = window.AstroResult;
+  const meta = astroData.meta;
+  const rowsEl = document.getElementById('astroTransitRows');
+
+  const transitDate = _$('transitDateInput')?.value || '';
+  const transitTime = _$('transitTimeInput')?.value || '00:00';
+  const cityInputVal = _$('transitCityInput')?.value || getCitySelectValue();
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityInputVal);
+
+  if (!transitDate) {
+    if (rowsEl) rowsEl.innerHTML = '<div style="font-size:12px;color:#fca5a5;">⚠️ 날짜를 입력해 주세요.</div>';
+    return;
+  }
+  if (rowsEl) rowsEl.innerHTML = '⏳ 트랜짓 계산 중...';
+
+  try {
+    const res = await fetch('/api/astro-transit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transitDate,
+        transitTime,
+        appLat, appLng, appUtcOffset,
+        natal: astroData.natal,
+        angles: astroData.angles,
+        nodes: astroData.nodes,
+        houses: astroData.houses
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || '트랜짓 계산 오류');
+
+    const trOpts = {
+      accentColor: '#34d399',
+      headerLabel: '트랜짓',
+      aspectTitle1: '트랜짓-트랜짓 에스펙트',
+      aspectTitle2: '트랜짓-나탈 에스펙트',
+      aspectIcon1: '🪐',
+      aspectIcon2: '🔗',
+    };
+    if (rowsEl) {
+      rowsEl.innerHTML = renderReturnChart(data, astroData.natal, astroData.angles, astroData.nodes, '트랜짓 차트', '결과', trOpts);
+    }
+  } catch (err) {
+    console.warn('트랜짓 계산 실패:', err.message);
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 트랜짓 계산 실패: ${err.message}</div>`;
+  }
 }
 
 /* =========================================================
