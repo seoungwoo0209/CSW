@@ -381,8 +381,8 @@
       if (applying > targets.length / 2) total *= 1.1;
     }
 
-    // 0.38: 1개 강한 에스펙트 → ±8pt, 3개 동시 → max ±18pt
-    return clamp(total * jupW * 0.38, -1.0, 1.0) * 18;
+    // 0.58: 1개 강한 에스펙트 → ±12pt, 2개 동시 → max ±18pt
+    return clamp(total * jupW * 0.58, -1.0, 1.0) * 18;
   }
 
   /* ═══════════════════════════════════════════
@@ -453,7 +453,7 @@
     const uraOpp    = angDist(tr.uranus, natal.uranus) > 170 ? -0.22 : 0;
 
     return clamp(
-      (jup + sat + ura + plu + jupReturn + uraOpp) * 0.32,
+      (jup + sat + ura + plu + jupReturn + uraOpp) * 0.45,
       -1.0, 1.0
     );
   }
@@ -478,24 +478,25 @@
   }
 
   /* ═══════════════════════════════════════════
-     calcLayer2: 12개월 평균 트랜짓 + 쏠라 리턴
-     · 7월 스냅샷 → 12개월 평균으로 변경
-       목성이 4월에 나탈 MC 통과해도 반영됨
+     calcLayer2: 피크월 트랜짓 + 쏠라 리턴
+     · 12개월 평균(희석) → 절댓값 최대 월(피크) 방식
+       목성이 4월에 나탈 MC 통과 → 그 달의 점수가 올해 대표
+       (평균은 1/12로 희석해 1pt짜리 연도를 만들었음)
   ════════════════════════════════════════════ */
   function calcLayer2(year, birthMonth, natalSunLon, natal, jupW, satW, plutW) {
-    // 12개월 평균 트랜짓
-    let l2aSum = 0;
+    // 피크 트랜짓: 가장 강한(절댓값 최대) 달의 점수를 대표값으로
+    let l2aPeak = 0;
     for (let mo = 1; mo <= 12; mo++) {
-      const jd  = calcJD(year, mo, 15, 12);
-      const tr  = getPlanets(jd);
-      l2aSum   += calcLayer2A(tr, natal, jupW, satW, plutW);
+      const jd   = calcJD(year, mo, 15, 12);
+      const tr   = getPlanets(jd);
+      const score = calcLayer2A(tr, natal, jupW, satW, plutW);
+      if (Math.abs(score) > Math.abs(l2aPeak)) l2aPeak = score;
     }
-    const l2a = l2aSum / 12;
 
     const srJD = findSolarReturnJD(year, birthMonth, natalSunLon);
     const l2b  = calcLayer2B(srJD, natal);
 
-    return clamp(l2a * 0.70 + l2b * 0.30, -1.0, 1.0) * 22;
+    return clamp(l2aPeak * 0.70 + l2b * 0.30, -1.0, 1.0) * 22;
   }
 
   /* ═══════════════════════════════════════════
@@ -594,7 +595,8 @@
   ════════════════════════════════════════════ */
   function applyScoreCurve(rawScore) {
     const delta  = rawScore - 60;
-    const curved = Math.tanh(delta / 35) * 30;
+    // /35 → /22: 합산 ±20pt가 ±6pt가 아닌 ±20pt로 변환되도록
+    const curved = Math.tanh(delta / 22) * 30;
     return Math.round(clamp(60 + curved, 40, 100));
   }
 
