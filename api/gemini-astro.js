@@ -283,6 +283,7 @@ ${transitStr}
               generationConfig: {
                 temperature: 0.75,
                 maxOutputTokens: 16384,
+                thinkingConfig: { thinkingBudget: 0 },
               }
             })
           }
