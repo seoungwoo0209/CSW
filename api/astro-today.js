@@ -60,7 +60,14 @@ export default async function handler(req, res) {
     const progRaw  = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
     const progPlanets = extractPlanets(progRaw.observed);
     const progWithHouse = assignHouses(progPlanets, houses);
-    const { asc: progAsc } = calcProgAnglesNaibod(jd, ageYears, lat, lng);
+    const { asc: progAsc, mc: progMc } = calcProgAnglesNaibod(jd, ageYears, lat, lng);
+
+    // ── 프로그레션 JD + 북노드/릴리스
+    const progJD = calcJulianDay(
+      progUTC.getUTCFullYear(), progUTC.getUTCMonth() + 1, progUTC.getUTCDate(),
+      progUTC.getUTCHours() + progUTC.getUTCMinutes() / 60
+    );
+    const { northLon: progNorthLon, southLon: progSouthLon } = calcLunarNodes(progJD);
 
     // ── 오늘 트랜짓 행성 계산
     const todayRaw     = Ephemeris.getAllPlanets(todayKST, lng, lat, 0);
@@ -101,6 +108,12 @@ export default async function handler(req, res) {
     const transitPoints = buildAspectPoints(todayPlanets, todayAsc, todayMc, todayNorthLon, todaySouthLon);
     const todayAspectsFull = calcAllAspects(transitPoints, natalPoints, {
       labelPrefixA: '오늘 ', labelPrefixB: '네이탈 '
+    });
+
+    // ── 프로그레션 → 트랜짓 에스펙트 (12포인트 × 12포인트)
+    const progPoints = buildAspectPoints(progPlanets, progAsc, progMc, progNorthLon, progSouthLon);
+    const progTransitAspects = calcAllAspects(progPoints, transitPoints, {
+      labelPrefixA: '프로그레션 ', labelPrefixB: '오늘 '
     });
 
     // ── 역행 계산 (어제 정오 vs 오늘 정오 경도 비교)
@@ -232,6 +245,7 @@ export default async function handler(req, res) {
       natalAngles:   { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       todayTransit:  todayResult,
       todayAspectsFull,
+      progTransitAspects,
       retrograde,
       vocData,
       moonPhase,

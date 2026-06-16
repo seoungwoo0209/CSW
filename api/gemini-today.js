@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     const {
       natal, natalAngles, todayTransit,
-      todayAspectsFull = [], retrograde = {}, vocData = {},
+      todayAspectsFull = [], progTransitAspects = [], retrograde = {}, vocData = {},
       moonPhase = null, progression = null,
       todayDate, meta
     } = todayData;
@@ -51,6 +51,16 @@ export default async function handler(req, res) {
         const p = todayTransit[k];
         return `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
+
+    // ── 프로그레션→트랜짓 에스펙트 문자열
+    const progTransitStr = progTransitAspects.length > 0
+      ? progTransitAspects
+          .slice()
+          .sort((a, b) => a.orb - b.orb)
+          .slice(0, 20)
+          .map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, 오브 ${a.orb}°, ${a.applying ? '접근중' : '이탈중'})`)
+          .join('\n')
+      : '(프로그레션-트랜짓 에스펙트 없음)';
 
     // ── 에스펙트 전체 (orb 기준 정렬, 행성+ASC/MC+북노드/릴리스 전체)
     const aspectStr = todayAspectsFull
@@ -116,6 +126,9 @@ ${moonPhaseStr}
 [달의 보이드 오브 코스(VOC)]
 ${vocStr}
 
+[프로그레션 → 오늘 트랜짓 에스펙트 (삶의 현재 챕터 × 오늘 하늘)]
+${progTransitStr}
+
 [오늘 에스펙트 (트랜짓→네이탈, orb 기준 정렬)]
 ${aspectStr}`;
 
@@ -154,6 +167,7 @@ ${question}
 - 오브 3° 이내 에스펙트는 각 항목에서 반드시 삶의 언어로 근거로 언급하세요.
 - 역행 중인 행성이 있다면 해당 영역(수성=소통/계약, 금성=관계/소비, 화성=행동력)에서 오늘 주의사항을 구체적으로 쓰세요.
 - 프로그레션 태양의 사인·하우스로 현재 삶의 큰 흐름을, 프로그레션 달의 사인·하우스로 현재 감정적 초점을 "오늘의 전체 에너지" 섹션에 한두 문장으로 자연스럽게 녹여 쓰세요.
+- 프로그레션→트랜짓 에스펙트 중 orb 2° 이내 항목이 있다면 "이 사람의 삶의 흐름이 오늘 하늘과 맞닿는 순간"으로 삶의 언어로 표현해 "오늘의 전체 에너지" 섹션에 녹여 쓰세요 (점성술 용어 사용 금지).
 - 달의 위상(신월~그믐)에 따른 에너지 방향성(확장기/절정/수확/성찰)을 "오늘의 전체 에너지" 섹션에 한 문장으로 자연스럽게 녹여 쓰세요.
 - VOC 구간이 있다면 해당 시간대에 중요한 결정/계약/시작을 피하라고 시간대와 함께 반드시 명시하세요.
 - 에스펙트 "접근중"은 오후~저녁에 강해진다고, "이탈중"은 오전에 피크였다고 시간대에 반영하세요.

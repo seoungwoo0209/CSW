@@ -2101,6 +2101,21 @@ function renderTodayPlanetPanel(todayData) {
     );
     panel.after(aspectPanel);
   }
+
+  // 프로그레션 → 트랜짓 에스펙트 아코디언
+  {
+    const existing = document.getElementById('todayProgTransitAspectPanel');
+    if (existing) existing.remove();
+
+    const progAspPanel = document.createElement('div');
+    progAspPanel.id = 'todayProgTransitAspectPanel';
+    progAspPanel.innerHTML = renderAspectAccordion(
+      todayData.progTransitAspects, '프로그레션→트랜짓 에스펙트', '🔭', '#34d399'
+    );
+    const transitAspPanel = document.getElementById('todayAspectPanel');
+    if (transitAspPanel) transitAspPanel.after(progAspPanel);
+    else panel.after(progAspPanel);
+  }
 }
 
 /* =========================================================
