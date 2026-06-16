@@ -2022,9 +2022,8 @@ async function calcTransitChart() {
    ========================================================= */
 function renderTodayPlanetPanel(todayData) {
   const panel     = _$("todayPlanetPanel");
-  const grid      = _$("todayPlanetGrid");
   const dateLabel = _$("todayDateLabel");
-  if (!panel || !grid) return;
+  if (!panel) return;
 
   if (dateLabel) dateLabel.textContent = todayData.todayDate + " 기준";
 
@@ -2059,33 +2058,6 @@ function renderTodayPlanetPanel(todayData) {
       `<span><span style="color:#34d399;font-size:10px;">🌙 프로그 달</span> <span style="color:#e2e8f0;">${pg.moon.sign} ${pg.moon.degree}° · ${pg.moon.house}H</span></span>` +
       `<span><span style="color:#34d399;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#e2e8f0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>`;
   }
-
-  const PLANET_KR = {
-    sun:"☀️ 태양", moon:"🌙 달", mercury:"☿ 수성", venus:"♀ 금성",
-    mars:"♂ 화성", jupiter:"♃ 목성", saturn:"♄ 토성",
-  };
-
-  const natal   = todayData.natal;
-  const transit = todayData.todayTransit;
-
-  grid.innerHTML = Object.entries(PLANET_KR).map(([key, label]) => {
-    const n = natal[key];
-    const t = transit[key];
-    if (!n || !t) return "";
-    const changed = n.signIndex !== t.signIndex;
-    return `
-      <div style="
-        background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;
-        border:1px solid rgba(250,200,100,.12);
-      ">
-        <div style="color:#fcd34d;font-size:11px;margin-bottom:2px;">${label}</div>
-        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${t.sign} ${t.degree}°</div>
-        <div style="color:#64748b;font-size:10px;margin-top:2px;">
-          네이탈: ${n.sign}${changed ? ' <span style="color:#fbbf24;">→변화</span>' : ''}
-        </div>
-      </div>
-    `;
-  }).join("");
 
   panel.style.display = "block";
 
