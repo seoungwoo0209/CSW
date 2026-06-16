@@ -12,7 +12,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { birthDate, birthTime, lat, lng, name, gender, utcOffset } = req.body;
+    const { birthDate, birthTime, lat, lng, name, gender, utcOffset,
+            appLat: _appLat, appLng: _appLng, appUtcOffset: _appUtcOffset } = req.body;
+    const appLat = (_appLat != null) ? _appLat : lat;
+    const appLng = (_appLng != null) ? _appLng : lng;
 
     if (!birthDate || !birthTime || lat == null || lng == null) {
       return res.status(400).json({ error: '생년월일, 출생시각, 출생지(위도/경도)가 필요합니다.' });
@@ -90,7 +93,7 @@ export default async function handler(req, res) {
       todayKST.getUTCFullYear(), todayKST.getUTCMonth() + 1, todayKST.getUTCDate(),
       todayKST.getUTCHours() + todayKST.getUTCMinutes() / 60
     );
-    const { asc: todayAsc, mc: todayMc } = calcHousesPlacidus(todayJD, lat, lng);
+    const { asc: todayAsc, mc: todayMc } = calcHousesPlacidus(todayJD, appLat, appLng);
     const { northLon: todayNorthLon, southLon: todaySouthLon } = calcLunarNodes(todayJD);
 
     // ── 오늘 트랜짓 → 네이탈 에스펙트 (행성 10개 + ASC + MC + 북노드 + 릴리스 = 12포인트 전부)
@@ -124,7 +127,7 @@ export default async function handler(req, res) {
     const MAJOR_PLANET_KEYS = ['sun','mercury','venus','mars','jupiter','saturn'];
 
     function getMoonLon(date) {
-      const r = Ephemeris.getAllPlanets(date, lng, lat, 0);
+      const r = Ephemeris.getAllPlanets(date, appLng, appLat, 0);
       return ((r.observed.moon?.apparentLongitudeDd ?? 0) % 360 + 360) % 360;
     }
 

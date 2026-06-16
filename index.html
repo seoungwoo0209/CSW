@@ -191,6 +191,23 @@
 
             <div id="todayCalcStatus" style="font-size:12px;color:#94a3b8;padding:4px 2px;min-height:18px;margin-bottom:10px;"></div>
 
+            <!-- 현재 위치 도시 선택 -->
+            <div style="position:relative;margin-bottom:12px;">
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:5px;">📍 현재 위치</div>
+              <input id="todayCityInput" type="text" placeholder="현재 있는 도시 (기본: 출생 도시)" autocomplete="off"
+                style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
+                background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+                oninput="filterTodayCityList(this.value)"
+                onfocus="showTodayCityList()"
+                onblur="setTimeout(hideTodayCityList,200)"
+              />
+              <div id="todayCityDropdown" style="
+                position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:100;
+                background:#1e1b4b;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+                max-height:200px;overflow-y:auto;display:none;
+              "></div>
+            </div>
+
             <button id="todayBtn" onclick="requestTodayFortune()" style="
               background:linear-gradient(135deg,#d97706,#b45309);
               color:#fff;font-size:13px;font-weight:700;
