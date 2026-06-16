@@ -322,19 +322,58 @@
 
   /* ═══════════════════════════════════════════
      Layer 1: 프로그레션 태양 에스펙트 (30%, ±18)
+     · 프로그 태양은 1°/년으로 느리므로 orb를 넓게 적용
+     · 가중합(희석) 대신 합산 → 활성 에스펙트가 직접 기여
   ════════════════════════════════════════════ */
+  // 프로그 태양 전용 orb (일반 트랜짓보다 넓게)
+  const PROG_ASPECT_LIST = [
+    { angle:   0, orb: 12 },
+    { angle:  60, orb:  8 },
+    { angle:  90, orb:  8 },
+    { angle: 120, orb: 12 },
+    { angle: 180, orb: 12 },
+  ];
+
+  function progAspectScore(a, b, planetKey) {
+    const dist   = angDist(a, b);
+    const nature = PLANET_NATURE[planetKey] ?? 0.5;
+    let best = 0;
+    for (const { angle, orb } of PROG_ASPECT_LIST) {
+      const diff = Math.abs(dist - angle);
+      if (diff > orb) continue;
+      const s = aspectNatureDir(nature, angle) * (1 - diff / orb);
+      if (Math.abs(s) > Math.abs(best)) best = s;
+    }
+    return best;
+  }
+
+  function progAspectScoreByNature(a, b, natureMap) {
+    const dist = angDist(a, b);
+    let best = 0;
+    for (const { angle, orb } of PROG_ASPECT_LIST) {
+      const diff = Math.abs(dist - angle);
+      if (diff > orb) continue;
+      const nature = natureMap[angle] ?? 0;
+      const s = nature * (1 - diff / orb);
+      if (Math.abs(s) > Math.abs(best)) best = s;
+    }
+    return best;
+  }
+
   function calcLayer1(progSunLon, prevProgSunLon, natal, jupW) {
-    const jup = aspectScore(progSunLon, natal.jupiter, 'jupiter');
-    const sat = aspectScoreByNature(progSunLon, natal.saturn, SAT_NATURE_BY_ASPECT);
-    const mc  = aspectScore(progSunLon, natal.mc,      'sun') * 0.80;
-    const asc = aspectScore(progSunLon, natal.asc,     'sun') * 0.70;
-    const sun = aspectScore(progSunLon, natal.sun,     'sun');
+    // 합산 방식: 각 나탈 포인트별 최강 에스펙트를 직접 더함
+    const jup  = progAspectScore(progSunLon, natal.jupiter, 'jupiter') * 1.20;
+    const sat  = progAspectScoreByNature(progSunLon, natal.saturn, SAT_NATURE_BY_ASPECT) * 1.00;
+    const mc   = progAspectScore(progSunLon, natal.mc,      'sun')     * 1.00;
+    const asc  = progAspectScore(progSunLon, natal.asc,     'sun')     * 0.90;
+    const sun  = progAspectScore(progSunLon, natal.sun,     'sun')     * 0.80;
+    const moon = progAspectScore(progSunLon, natal.moon,    'moon')    * 0.70;
 
-    let total = jup*0.30 + sat*0.25 + mc*0.20 + asc*0.15 + sun*0.10;
+    let total = jup + sat + mc + asc + sun + moon;
 
-    // Applying 보너스: 직전 연도보다 거리가 좁혀지면 ×1.1
+    // Applying 보너스
     if (prevProgSunLon != null) {
-      const targets = [natal.jupiter, natal.saturn, natal.mc, natal.asc, natal.sun]
+      const targets = [natal.jupiter, natal.saturn, natal.mc, natal.asc, natal.sun, natal.moon]
         .filter(t => t != null);
       const applying = targets.filter(t =>
         angDist(progSunLon, t) < angDist(prevProgSunLon, t)
@@ -342,7 +381,8 @@
       if (applying > targets.length / 2) total *= 1.1;
     }
 
-    return clamp(total * jupW, -1.0, 1.0) * 18;
+    // 0.38: 1개 강한 에스펙트 → ±8pt, 3개 동시 → max ±18pt
+    return clamp(total * jupW * 0.38, -1.0, 1.0) * 18;
   }
 
   /* ═══════════════════════════════════════════
@@ -368,45 +408,52 @@
 
   /* ═══════════════════════════════════════════
      Layer 2A: 세운 트랜짓 (L2 의 70%)
+     · 합산 방식: 목성/토성이 여러 나탈 포인트 동시 접촉 시 누적
+     · 나탈 목표 확대: 태양·달·MC·ASC + 금성·화성·토성·목성(리턴)
+     · 0.32 댐핑: 강한 1개 단일 트랜짓 → ±9pt
   ════════════════════════════════════════════ */
   function calcLayer2A(tr, natal, jupW, satW, plutW) {
-    // 목성 트랜짓 → 나탈 (ASC/MC ×1.3 가중)
+    // 목성 트랜짓 합산 (ASC/MC ×1.3 보정)
     const jup = (
-        aspectScore(tr.jupiter, natal.sun,  'jupiter') * 0.20
-      + aspectScore(tr.jupiter, natal.moon, 'jupiter') * 0.10
-      + aspectScore(tr.jupiter, natal.mc,   'jupiter') * 1.30 * 0.40
-      + aspectScore(tr.jupiter, natal.asc,  'jupiter') * 1.30 * 0.30
+        aspectScore(tr.jupiter, natal.sun,     'jupiter')
+      + aspectScore(tr.jupiter, natal.moon,    'jupiter') * 0.80
+      + aspectScore(tr.jupiter, natal.mc,      'jupiter') * 1.30
+      + aspectScore(tr.jupiter, natal.asc,     'jupiter') * 1.30
+      + aspectScore(tr.jupiter, natal.saturn,  'jupiter') * 0.70
+      + aspectScore(tr.jupiter, natal.venus,   'jupiter') * 0.60
+      + aspectScore(tr.jupiter, natal.mars,    'jupiter') * 0.50
     ) * jupW;
 
-    // 토성 트랜짓 → 나탈 (건설적 분기 + ASC/MC ×1.3)
+    // 토성 트랜짓 합산 (건설적/파괴적 분기 + ASC/MC ×1.3)
     const sat = (
-        aspectScoreByNature(tr.saturn, natal.sun,  SAT_NATURE_BY_ASPECT) * 0.20
-      + aspectScoreByNature(tr.saturn, natal.moon, SAT_NATURE_BY_ASPECT) * 0.10
-      + aspectScoreByNature(tr.saturn, natal.mc,   SAT_NATURE_BY_ASPECT) * 1.30 * 0.40
-      + aspectScoreByNature(tr.saturn, natal.asc,  SAT_NATURE_BY_ASPECT) * 1.30 * 0.30
+        aspectScoreByNature(tr.saturn, natal.sun,     SAT_NATURE_BY_ASPECT)
+      + aspectScoreByNature(tr.saturn, natal.moon,    SAT_NATURE_BY_ASPECT) * 0.80
+      + aspectScoreByNature(tr.saturn, natal.mc,      SAT_NATURE_BY_ASPECT) * 1.30
+      + aspectScoreByNature(tr.saturn, natal.asc,     SAT_NATURE_BY_ASPECT) * 1.30
+      + aspectScoreByNature(tr.saturn, natal.jupiter, SAT_NATURE_BY_ASPECT) * 0.70
+      + aspectScoreByNature(tr.saturn, natal.venus,   SAT_NATURE_BY_ASPECT) * 0.60
     ) * satW;
 
-    // 천왕성 트랜짓 → 나탈 (건설적 분기 + ASC/MC ×1.3)
-    const ura =
-        aspectScoreByNature(tr.uranus, natal.sun, URA_NATURE_BY_ASPECT) * 0.25
-      + aspectScoreByNature(tr.uranus, natal.mc,  URA_NATURE_BY_ASPECT) * 1.30 * 0.40
-      + aspectScoreByNature(tr.uranus, natal.asc, URA_NATURE_BY_ASPECT) * 1.30 * 0.35;
+    // 천왕성 트랜짓 (ASC/MC ×1.3)
+    const ura = (
+        aspectScoreByNature(tr.uranus, natal.sun, URA_NATURE_BY_ASPECT)
+      + aspectScoreByNature(tr.uranus, natal.mc,  URA_NATURE_BY_ASPECT) * 1.30
+      + aspectScoreByNature(tr.uranus, natal.asc, URA_NATURE_BY_ASPECT) * 1.30
+    ) * 0.45;
 
-    // 명왕성 트랜짓 → 나탈 (ASC/MC ×1.3)
+    // 명왕성 트랜짓 (ASC/MC ×1.3)
     const plu = (
-        aspectScore(tr.pluto, natal.mc,  'pluto') * 1.30 * 0.45
-      + aspectScore(tr.pluto, natal.asc, 'pluto') * 1.30 * 0.35
-      + aspectScore(tr.pluto, natal.sun, 'pluto') * 0.20
-    ) * plutW;
+        aspectScore(tr.pluto, natal.mc,  'pluto') * 1.30
+      + aspectScore(tr.pluto, natal.asc, 'pluto') * 1.30
+      + aspectScore(tr.pluto, natal.sun, 'pluto')
+    ) * plutW * 0.40;
 
-    // 목성 리턴 (~12년 주기) 보너스
-    const jupReturn = angDist(tr.jupiter, natal.jupiter) < 5 ? 0.50 * jupW : 0;
-
-    // 천왕성 어포지션 (~42세 중년 전환점) 페널티
-    const uraOpp = angDist(tr.uranus, natal.uranus) > 170 ? -0.25 : 0;
+    // 목성 리턴 보너스 (~12년), 천왕성 어포지션 페널티 (~42세)
+    const jupReturn = angDist(tr.jupiter, natal.jupiter) < 5 ? 0.40 * jupW : 0;
+    const uraOpp    = angDist(tr.uranus, natal.uranus) > 170 ? -0.22 : 0;
 
     return clamp(
-      0.40 * jup + 0.28 * sat + 0.12 * ura + 0.10 * plu + jupReturn + uraOpp,
+      (jup + sat + ura + plu + jupReturn + uraOpp) * 0.32,
       -1.0, 1.0
     );
   }
@@ -420,20 +467,35 @@
 
     const jToJ   = aspectScore(sr.jupiter, natal.jupiter, 'jupiter');
     const jToSun = aspectScore(sr.jupiter, natal.sun,     'jupiter');
+    const jToMC  = aspectScore(sr.jupiter, natal.mc,      'jupiter') * 1.20;
     const sToSun = aspectScoreByNature(sr.saturn, natal.sun, SAT_NATURE_BY_ASPECT);
-    const jToS   = aspectScore(sr.jupiter, natal.saturn,  'saturn');
+    const sToMC  = aspectScoreByNature(sr.saturn, natal.mc,  SAT_NATURE_BY_ASPECT) * 1.20;
 
     return clamp(
-      jToJ*0.35 + jToSun*0.25 + sToSun*0.25 + jToS*0.15,
+      (jToJ + jToSun + jToMC + sToSun + sToMC) * 0.25,
       -1.0, 1.0
     );
   }
 
-  function calcLayer2(year, birthMonth, natalSunLon, tr, natal, jupW, satW, plutW) {
-    const l2a = calcLayer2A(tr, natal, jupW, satW, plutW);
+  /* ═══════════════════════════════════════════
+     calcLayer2: 12개월 평균 트랜짓 + 쏠라 리턴
+     · 7월 스냅샷 → 12개월 평균으로 변경
+       목성이 4월에 나탈 MC 통과해도 반영됨
+  ════════════════════════════════════════════ */
+  function calcLayer2(year, birthMonth, natalSunLon, natal, jupW, satW, plutW) {
+    // 12개월 평균 트랜짓
+    let l2aSum = 0;
+    for (let mo = 1; mo <= 12; mo++) {
+      const jd  = calcJD(year, mo, 15, 12);
+      const tr  = getPlanets(jd);
+      l2aSum   += calcLayer2A(tr, natal, jupW, satW, plutW);
+    }
+    const l2a = l2aSum / 12;
+
     const srJD = findSolarReturnJD(year, birthMonth, natalSunLon);
     const l2b  = calcLayer2B(srJD, natal);
-    return clamp(l2a * 0.70 + l2b * 0.30, -1.0, 1.0) * 18;
+
+    return clamp(l2a * 0.70 + l2b * 0.30, -1.0, 1.0) * 22;
   }
 
   /* ═══════════════════════════════════════════
@@ -505,7 +567,7 @@
     const l3a = calcProgMoonScore(progMoonLon, progAscLon, natal, moonW);
     const l3b = calcSaturnReturnScore(trSatLon, natal.saturn, ageYears, prevSatDist) * satW;
     const l3c = calcLunationScore(progMoonLon, progSunLon);
-    return clamp(l3a * 0.50 + l3b * 0.25 + l3c * 0.25, -1.0, 1.0) * 15;
+    return clamp(l3a * 0.50 + l3b * 0.25 + l3c * 0.25, -1.0, 1.0) * 18;
   }
 
   /* ═══════════════════════════════════════════
@@ -524,7 +586,7 @@
       + aspectScoreByNature(progMarsLon, natal.saturn, SAT_NATURE_BY_ASPECT) * 0.20
       + aspectScore(progMarsLon, natal.moon,   'mars')  * 0.15;
 
-    return clamp(ven * 0.55 + mar * 0.45, -1.0, 1.0) * 9;
+    return clamp(ven * 0.55 + mar * 0.45, -1.0, 1.0) * 11;
   }
 
   /* ═══════════════════════════════════════════
@@ -570,14 +632,13 @@
       const progMarsLon  = calcMars(Tp);
       const { asc: progAscLon } = calcProgAscMC(natalJD, ageYears, lat, lng);
 
-      // 트랜짓: 매년 7/1 기준 (연간 대표값)
-      const transitJD = calcJD(year, 7, 1, 12);
-      const tr        = getPlanets(transitJD);
-      const trSatDist = angDist(tr.saturn, natal.saturn);
+      // 토성 리턴 체크용: 7월 1일 토성 위치만 사용
+      const tr7       = getPlanets(calcJD(year, 7, 1, 12));
+      const trSatDist = angDist(tr7.saturn, natal.saturn);
 
       const L1 = calcLayer1(progSunLon, prevProgSunLon, natal, jupW);
-      const L2 = calcLayer2(year, bm, natal.sun, tr, natal, jupW, satW, plutW);
-      const L3 = calcLayer3(progMoonLon, progSunLon, progAscLon, tr.saturn, natal, ageYears, prevSatDist, satW, moonW);
+      const L2 = calcLayer2(year, bm, natal.sun, natal, jupW, satW, plutW);
+      const L3 = calcLayer3(progMoonLon, progSunLon, progAscLon, tr7.saturn, natal, ageYears, prevSatDist, satW, moonW);
       const L4 = calcLayer4(progVenusLon, progMarsLon, natal);
 
       const rawScore = 60 + L1 + L2 + L3 + L4;
