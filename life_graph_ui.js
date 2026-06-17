@@ -1,5 +1,6 @@
 /* =========================================================
-   인생 그래프 UI (life_graph_ui.js) v2.0
+   인생 그래프 UI (life_graph_ui.js) v3.0
+   v4.0 엔진 대응: 3-도메인(직업·재물·관계) + 시련강도
    ========================================================= */
 
 console.log("🔥 life_graph_ui.js 로드 시작");
@@ -32,7 +33,7 @@ function _drawLifeGraph(container, result) {
   const PL = 44, PR = 20, PT = 28, PB = 48;
   const gW = W - PL - PR;
   const gH = H - PT - PB;
-  const minScore = 55, maxScore = 100;
+  const minScore = 50, maxScore = 100;
 
   function xPos(i)     { return PL + (i / (scores.length - 1)) * gW; }
   function yPos(score) { return PT + gH - ((score - minScore) / (maxScore - minScore)) * gH; }
@@ -45,12 +46,13 @@ function _drawLifeGraph(container, result) {
     ).join(' ');
   }
 
+  // 면적 채우기: score 기준
   const areaPath = scores.map((s, i) =>
     `${i === 0 ? 'M' : 'L'}${xPos(i).toFixed(1)},${yPos(s.score).toFixed(1)}`
   ).join(' ')
     + ` L${xPos(scores.length-1).toFixed(1)},${(PT+gH).toFixed(1)} L${PL},${(PT+gH).toFixed(1)} Z`;
 
-  const yLabels = [60, 65, 70, 75, 80, 85, 90, 95].map(v => {
+  const yLabels = [60, 65, 70, 75, 80, 85, 90].map(v => {
     const y = yPos(v).toFixed(1);
     return `<line x1="${PL-4}" y1="${y}" x2="${PL+gW}" y2="${y}" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
             <text x="${PL-8}" y="${(parseFloat(y)+4).toFixed(1)}" fill="#475569" font-size="10" text-anchor="end">${v}</text>`;
@@ -84,12 +86,13 @@ function _drawLifeGraph(container, result) {
       fill="rgba(165,180,252,.35)" font-size="9" text-anchor="middle">예측</text>
   ` : '';
 
-  // 요약 점수 계산
-  const past    = scores.filter(s => s.year < currentYear);
-  const future  = scores.filter(s => s.year > currentYear);
-  const nowScore = nowIdx >= 0 ? scores[nowIdx].score : 0;
-  const avgPast  = past.length   ? Math.round(past.reduce((a,b)=>a+b.score,0)/past.length)   : 0;
-  const avgFuture= future.length ? Math.round(future.reduce((a,b)=>a+b.score,0)/future.length) : 0;
+  // 현재 연도 도메인 점수
+  const nowData     = nowIdx >= 0 ? scores[nowIdx] : null;
+  const nowScore    = nowData?.score       ?? 0;
+  const nowCareer   = nowData?.career      ?? 0;
+  const nowWealth   = nowData?.wealth      ?? 0;
+  const nowRel      = nowData?.relationship ?? 0;
+  const nowIntensity = nowData?.intensity  ?? 0;
 
   function scoreColor(s) {
     if (s >= 78) return "#78ffa8";
@@ -98,10 +101,22 @@ function _drawLifeGraph(container, result) {
     return "#ffb27a";
   }
   function scoreComment(s) {
-    if (s >= 78) return "상승기 · 확장과 기회의 시기";
-    if (s >= 65) return "안정기 · 꾸준한 성장 지속";
-    if (s >= 55) return "전환기 · 인내와 준비의 시기";
-    return "정비기 · 내실을 다지는 시기";
+    if (s >= 78) return "상승기 · 확장과 기회";
+    if (s >= 65) return "안정기 · 꾸준한 성장";
+    if (s >= 55) return "전환기 · 인내의 시기";
+    return "정비기 · 내실 다지기";
+  }
+  function intensityLabel(v) {
+    if (v >= 70) return "매우 강함";
+    if (v >= 45) return "강함";
+    if (v >= 20) return "보통";
+    return "잔잔함";
+  }
+  function intensityColor(v) {
+    if (v >= 70) return "#ff9a7a";
+    if (v >= 45) return "#ffd36a";
+    if (v >= 20) return "#9ed0ff";
+    return "#78ffa8";
   }
 
   // 오늘 날짜 표시
@@ -119,25 +134,35 @@ function _drawLifeGraph(container, result) {
         border:1px solid rgba(165,180,252,.22);border-radius:16px;
         padding:20px;margin-bottom:12px;
       ">
-        <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:14px;">🌌 인생 그래프</div>
+        <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:14px;">🌌 인생 그래프 · ${currentYear}년 기준</div>
 
-        <!-- 3개 요약 카드 -->
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
-          <div style="flex:1;min-width:110px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 14px;">
-            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">출생 ~ 오늘 평균</div>
-            <div style="font-size:28px;font-weight:900;color:${scoreColor(avgPast)};line-height:1;">${avgPast}</div>
-            <div style="font-size:10px;color:#475569;margin-top:4px;">${birthYear}년 ~ ${currentYear}년</div>
+        <!-- 3-도메인 카드 (직업·재물·관계) -->
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">
+          <div style="flex:1;min-width:100px;background:rgba(129,140,252,.10);border:1px solid rgba(129,140,252,.25);border-radius:12px;padding:12px 14px;">
+            <div style="font-size:10px;color:#818cf8;margin-bottom:3px;letter-spacing:1px;">💼 직업 운세</div>
+            <div style="font-size:28px;font-weight:900;color:${scoreColor(nowCareer)};line-height:1;">${nowCareer}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">${scoreComment(nowCareer)}</div>
           </div>
-          <div style="flex:1;min-width:110px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 14px;">
-            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">현재 (${currentYear}년)</div>
-            <div style="font-size:28px;font-weight:900;color:${scoreColor(nowScore)};line-height:1;">${nowScore}</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:4px;">${scoreComment(nowScore)}</div>
+          <div style="flex:1;min-width:100px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.22);border-radius:12px;padding:12px 14px;">
+            <div style="font-size:10px;color:#fcd34d;margin-bottom:3px;letter-spacing:1px;">💰 재물 운세</div>
+            <div style="font-size:28px;font-weight:900;color:${scoreColor(nowWealth)};line-height:1;">${nowWealth}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">${scoreComment(nowWealth)}</div>
           </div>
-          <div style="flex:1;min-width:110px;background:rgba(255,255,255,.05);border-radius:12px;padding:12px 14px;">
-            <div style="font-size:11px;color:#64748b;margin-bottom:4px;">오늘 이후 평균</div>
-            <div style="font-size:28px;font-weight:900;color:${scoreColor(avgFuture)};line-height:1;">${avgFuture}</div>
-            <div style="font-size:10px;color:#475569;margin-top:4px;">${todayStr} 기준</div>
+          <div style="flex:1;min-width:100px;background:rgba(244,114,182,.08);border:1px solid rgba(244,114,182,.22);border-radius:12px;padding:12px 14px;">
+            <div style="font-size:10px;color:#f9a8d4;margin-bottom:3px;letter-spacing:1px;">💕 관계 운세</div>
+            <div style="font-size:28px;font-weight:900;color:${scoreColor(nowRel)};line-height:1;">${nowRel}</div>
+            <div style="font-size:10px;color:#94a3b8;margin-top:4px;">${scoreComment(nowRel)}</div>
           </div>
+        </div>
+
+        <!-- 시련강도 바 -->
+        <div style="background:rgba(255,255,255,.04);border-radius:10px;padding:10px 14px;margin-bottom:16px;display:flex;align-items:center;gap:12px;">
+          <div style="font-size:10px;color:#64748b;white-space:nowrap;">⚡ 시련강도</div>
+          <div style="flex:1;background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden;">
+            <div style="width:${nowIntensity}%;height:100%;background:${intensityColor(nowIntensity)};border-radius:4px;transition:width .5s;"></div>
+          </div>
+          <div style="font-size:11px;color:${intensityColor(nowIntensity)};white-space:nowrap;font-weight:700;">${intensityLabel(nowIntensity)}</div>
+          <div style="font-size:10px;color:#475569;">${todayStr}</div>
         </div>
 
         <!-- SVG 그래프 -->
@@ -145,16 +170,11 @@ function _drawLifeGraph(container, result) {
           <svg viewBox="0 0 ${W} ${H}" style="width:100%;min-width:320px;height:auto;display:block;">
             <defs>
               <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%"   stop-color="#818cf8" stop-opacity="0.35"/>
-                <stop offset="100%" stop-color="#818cf8" stop-opacity="0.02"/>
-              </linearGradient>
-              <linearGradient id="lineGrad" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%"   stop-color="#6366f1"/>
-                <stop offset="50%"  stop-color="#a5b4fc"/>
-                <stop offset="100%" stop-color="#78ffa8"/>
+                <stop offset="0%"   stop-color="#818cf8" stop-opacity="0.25"/>
+                <stop offset="100%" stop-color="#818cf8" stop-opacity="0.01"/>
               </linearGradient>
               <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feGaussianBlur stdDeviation="1.5" result="blur"/>
                 <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
               </filter>
             </defs>
@@ -162,11 +182,21 @@ function _drawLifeGraph(container, result) {
             ${yLabels}
             ${xLabels}
             ${futureOverlay}
+
+            <!-- 면적 채우기 (종합 점수 기준) -->
             <path d="${areaPath}" fill="url(#areaGrad)"/>
-            <path d="${makePath('layer2')}" fill="none" stroke="rgba(251,191,36,.25)" stroke-width="1" stroke-dasharray="3,3"/>
-            <path d="${makePath('layer3')}" fill="none" stroke="rgba(167,139,250,.25)" stroke-width="1" stroke-dasharray="2,4"/>
-            <path d="${makePath('score')}" fill="none" stroke="url(#lineGrad)" stroke-width="2.2" stroke-linejoin="round" filter="url(#glow)"/>
+
+            <!-- 3-도메인 라인 -->
+            <path d="${makePath('career')}" fill="none" stroke="rgba(129,140,252,.70)" stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="${makePath('wealth')}" fill="none" stroke="rgba(251,191,36,.70)"  stroke-width="1.5" stroke-linejoin="round"/>
+            <path d="${makePath('relationship')}" fill="none" stroke="rgba(244,114,182,.70)" stroke-width="1.5" stroke-linejoin="round"/>
+
+            <!-- 종합 점수 라인 (가장 위) -->
+            <path d="${makePath('score')}" fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1" stroke-dasharray="4,3" stroke-linejoin="round"/>
+
             ${nowDot}
+
+            <!-- 기준선 60pt -->
             <line x1="${PL}" y1="${yPos(60).toFixed(1)}" x2="${PL+gW}" y2="${yPos(60).toFixed(1)}"
               stroke="rgba(255,255,255,.12)" stroke-width="1" stroke-dasharray="5,4"/>
             <text x="${(PL+gW+4).toFixed(1)}" y="${(yPos(60)+4).toFixed(1)}" fill="rgba(255,255,255,.2)" font-size="9">기준</text>
@@ -174,18 +204,22 @@ function _drawLifeGraph(container, result) {
         </div>
 
         <!-- 범례 -->
-        <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;">
+        <div style="display:flex;gap:14px;margin-top:8px;flex-wrap:wrap;align-items:center;">
           <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:20px;height:2px;background:linear-gradient(90deg,#6366f1,#78ffa8);border-radius:2px;"></div>
-            <span style="font-size:10px;color:#64748b;">종합 운세</span>
+            <div style="width:18px;height:2px;background:rgba(129,140,252,.9);border-radius:2px;"></div>
+            <span style="font-size:10px;color:#818cf8;">직업</span>
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:20px;border-top:1px dashed rgba(251,191,36,.5);"></div>
-            <span style="font-size:10px;color:#64748b;">목성/토성 트랜짓</span>
+            <div style="width:18px;height:2px;background:rgba(251,191,36,.9);border-radius:2px;"></div>
+            <span style="font-size:10px;color:#fcd34d;">재물</span>
           </div>
           <div style="display:flex;align-items:center;gap:5px;">
-            <div style="width:20px;border-top:1px dashed rgba(167,139,250,.5);"></div>
-            <span style="font-size:10px;color:#64748b;">프로그레션 달</span>
+            <div style="width:18px;height:2px;background:rgba(244,114,182,.9);border-radius:2px;"></div>
+            <span style="font-size:10px;color:#f9a8d4;">관계</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:5px;">
+            <div style="width:18px;border-top:1px dashed rgba(255,255,255,.35);"></div>
+            <span style="font-size:10px;color:#64748b;">종합</span>
           </div>
         </div>
       </div>
@@ -194,4 +228,4 @@ function _drawLifeGraph(container, result) {
 }
 
 window.LifeGraphUI = { renderLifeGraph };
-console.log("✅ life_graph_ui.js v2.0 로드 완료");
+console.log("✅ life_graph_ui.js v3.0 로드 완료");
