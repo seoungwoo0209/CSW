@@ -2051,30 +2051,60 @@ function renderAnnualEventsPanel(astroData) {
   }
 
   container.innerHTML = `
+    <style>
+      @keyframes _aicPulse{0%,100%{opacity:.55;box-shadow:0 0 5px #dfba6b}50%{opacity:1;box-shadow:0 0 10px #dfba6b}}
+      @keyframes _aicSheen{from{background-position:200% center}to{background-position:-200% center}}
+      #annualInputCard select#annualReportYear{
+        appearance:none;-webkit-appearance:none;
+        background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23dfba6b' stroke-width='1.4' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat:no-repeat;background-position:right 14px center;
+      }
+      #annualInputCard select#annualReportYear:focus{outline:none;border-color:rgba(232,192,105,.7);}
+      #annualReportBtn{transition:transform .15s ease,box-shadow .15s ease;}
+      #annualReportBtn:active{transform:scale(.97);}
+      #annualReportBtn .aic-sheen{
+        position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+        background:linear-gradient(100deg,transparent 30%,rgba(255,255,255,.22) 48%,transparent 66%);
+        background-size:250% auto;animation:_aicSheen 3.2s linear infinite;
+      }
+    </style>
     <div style="padding:4px 0 16px;">
       <div id="annualInputCard" style="
-        background:linear-gradient(135deg,rgba(10,15,40,.98),rgba(25,10,60,.95));
-        border:1px solid rgba(232,192,105,.25);border-radius:20px;padding:24px;
+        position:relative;overflow:hidden;
+        background:radial-gradient(circle at 18% -10%,rgba(183,156,255,.16),transparent 55%),
+                    linear-gradient(150deg,rgba(13,10,34,.98) 0%,rgba(22,12,46,.97) 55%,rgba(12,9,28,.98) 100%);
+        border:1px solid rgba(232,192,105,.3);border-radius:22px;padding:26px 24px;
+        box-shadow:0 18px 48px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);
       ">
-        <div style="font-size:11px;color:#e8c069;letter-spacing:3px;font-weight:700;margin-bottom:8px;">🔮 연간 점성술 운세</div>
-        <div style="font-size:13px;color:#aab2d6;margin-bottom:18px;line-height:1.6;">
-          점성술 엔진이 계산한 연간 이벤트를 AI가 삶의 언어로 해석해드립니다.<br>
-          <span style="color:#7e87ad;font-size:11px;">프로펙션 · 트랜짓 임팩트 · 생애주기 · 일식 기준</span>
+        <div style="position:absolute;top:0;left:0;right:0;height:2px;
+          background:linear-gradient(90deg,transparent,rgba(223,186,107,.75),transparent);"></div>
+
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#dfba6b;animation:_aicPulse 2.2s ease-in-out infinite;"></div>
+          <span style="font-size:11px;color:#e8c069;letter-spacing:.28em;font-weight:700;font-family:Georgia,serif;">연간 점성술 운세</span>
         </div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+        <div style="font-size:13px;color:#aab2d6;margin-bottom:20px;line-height:1.7;">
+          점성술 엔진이 계산한 연간 이벤트를 AI가 삶의 언어로 해석해드립니다.<br>
+          <span style="color:#7e87ad;font-size:11px;letter-spacing:.02em;">프로펙션 · 트랜짓 임팩트 · 생애주기 · 일식 기준</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px;">
           <select id="annualReportYear" style="
-            padding:8px 12px;border-radius:10px;
-            border:1px solid rgba(232,192,105,.3);background:rgba(232,192,105,.08);
-            color:#f4d98a;font-size:14px;font-weight:700;cursor:pointer;
+            width:100%;box-sizing:border-box;padding:13px 38px 13px 16px;border-radius:12px;
+            border:1px solid rgba(232,192,105,.35);background-color:rgba(232,192,105,.07);
+            color:#f4d98a;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.02em;
+            font-family:Georgia,serif;
           ">${opts.join('')}</select>
           <button onclick="generateAnnualReport()" id="annualReportBtn" style="
-            background:linear-gradient(135deg,rgba(232,192,105,.2),rgba(183,156,255,.15));
-            border:1px solid rgba(232,192,105,.45);color:#f4d98a;
-            border-radius:10px;padding:9px 22px;font-size:13px;font-weight:700;
-            cursor:pointer;letter-spacing:.5px;
-          ">⭐ 리포트 생성</button>
+            position:relative;overflow:hidden;width:100%;box-sizing:border-box;
+            background:linear-gradient(135deg,#3b2a0f 0%,#caa244 45%,#3b2a0f 100%);
+            border:1px solid rgba(232,192,105,.5);color:#241404;
+            border-radius:12px;padding:14px 22px;font-size:14.5px;font-weight:700;
+            cursor:pointer;letter-spacing:.06em;display:flex;align-items:center;justify-content:center;gap:8px;
+            box-shadow:0 6px 22px rgba(180,140,40,.25),inset 0 1px 0 rgba(255,255,255,.3);
+          "><img src="/img/loader-icon-star.png" width="18" height="18" style="object-fit:contain;display:block;filter:drop-shadow(0 0 3px rgba(0,0,0,.3));">리포트 생성<span class="aic-sheen"></span></button>
         </div>
-        <div id="annualReportStatus" style="display:none;font-size:12px;color:#64748b;"></div>
+        <div id="annualReportStatus" style="display:none;font-size:12px;color:#64748b;margin-top:12px;"></div>
       </div>
       <div id="annualReportResult" style="margin-top:16px;"></div>
     </div>
