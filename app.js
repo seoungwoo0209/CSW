@@ -2103,35 +2103,42 @@ function showAnnualLoader(numEvents) {
   }).join('');
 
   const loaderHtml =
-    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#06030f;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
+    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#06030f;overflow:hidden;">' +
 
     '<style>' +
-    '@keyframes _alImgRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
-    '@keyframes _alGlow{0%,100%{box-shadow:0 0 35px rgba(212,175,55,.25),0 0 70px rgba(100,60,200,.1)}50%{box-shadow:0 0 60px rgba(212,175,55,.5),0 0 120px rgba(100,60,200,.2)}}' +
+    '@keyframes _alBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}' +
     '@keyframes _alBS{from{background-position:200% center}to{background-position:-200% center}}' +
-    '.al-img-wrap{animation:_alGlow 4.5s ease-in-out infinite}' +
-    '.al-img-rot{animation:_alImgRot 75s linear infinite;transform-origin:center;display:block}' +
+    '.al-bg{animation:_alBreath 8s ease-in-out infinite;transform-origin:center}' +
     '.al-bf{background:linear-gradient(90deg,#b8942a 0%,#D4AF37 30%,#fff5c0 50%,#D4AF37 70%,#b8942a 100%);background-size:300% auto;animation:_alBS 2s linear infinite}' +
     '</style>' +
 
-    '<div style="margin-top:28px;letter-spacing:.4em;font-size:9px;color:rgba(212,175,55,.45);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;flex-shrink:0;">Annual Cosmos Report</div>' +
+    // 전체화면 배경 이미지 (살짝 숨쉬는 효과)
+    '<div class="al-bg" style="position:absolute;inset:-5%;background:url(\'/img/astrolabe-loader.png\') center/cover no-repeat;"></div>' +
 
-    '<div class="al-img-wrap" style="width:288px;height:288px;border-radius:50%;overflow:hidden;margin-top:14px;flex-shrink:0;border:1.5px solid rgba(212,175,55,.3);">' +
-    '<img class="al-img-rot" src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:cover;" alt=""/>' +
-    '</div>' +
+    // 하단 그라디언트 오버레이 (이미지→다크, 텍스트 가독성)
+    '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(6,3,15,0) 35%,rgba(6,3,15,0.7) 58%,rgba(6,3,15,0.95) 70%,#06030f 80%);"></div>' +
 
-    '<div style="width:calc(100% - 48px);max-width:318px;margin:16px 0 12px;flex-shrink:0;">' +
-    '<div style="display:flex;justify-content:space-between;margin-bottom:7px;align-items:center;">' +
-    '<span id="alStatusText" style="font-size:10.5px;color:#475569;font-style:italic;font-family:Helvetica Neue,sans-serif;letter-spacing:.02em;">심연의 지혜를 정렬하는 중...</span>' +
+    // 상단 레이블
+    '<div style="position:absolute;top:20px;left:0;right:0;text-align:center;letter-spacing:.4em;font-size:9px;color:rgba(212,175,55,.55);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;">Annual Cosmos Report</div>' +
+
+    // 하단 콘텐츠 영역
+    '<div style="position:absolute;bottom:0;left:0;right:0;padding:0 24px 28px;display:flex;flex-direction:column;align-items:center;">' +
+
+    // 진행률 바
+    '<div style="width:100%;max-width:360px;margin-bottom:16px;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;align-items:center;">' +
+    '<span id="alStatusText" style="font-size:11px;color:rgba(212,175,55,.7);font-style:italic;font-family:Helvetica Neue,sans-serif;letter-spacing:.02em;">심연의 지혜를 정렬하는 중...</span>' +
     '<span id="alPct" style="font-size:11px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:36px;text-align:right;">0%</span>' +
     '</div>' +
-    '<div style="height:2px;background:rgba(255,255,255,.05);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
+    '<div style="height:2px;background:rgba(255,255,255,.08);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
     '</div>' +
 
-    '<div style="width:calc(100% - 48px);max-width:318px;border-top:1px solid rgba(212,175,55,.1);padding-top:10px;flex-shrink:0;">' + stepsHtml + '</div>' +
+    // 단계 목록
+    '<div style="width:100%;max-width:360px;border-top:1px solid rgba(212,175,55,.12);padding-top:12px;">' + stepsHtml + '</div>' +
 
-    '<div style="margin-top:auto;margin-bottom:24px;text-align:center;padding:0 36px;">' +
-    '<p style="font-size:10.5px;font-style:italic;color:rgba(212,175,55,.4);line-height:1.85;font-family:Georgia,serif;margin:0;">"우주의 속삭임을 해독하여,<br>당신만의 삶의 길을 안내합니다."</p>' +
+    // 하단 인용구
+    '<p style="font-size:10.5px;font-style:italic;color:rgba(212,175,55,.35);line-height:1.85;font-family:Georgia,serif;margin:16px 0 0;text-align:center;">"우주의 속삭임을 해독하여, 당신만의 삶의 길을 안내합니다."</p>' +
+
     '</div>' +
     '</div>';
 
