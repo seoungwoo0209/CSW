@@ -2088,54 +2088,6 @@ function showAnnualLoader(numEvents) {
   if (old) old.remove();
   clearInterval(window._alProgressInterval);
 
-  const ZODIAC = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
-
-  const zodiacSvg = ZODIAC.map((z, i) => {
-    const a = (i * 30 - 90) * Math.PI / 180;
-    const x = (160 + 138 * Math.cos(a)).toFixed(1);
-    const y = (160 + 138 * Math.sin(a)).toFixed(1);
-    return '<text x="' + x + '" y="' + y + '" text-anchor="middle" dominant-baseline="middle" font-size="12" fill="rgba(212,175,55,.65)" font-family="serif">' + z + '</text>';
-  }).join('');
-
-  const tickSvg = Array.from({length:24}, (_, i) => {
-    const a = i * 15 * Math.PI / 180;
-    const isMajor = i % 3 === 0;
-    const r1 = 148, r2 = isMajor ? 142 : 145;
-    const x1 = (160 + r1 * Math.cos(a)).toFixed(1), y1 = (160 + r1 * Math.sin(a)).toFixed(1);
-    const x2 = (160 + r2 * Math.cos(a)).toFixed(1), y2 = (160 + r2 * Math.sin(a)).toFixed(1);
-    return '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#D4AF37" stroke-width="' + (isMajor ? 1 : .5) + '" opacity="' + (isMajor ? .5 : .22) + '"/>';
-  }).join('');
-
-  const PLANET_DEFS = [
-    {r:100,a:20, col:'#F5DEB3',s:5},{r:100,a:80, col:'#FFD700',s:7},
-    {r:100,a:145,col:'#87CEEB',s:4.5},{r:100,a:210,col:'#FF8C69',s:5.5},
-    {r:100,a:285,col:'#DDA0DD',s:4},{r:72,a:50,col:'#E8D5A3',s:3.5},
-    {r:72,a:195,col:'#B0C4DE',s:3},
-  ];
-  const planetSvg = PLANET_DEFS.map(p => {
-    const a = p.a * Math.PI / 180;
-    const cx = (160 + p.r * Math.cos(a)).toFixed(1);
-    const cy = (160 + p.r * Math.sin(a)).toFixed(1);
-    return '<circle cx="' + cx + '" cy="' + cy + '" r="' + p.s + '" fill="' + p.col + '" opacity=".85"/>' +
-           '<circle cx="' + cx + '" cy="' + cy + '" r="' + (p.s + 2.5) + '" fill="none" stroke="' + p.col + '" stroke-width=".5" opacity=".3"/>';
-  }).join('');
-
-  const starData = [
-    [20,45,.5],[55,15,.7],[88,62,.4],[105,30,.8],[140,8,.5],[178,22,.6],[215,5,.4],[250,40,.7],[285,18,.5],[310,55,.6],
-    [30,130,.4],[12,165,.8],[45,200,.5],[18,240,.7],[35,285,.4],[15,300,.6],[25,85,.5],[70,110,.7],[95,90,.4],[120,105,.6],
-    [290,80,.5],[305,120,.7],[278,150,.4],[300,180,.8],[315,200,.5],[295,240,.6],[310,270,.4],[280,300,.7],[295,310,.5],[320,260,.6],
-    [150,45,.8],[165,280,.5],[80,255,.7],[240,90,.4],[200,270,.6],[130,300,.7],[240,155,.5],[90,175,.4],
-  ];
-  const starsSvg = starData.map(([x, y, op], i) => {
-    const r = .4 + (i % 3) * .3;
-    const dur = (1.5 + (i % 5) * .45).toFixed(1);
-    const del = ((i % 7) * .35).toFixed(1);
-    const hi  = Math.min(1, op + .45).toFixed(2);
-    return '<circle cx="' + x + '" cy="' + y + '" r="' + r + '" fill="white" opacity="' + op + '">' +
-      '<animate attributeName="opacity" values="' + op + ';' + hi + ';' + op + '" dur="' + dur + 's" begin="' + del + 's" repeatCount="indefinite"/>' +
-      '</circle>';
-  }).join('');
-
   const stepsData = [
     {icon:'☆', text:'당신의 출생 차트 천체 위치 확인 중...'},
     {icon:'✦', text:'프로펙션 및 트랜짓 주기 계산 완료'},
@@ -2144,52 +2096,42 @@ function showAnnualLoader(numEvents) {
   ];
   const stepsHtml = stepsData.map((s, i) => {
     const isFirst = i === 0;
-    return '<div id="alStep' + i + '" style="display:flex;align-items:center;gap:12px;padding:8px 0;opacity:' + (isFirst ? '.95' : '.28') + ';transform:translateX(' + (isFirst ? '0' : '-5px') + ');transition:opacity .55s,transform .55s,color .55s;">' +
-      '<div id="alStepIcon' + i + '" style="width:28px;height:28px;border-radius:50%;border:1px solid rgba(212,175,55,' + (isFirst ? '.65' : '.18') + ');display:flex;align-items:center;justify-content:center;background:' + (isFirst ? 'rgba(212,175,55,.13)' : 'transparent') + ';font-size:13px;flex-shrink:0;transition:all .55s;color:#D4AF37;' + (isFirst ? 'box-shadow:0 0 8px rgba(212,175,55,.3);' : '') + '">' + s.icon + '</div>' +
-      '<span id="alStepText' + i + '" style="font-size:12px;color:' + (isFirst ? '#cbd5e1' : '#3d4f66') + ';transition:color .55s;letter-spacing:.025em;font-family:Helvetica Neue,sans-serif;">' + s.text + '</span>' +
+    return '<div id="alStep' + i + '" style="display:flex;align-items:center;gap:12px;padding:7px 0;opacity:' + (isFirst ? '1' : '.28') + ';transform:translateX(' + (isFirst ? '0' : '-5px') + ');transition:opacity .55s,transform .55s;">' +
+      '<div id="alStepIcon' + i + '" style="width:26px;height:26px;border-radius:50%;border:1px solid rgba(212,175,55,' + (isFirst ? '.7' : '.18') + ');display:flex;align-items:center;justify-content:center;background:' + (isFirst ? 'rgba(212,175,55,.15)' : 'transparent') + ';font-size:13px;flex-shrink:0;transition:all .55s;color:#D4AF37;' + (isFirst ? 'box-shadow:0 0 8px rgba(212,175,55,.35);' : '') + '">' + s.icon + '</div>' +
+      '<span id="alStepText' + i + '" style="font-size:12.5px;color:' + (isFirst ? '#e2e8f0' : '#3d4f66') + ';transition:color .55s;letter-spacing:.02em;font-family:Helvetica Neue,sans-serif;">' + s.text + '</span>' +
       '</div>';
   }).join('');
 
   const loaderHtml =
-    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:radial-gradient(ellipse at 50% 28%,#0e0830 0%,#060418 55%,#030112 100%);display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
+    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#06030f;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
 
     '<style>' +
-    '@keyframes _alOR{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
-    '@keyframes _alMR{from{transform:rotate(0deg)}to{transform:rotate(-360deg)}}' +
-    '@keyframes _alIR{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
-    '@keyframes _alGP{0%,100%{filter:drop-shadow(0 0 6px rgba(212,175,55,.4))}50%{filter:drop-shadow(0 0 20px rgba(212,175,55,.9))}}' +
+    '@keyframes _alImgRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
+    '@keyframes _alGlow{0%,100%{box-shadow:0 0 35px rgba(212,175,55,.25),0 0 70px rgba(100,60,200,.1)}50%{box-shadow:0 0 60px rgba(212,175,55,.5),0 0 120px rgba(100,60,200,.2)}}' +
     '@keyframes _alBS{from{background-position:200% center}to{background-position:-200% center}}' +
-    '.al-or{animation:_alOR 42s linear infinite;transform-origin:160px 160px}' +
-    '.al-mr{animation:_alMR 26s linear infinite;transform-origin:160px 160px}' +
-    '.al-ir{animation:_alIR 15s linear infinite;transform-origin:160px 160px}' +
-    '.al-gp{animation:_alGP 3.8s ease-in-out infinite}' +
-    '.al-bf{background:linear-gradient(90deg,#b8942a 0%,#D4AF37 30%,#fff8d0 50%,#D4AF37 70%,#b8942a 100%);background-size:300% auto;animation:_alBS 2.2s linear infinite}' +
+    '.al-img-wrap{animation:_alGlow 4.5s ease-in-out infinite}' +
+    '.al-img-rot{animation:_alImgRot 75s linear infinite;transform-origin:center;display:block}' +
+    '.al-bf{background:linear-gradient(90deg,#b8942a 0%,#D4AF37 30%,#fff5c0 50%,#D4AF37 70%,#b8942a 100%);background-size:300% auto;animation:_alBS 2s linear infinite}' +
     '</style>' +
 
-    '<div style="margin-top:32px;letter-spacing:.35em;font-size:9.5px;color:rgba(212,175,55,.45);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;">Annual Cosmos Report</div>' +
+    '<div style="margin-top:28px;letter-spacing:.4em;font-size:9px;color:rgba(212,175,55,.45);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;flex-shrink:0;">Annual Cosmos Report</div>' +
 
-    '<div style="position:relative;width:274px;height:274px;flex-shrink:0;margin-top:8px;">' +
-    '<svg viewBox="0 0 320 320" xmlns="http://www.w3.org/2000/svg" width="274" height="274">' +
-    '<g>' + starsSvg + '</g>' +
-    '<g class="al-or"><circle cx="160" cy="160" r="152" fill="none" stroke="rgba(212,175,55,.38)" stroke-width="1.5"/><circle cx="160" cy="160" r="148" fill="none" stroke="rgba(212,175,55,.12)" stroke-width=".5"/>' + tickSvg + zodiacSvg + '</g>' +
-    '<g class="al-mr"><circle cx="160" cy="160" r="118" fill="none" stroke="rgba(212,175,55,.28)" stroke-width="1"/><circle cx="160" cy="160" r="113" fill="none" stroke="rgba(212,175,55,.1)" stroke-width=".5"/><line x1="42" y1="160" x2="278" y2="160" stroke="rgba(212,175,55,.2)" stroke-width=".7"/><line x1="160" y1="42" x2="160" y2="278" stroke="rgba(212,175,55,.2)" stroke-width=".7"/><line x1="77" y1="77" x2="243" y2="243" stroke="rgba(212,175,55,.1)" stroke-width=".5"/><line x1="243" y1="77" x2="77" y2="243" stroke="rgba(212,175,55,.1)" stroke-width=".5"/><circle cx="160" cy="42" r="2.5" fill="#D4AF37" opacity=".5"/><circle cx="278" cy="160" r="2.5" fill="#D4AF37" opacity=".5"/><circle cx="160" cy="278" r="2.5" fill="#D4AF37" opacity=".5"/><circle cx="42" cy="160" r="2.5" fill="#D4AF37" opacity=".5"/></g>' +
-    '<g class="al-ir"><circle cx="160" cy="160" r="104" fill="none" stroke="rgba(212,175,55,.18)" stroke-width=".8"/><circle cx="160" cy="160" r="74" fill="none" stroke="rgba(212,175,55,.14)" stroke-width=".5"/>' + planetSvg + '</g>' +
-    '<g class="al-gp"><circle cx="160" cy="160" r="24" fill="rgba(10,6,35,.96)" stroke="rgba(212,175,55,.65)" stroke-width="1.5"/><circle cx="160" cy="160" r="17" fill="none" stroke="rgba(212,175,55,.28)" stroke-width="1" stroke-dasharray="3 4"/><circle cx="160" cy="160" r="9" fill="rgba(160,120,255,.22)"/><text x="160" y="164" text-anchor="middle" dominant-baseline="middle" font-size="11" fill="rgba(212,175,55,.85)">✦</text></g>' +
-    '</svg></div>' +
+    '<div class="al-img-wrap" style="width:288px;height:288px;border-radius:50%;overflow:hidden;margin-top:14px;flex-shrink:0;border:1.5px solid rgba(212,175,55,.3);">' +
+    '<img class="al-img-rot" src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:cover;" alt=""/>' +
+    '</div>' +
 
-    '<div style="width:calc(100% - 48px);max-width:318px;margin:6px 0 14px;">' +
+    '<div style="width:calc(100% - 48px);max-width:318px;margin:16px 0 12px;flex-shrink:0;">' +
     '<div style="display:flex;justify-content:space-between;margin-bottom:7px;align-items:center;">' +
-    '<span id="alStatusText" style="font-size:10.5px;color:#3d4f66;font-style:italic;font-family:Helvetica Neue,sans-serif;letter-spacing:.02em;">심연의 지혜를 정렬하는 중...</span>' +
+    '<span id="alStatusText" style="font-size:10.5px;color:#475569;font-style:italic;font-family:Helvetica Neue,sans-serif;letter-spacing:.02em;">심연의 지혜를 정렬하는 중...</span>' +
     '<span id="alPct" style="font-size:11px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:36px;text-align:right;">0%</span>' +
     '</div>' +
     '<div style="height:2px;background:rgba(255,255,255,.05);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
     '</div>' +
 
-    '<div style="width:calc(100% - 48px);max-width:318px;border-top:1px solid rgba(212,175,55,.09);padding-top:12px;">' + stepsHtml + '</div>' +
+    '<div style="width:calc(100% - 48px);max-width:318px;border-top:1px solid rgba(212,175,55,.1);padding-top:10px;flex-shrink:0;">' + stepsHtml + '</div>' +
 
-    '<div style="margin-top:auto;margin-bottom:26px;text-align:center;padding:0 36px;">' +
-    '<div style="font-size:22px;color:rgba(212,175,55,.2);line-height:1;margin-bottom:2px;font-family:Georgia,serif;">"</div>' +
-    '<p style="font-size:10px;font-style:italic;color:rgba(100,120,148,.55);line-height:1.8;font-family:Helvetica Neue,sans-serif;letter-spacing:.03em;margin:0;">우주의 속삭임을 해독하여,<br>당신만의 삶의 길을 안내합니다.</p>' +
+    '<div style="margin-top:auto;margin-bottom:24px;text-align:center;padding:0 36px;">' +
+    '<p style="font-size:10.5px;font-style:italic;color:rgba(212,175,55,.4);line-height:1.85;font-family:Georgia,serif;margin:0;">"우주의 속삭임을 해독하여,<br>당신만의 삶의 길을 안내합니다."</p>' +
     '</div>' +
     '</div>';
 
