@@ -2087,6 +2087,8 @@ function showAnnualLoader(numEvents) {
   const old = document.getElementById('annualLoader');
   if (old) old.remove();
   clearInterval(window._alProgressInterval);
+  (window._alStepTimeouts || []).forEach(clearTimeout);
+  window._alStepTimeouts = [];
 
   const ICONS = [
     '<img src="/img/loader-icon-star.png" width="32" height="32" style="object-fit:contain;display:block;">',
@@ -2199,7 +2201,7 @@ function showAnnualLoader(numEvents) {
   // 단계 순차 활성화
   const stepTimings = [0, 2800, 7500, 14000];
   stepTimings.forEach((t, i) => {
-    setTimeout(() => {
+    const tid = setTimeout(() => {
       if (!document.getElementById('annualLoader')) return;
       // 이전 단계들은 그대로 유지(사라지지 않음) — 현재 단계만 강조
       const cur    = document.getElementById('alStep' + i);
@@ -2211,11 +2213,14 @@ function showAnnualLoader(numEvents) {
       if (curTxt) { curTxt.style.color = '#e8d9b0'; curTxt.style.fontWeight = '600'; }
       if (stEl)   stEl.textContent = STEPS[i];
     }, t);
+    window._alStepTimeouts.push(tid);
   });
 }
 
 function hideAnnualLoader() {
   clearInterval(window._alProgressInterval);
+  (window._alStepTimeouts || []).forEach(clearTimeout);
+  window._alStepTimeouts = [];
   const barEl = document.getElementById('alBarFill');
   const pctEl = document.getElementById('alPct');
   if (barEl) { barEl.style.transition = 'width .45s ease'; barEl.style.width = '100%'; }
