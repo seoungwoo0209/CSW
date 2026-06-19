@@ -213,54 +213,68 @@ body{
 
 /* ── 폼 카드 ── */
 .form-card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
+  position: relative; overflow: hidden;
+  background: radial-gradient(115% 80% at 50% -12%, #171232 0%, #0c0a20 55%, #07060f 100%);
+  border: 1px solid rgba(200,168,96,.22);
+  border-radius: 18px;
+  padding: 22px 20px;
+  box-shadow: 0 18px 48px -24px rgba(0,0,0,.85), inset 0 1px 0 rgba(255,255,255,.04);
 }
 .form-grid {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-bottom: 12px;
+  gap: 14px;
+  margin-bottom: 16px;
 }
 .form-grid label span {
   display: block;
-  font-size: 12px;
-  color: var(--muted);
-  margin-bottom: 5px;
+  font-size: 11px;
+  letter-spacing: .14em;
+  color: #9b8f74;
+  margin-bottom: 7px;
+  font-family: Georgia, serif;
 }
 .run-btn {
+  position: relative; overflow: hidden;
   width: 100%;
-  padding: 14px;
-  border-radius: 12px;
+  padding: 16px;
+  border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
+  background: linear-gradient(165deg,#f8edc6 0%,#e8cd86 38%,#caa44f 72%,#e4cd92 100%);
+  color: #3a2b07;
   font-size: 15px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
-  letter-spacing: .3px;
-  margin-top: 4px;
+  letter-spacing: .18em;
+  margin-top: 6px;
+  font-family: Georgia, serif;
+  box-shadow: 0 14px 34px -12px rgba(200,160,70,.7), 0 0 0 1px rgba(120,90,30,.25),
+    inset 0 1px 0 rgba(255,255,255,.75), inset 0 -2px 6px rgba(150,110,40,.35);
 }
 .action-btn {
-  padding: 11px 22px;
-  border-radius: 10px;
+  position: relative; overflow: hidden;
+  padding: 13px 22px;
+  border-radius: 8px;
   border: none;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
-  color: #fff;
-  font-size: 13px;
-  font-weight: 700;
+  width: 100%;
+  background: linear-gradient(165deg,#f8edc6 0%,#e8cd86 38%,#caa44f 72%,#e4cd92 100%);
+  color: #3a2b07;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: .14em;
   cursor: pointer;
+  font-family: Georgia, serif;
+  box-shadow: 0 10px 26px -12px rgba(200,160,70,.65), inset 0 1px 0 rgba(255,255,255,.6);
 }
 
 /* ── 결과 카드 ── */
 .result-card {
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 16px;
-  box-shadow: var(--shadow);
+  position: relative;
+  background: radial-gradient(115% 80% at 50% -12%, #171232 0%, #0c0a20 55%, #07060f 100%);
+  border: 1px solid rgba(200,168,96,.2);
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 16px 40px -22px rgba(0,0,0,.8), inset 0 1px 0 rgba(255,255,255,.04);
 }
 
 /* 애니메이션 */
@@ -333,22 +347,26 @@ label span{
 
 input,select{
   width:100%;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.35);
-  color: var(--fg);
+  padding: 13px 14px;
+  border-radius: 10px;
+  border:1px solid rgba(200,168,96,.25);
+  background: rgba(255,255,255,.03);
+  color: #efe8d6;
   outline:none;
+  font-family: inherit;
 }
+input::placeholder{ color: #6f6651; }
+input:focus,select:focus{ border-color: rgba(200,168,96,.55); }
 
 
 .alert{
   grid-column: 1 / -1;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border:1px solid rgba(255,122,122,.40);
-  background: rgba(255,122,122,.12);
-  color: #ffdede;
+  padding: 11px 14px;
+  border-radius: 10px;
+  border:1px solid rgba(210,110,110,.4);
+  background: rgba(120,40,40,.18);
+  color: #f0d2cf;
+  font-size: 13px;
 }
 .hidden{ display:none !important; }
 
@@ -419,18 +437,22 @@ input,select{
 }
 
 .card-title{
-  font-weight: 800;
-  margin-bottom: 10px;
-  letter-spacing:.2px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  letter-spacing: .06em;
+  font-family: Georgia, serif;
+  font-size: 17px;
+  background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
 }
 
 .tiny{
   font-size: 12px;
-  color: var(--muted);
+  color: #9b8f74;
   margin-top: 8px;
 }
 
-.muted{ color: var(--muted); }
+.muted{ color: #9b8f74; }
 
 .pillars{
   display:grid;
@@ -439,19 +461,22 @@ input,select{
 }
 
 .pillar{
-  padding: 10px 10px;
+  padding: 12px 10px;
   border-radius: 14px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.22);
+  border:1px solid rgba(200,168,96,.22);
+  background: rgba(200,168,96,.04);
+  text-align: center;
 }
-.p-label{ font-size: 12px; color: var(--muted); }
-.p-ganji{ font-size: 20px; font-weight: 900; margin-top: 6px; letter-spacing:.5px; }
+.p-label{ font-size: 11px; letter-spacing: .1em; color: #9b8f74; }
+.p-ganji{ font-size: 20px; font-weight: 600; margin-top: 6px; letter-spacing:.05em; color: #efe8d6; font-family: Georgia, serif; }
 
 .top2{
-  font-weight: 900;
+  font-weight: 600;
   font-size: 18px;
   margin: 4px 0 10px 0;
-  color: #e9f2ff;
+  font-family: Georgia, serif;
+  background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
 }
 
 .bars{ display:grid; gap:10px; margin-top: 8px; }
@@ -461,20 +486,20 @@ input,select{
   gap:10px;
   align-items:center;
 }
-.bar .name{ font-size: 12px; color: var(--muted); }
+.bar .name{ font-size: 12px; color: #9b8f74; }
 .track{
-  height: 12px;
+  height: 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.10);
-  border:1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.06);
+  border:1px solid rgba(200,168,96,.15);
   overflow:hidden;
 }
 .fill{
   height:100%;
   width:0%;
-  background: linear-gradient(90deg, rgba(158,208,255,.9), rgba(120,255,168,.85));
+  background: linear-gradient(90deg, #b8942a, #f0dca0);
 }
-.val{ font-size: 12px; color: var(--fg); text-align:right; }
+.val{ font-size: 12px; color: #cabfa0; text-align:right; }
 
 .hiddenlist{
   display:grid;
@@ -483,14 +508,14 @@ input,select{
 .hiddenrow{
   padding: 10px 10px;
   border-radius: 14px;
-  border:1px solid rgba(255,255,255,.12);
-  background: rgba(0,0,0,.18);
+  border:1px solid rgba(200,168,96,.2);
+  background: rgba(200,168,96,.03);
   display:flex;
   align-items:center;
   justify-content:space-between;
   gap:10px;
 }
-.hiddenrow .k{ color: var(--muted); font-size: 12px; }
+.hiddenrow .k{ color: #9b8f74; font-size: 12px; }
 .hiddenrow .v{ font-weight: 800; letter-spacing:.4px; }
 
 /* 지장간 역할 표시 스타일 */
