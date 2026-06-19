@@ -2088,63 +2088,88 @@ function showAnnualLoader(numEvents) {
   if (old) old.remove();
   clearInterval(window._alProgressInterval);
 
-  const stepsData = [
-    {icon:'☆', text:'당신의 출생 차트 천체 위치 확인 중...'},
-    {icon:'✦', text:'프로펙션 및 트랜짓 주기 계산 완료'},
-    {icon:'◐', text: numEvents + '개의 주요 운명 전환점 분석 중...'},
-    {icon:'◯', text:'별의 언어를 삶의 조언으로 해석 중...'},
+  // 참고 이미지의 아이콘을 SVG로 재현
+  const ICONS = [
+    // 8각 별 (outline) — 스캔 중
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 6.2L20 12l-6.2 1.8L12 22l-1.8-6.2L4 12l6.2-1.8z" stroke="#D4AF37" stroke-width="1.1" fill="rgba(212,175,55,.12)"/><circle cx="12" cy="12" r="2.2" fill="#D4AF37" opacity=".5"/></svg>',
+    // 4각 별 (solid) — 계산 완료
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.5 6.5L22 12l-7.5 2.5L12 21l-2.5-6.5L4 12l7.5-2.5z" fill="#D4AF37" opacity=".9"/></svg>',
+    // 초승달 + 별 — 분석 중
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 3a9 9 0 1 0 0 18 6 6 0 0 1 0-18z" fill="#D4AF37" opacity=".8"/><circle cx="18" cy="5" r="1.8" fill="#D4AF37" opacity=".65"/></svg>',
+    // 빈 원 — 대기
+    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#D4AF37" stroke-width="1.3" opacity=".38"/><circle cx="12" cy="12" r="5" stroke="#D4AF37" stroke-width=".7" opacity=".18"/></svg>',
   ];
-  const stepsHtml = stepsData.map((s, i) => {
-    const isFirst = i === 0;
-    return '<div id="alStep' + i + '" style="display:flex;align-items:center;gap:12px;padding:7px 0;opacity:' + (isFirst ? '1' : '.28') + ';transform:translateX(' + (isFirst ? '0' : '-5px') + ');transition:opacity .55s,transform .55s;">' +
-      '<div id="alStepIcon' + i + '" style="width:26px;height:26px;border-radius:50%;border:1px solid rgba(212,175,55,' + (isFirst ? '.7' : '.18') + ');display:flex;align-items:center;justify-content:center;background:' + (isFirst ? 'rgba(212,175,55,.15)' : 'transparent') + ';font-size:13px;flex-shrink:0;transition:all .55s;color:#D4AF37;' + (isFirst ? 'box-shadow:0 0 8px rgba(212,175,55,.35);' : '') + '">' + s.icon + '</div>' +
-      '<span id="alStepText' + i + '" style="font-size:12.5px;color:' + (isFirst ? '#e2e8f0' : '#3d4f66') + ';transition:color .55s;letter-spacing:.02em;font-family:Helvetica Neue,sans-serif;">' + s.text + '</span>' +
+
+  const STEPS = [
+    '당신의 출생 차트 천체 위치 확인 중...',
+    '프로펙션 및 트랜짓 주기 계산 완료',
+    numEvents + '개의 주요 운명 전환점 분석 중...',
+    '별의 언어를 삶의 조언으로 해석 중...',
+  ];
+
+  const stepsHtml = STEPS.map((txt, i) => {
+    const on = i === 0;
+    return '<div id="alStep' + i + '" style="display:flex;align-items:center;gap:14px;padding:10px 0;opacity:' + (on ? '1' : '.3') + ';transition:opacity .5s;">' +
+      '<div id="alStepIco' + i + '" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .5s;' + (on ? 'filter:drop-shadow(0 0 6px rgba(212,175,55,.5));' : 'filter:opacity(.4);') + '">' + ICONS[i] + '</div>' +
+      '<span id="alStepTxt' + i + '" style="font-size:14px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? '#e8d9b0' : '#3a4a5a') + ';transition:all .5s;font-family:Helvetica Neue,sans-serif;letter-spacing:.01em;">' + txt + '</span>' +
       '</div>';
   }).join('');
 
+  // 봉인 버튼 (왁스 씰)
+  const waxBtn =
+    '<div id="alWaxBtn" style="width:100%;max-width:380px;margin:18px 0 0;border-radius:12px;overflow:hidden;display:flex;align-items:center;background:linear-gradient(135deg,#3b0f0f 0%,#6a1e1e 45%,#3b0f0f 100%);border:1px solid rgba(150,65,45,.4);box-shadow:0 4px 24px rgba(80,10,10,.5);">' +
+    '<div style="width:72px;height:72px;background:radial-gradient(circle at 38% 33%,#7d2626,#4a1212);border-right:1px solid rgba(150,65,45,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+    '<div style="width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9e3232,#5c1818);border:1.5px solid rgba(212,175,55,.28);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.5);">' +
+    '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2l2 5.5L19 11l-6 2L11 20l-2-7-6-2 6-2z" fill="rgba(212,175,55,.7)"/></svg>' +
+    '</div></div>' +
+    '<span style="flex:1;text-align:center;font-size:14.5px;font-weight:700;color:#D4AF37;letter-spacing:.06em;text-shadow:0 0 14px rgba(212,175,55,.4);font-family:Helvetica Neue,sans-serif;">깊은 지혜의 리포트 잠금 해제</span>' +
+    '</div>';
+
   const loaderHtml =
-    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#06030f;overflow:hidden;">' +
+    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#060310;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;">' +
 
     '<style>' +
-    '@keyframes _alBreath{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}' +
     '@keyframes _alBS{from{background-position:200% center}to{background-position:-200% center}}' +
-    '.al-bg{animation:_alBreath 8s ease-in-out infinite;transform-origin:center}' +
+    '@keyframes _alWP{0%,100%{box-shadow:0 4px 24px rgba(80,10,10,.5)}50%{box-shadow:0 4px 36px rgba(140,30,30,.7),0 0 16px rgba(212,175,55,.12)}}' +
+    '@keyframes _alFI{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
     '.al-bf{background:linear-gradient(90deg,#b8942a 0%,#D4AF37 30%,#fff5c0 50%,#D4AF37 70%,#b8942a 100%);background-size:300% auto;animation:_alBS 2s linear infinite}' +
+    '#alWaxBtn{animation:_alWP 3.5s ease-in-out infinite}' +
+    '.al-content{animation:_alFI .7s ease .2s both}' +
     '</style>' +
 
-    // 전체화면 배경 이미지 (살짝 숨쉬는 효과)
-    '<div class="al-bg" style="position:absolute;inset:-5%;background:url(\'/img/astrolabe-loader.png\') center/cover no-repeat;"></div>' +
+    // 상단: 이미지 패널 (화면 상단 55% 차지)
+    '<div style="position:relative;height:55vh;flex-shrink:0;overflow:hidden;">' +
+    '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" alt=""/>' +
+    '<div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,#060310);"></div>' +
+    '</div>' +
 
-    // 하단 그라디언트 오버레이 (이미지→다크, 텍스트 가독성)
-    '<div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(6,3,15,0) 35%,rgba(6,3,15,0.7) 58%,rgba(6,3,15,0.95) 70%,#06030f 80%);"></div>' +
-
-    // 상단 레이블
-    '<div style="position:absolute;top:20px;left:0;right:0;text-align:center;letter-spacing:.4em;font-size:9px;color:rgba(212,175,55,.55);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;">Annual Cosmos Report</div>' +
-
-    // 하단 콘텐츠 영역
-    '<div style="position:absolute;bottom:0;left:0;right:0;padding:0 24px 28px;display:flex;flex-direction:column;align-items:center;">' +
+    // 하단: 텍스트/UI 영역
+    '<div class="al-content" style="flex:1;padding:10px 22px 18px;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
 
     // 진행률 바
-    '<div style="width:100%;max-width:360px;margin-bottom:16px;">' +
+    '<div style="width:100%;max-width:390px;margin-bottom:12px;">' +
     '<div style="display:flex;justify-content:space-between;margin-bottom:8px;align-items:center;">' +
-    '<span id="alStatusText" style="font-size:11px;color:rgba(212,175,55,.7);font-style:italic;font-family:Helvetica Neue,sans-serif;letter-spacing:.02em;">심연의 지혜를 정렬하는 중...</span>' +
-    '<span id="alPct" style="font-size:11px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:36px;text-align:right;">0%</span>' +
+    '<span id="alStatusText" style="font-size:12px;color:rgba(180,160,100,.8);font-style:italic;font-family:Helvetica Neue,sans-serif;">심연의 지혜를 정렬하는 중...</span>' +
+    '<span id="alPct" style="font-size:12px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:40px;text-align:right;">0%</span>' +
     '</div>' +
-    '<div style="height:2px;background:rgba(255,255,255,.08);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
+    '<div style="height:2px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
     '</div>' +
 
     // 단계 목록
-    '<div style="width:100%;max-width:360px;border-top:1px solid rgba(212,175,55,.12);padding-top:12px;">' + stepsHtml + '</div>' +
+    '<div style="width:100%;max-width:390px;">' + stepsHtml + '</div>' +
 
-    // 하단 인용구
-    '<p style="font-size:10.5px;font-style:italic;color:rgba(212,175,55,.35);line-height:1.85;font-family:Georgia,serif;margin:16px 0 0;text-align:center;">"우주의 속삭임을 해독하여, 당신만의 삶의 길을 안내합니다."</p>' +
+    // 봉인 버튼
+    waxBtn +
+
+    // 인용구
+    '<p style="font-size:11px;font-style:italic;color:rgba(160,140,90,.55);line-height:1.8;font-family:Georgia,serif;margin:14px 0 0;text-align:center;">"우주의 속삭임을 해독하여, 당신만의 삶의<br>길을 안내합니다. 잠시만 기다려 주세요."</p>' +
 
     '</div>' +
     '</div>';
 
   document.body.insertAdjacentHTML('beforeend', loaderHtml);
 
-  // 진행률 애니메이션 (지수 감속으로 0→90%)
+  // 진행률 (지수 감속 0→90%)
   let pct = 0;
   window._alProgressInterval = setInterval(() => {
     pct += (90 - pct) * 0.032 + Math.random() * 0.35;
@@ -2155,27 +2180,27 @@ function showAnnualLoader(numEvents) {
     if (pctEl) pctEl.textContent = Math.round(pct) + '%';
   }, 700);
 
-  // 단계별 순차 활성화
-  const stepTimings  = [0, 2800, 7500, 14000];
-  const statusMsgs   = ['심연의 지혜를 정렬하는 중...','천체 주기 계산 중...','운명 전환점 분석 중...','삶의 언어로 번역 중...'];
+  // 단계 순차 활성화
+  const stepTimings = [0, 2800, 7500, 14000];
+  const statusMsgs  = ['심연의 지혜를 정렬하는 중...','천체 주기 계산 중...','운명 전환점 분석 중...','삶의 언어로 번역 중...'];
   stepTimings.forEach((t, i) => {
     setTimeout(() => {
       if (!document.getElementById('annualLoader')) return;
       if (i > 0) {
-        const prev = document.getElementById('alStep' + (i - 1));
-        const prevIco = document.getElementById('alStepIcon' + (i - 1));
-        const prevTxt = document.getElementById('alStepText' + (i - 1));
-        if (prev) prev.style.opacity = '.3';
-        if (prevIco) { prevIco.style.borderColor='rgba(212,175,55,.18)'; prevIco.style.background='transparent'; prevIco.style.boxShadow='none'; prevIco.textContent='✓'; }
-        if (prevTxt) prevTxt.style.color = '#2d3a4a';
+        const prev    = document.getElementById('alStep' + (i - 1));
+        const prevIco = document.getElementById('alStepIco' + (i - 1));
+        const prevTxt = document.getElementById('alStepTxt' + (i - 1));
+        if (prev)    prev.style.opacity = '.28';
+        if (prevIco) prevIco.style.filter = 'opacity(.3)';
+        if (prevTxt) { prevTxt.style.color = '#2d3a4a'; prevTxt.style.fontWeight = '400'; }
       }
-      const cur = document.getElementById('alStep' + i);
-      const curIco = document.getElementById('alStepIcon' + i);
-      const curTxt = document.getElementById('alStepText' + i);
-      const stEl  = document.getElementById('alStatusText');
-      if (cur)    { cur.style.opacity='1'; cur.style.transform='translateX(0)'; }
-      if (curIco) { curIco.style.borderColor='rgba(212,175,55,.7)'; curIco.style.background='rgba(212,175,55,.14)'; curIco.style.boxShadow='0 0 10px rgba(212,175,55,.35)'; }
-      if (curTxt) curTxt.style.color = '#cbd5e1';
+      const cur    = document.getElementById('alStep' + i);
+      const curIco = document.getElementById('alStepIco' + i);
+      const curTxt = document.getElementById('alStepTxt' + i);
+      const stEl   = document.getElementById('alStatusText');
+      if (cur)    cur.style.opacity = '1';
+      if (curIco) curIco.style.filter = 'drop-shadow(0 0 8px rgba(212,175,55,.6))';
+      if (curTxt) { curTxt.style.color = '#e8d9b0'; curTxt.style.fontWeight = '600'; }
       if (stEl)   stEl.textContent = statusMsgs[i];
     }, t);
   });
