@@ -2129,6 +2129,7 @@ function showAnnualLoader(numEvents) {
     '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#060310;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;">' +
 
     '<style>' +
+    '@keyframes _alRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
     '@keyframes _alBS{from{background-position:200% center}to{background-position:-200% center}}' +
     '@keyframes _alWP{0%,100%{box-shadow:0 4px 24px rgba(80,10,10,.5)}50%{box-shadow:0 4px 36px rgba(140,30,30,.7),0 0 16px rgba(212,175,55,.12)}}' +
     '@keyframes _alFI{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
@@ -2137,14 +2138,13 @@ function showAnnualLoader(numEvents) {
     '.al-content{animation:_alFI .7s ease .2s both}' +
     '</style>' +
 
-    // 상단: 이미지 패널 (화면 상단 55% 차지)
-    '<div style="position:relative;height:55vh;flex-shrink:0;overflow:hidden;">' +
-    '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:cover;object-position:center;display:block;" alt=""/>' +
-    '<div style="position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,#060310);"></div>' +
+    // 상단: 회전하는 아스트롤라베 이미지
+    '<div style="display:flex;justify-content:center;align-items:center;padding:18px 0 8px;flex-shrink:0;">' +
+    '<img src="/img/astrolabe-loader.png" id="alImg" style="width:82vw;max-width:320px;height:auto;display:block;animation:_alRot 40s linear infinite;transform-origin:center;" alt=""/>' +
     '</div>' +
 
     // 하단: 텍스트/UI 영역
-    '<div class="al-content" style="flex:1;padding:10px 22px 18px;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
+    '<div class="al-content" style="flex:1;padding:4px 22px 18px;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
 
     // 진행률 바
     '<div style="width:100%;max-width:390px;margin-bottom:12px;">' +
