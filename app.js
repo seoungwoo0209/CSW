@@ -2170,7 +2170,7 @@ function showAnnualLoader(numEvents) {
 
     '<div style="width:100%;max-width:390px;margin-bottom:10px;">' +
     '<div style="display:flex;justify-content:space-between;margin-bottom:7px;align-items:center;">' +
-    '<span id="alStatusText" style="font-size:11.5px;color:rgba(180,160,100,.8);font-style:italic;font-family:Helvetica Neue,sans-serif;">심연의 지혜를 정렬하는 중...</span>' +
+    '<span id="alStatusText" style="font-size:11.5px;color:rgba(180,160,100,.8);font-style:italic;font-family:Helvetica Neue,sans-serif;">' + STEPS[0] + '</span>' +
     '<span id="alPct" style="font-size:11.5px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:40px;text-align:right;">0%</span>' +
     '</div>' +
     '<div style="height:2px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
@@ -2197,7 +2197,6 @@ function showAnnualLoader(numEvents) {
 
   // 단계 순차 활성화
   const stepTimings = [0, 2800, 7500, 14000];
-  const statusMsgs  = ['심연의 지혜를 정렬하는 중...','천체 주기 계산 중...','운명 전환점 분석 중...','삶의 언어로 번역 중...'];
   stepTimings.forEach((t, i) => {
     setTimeout(() => {
       if (!document.getElementById('annualLoader')) return;
@@ -2216,7 +2215,7 @@ function showAnnualLoader(numEvents) {
       if (cur)    cur.style.opacity = '1';
       if (curIco) curIco.style.filter = 'drop-shadow(0 0 8px rgba(212,175,55,.6))';
       if (curTxt) { curTxt.style.color = '#e8d9b0'; curTxt.style.fontWeight = '600'; }
-      if (stEl)   stEl.textContent = statusMsgs[i];
+      if (stEl)   stEl.textContent = STEPS[i];
     }, t);
   });
 }
