@@ -2122,10 +2122,11 @@ function showAnnualLoader(numEvents) {
 
   const ICONS = [
     '<img src="/img/loader-icon-star.png" width="32" height="32" style="object-fit:contain;display:block;">',
-    '<img src="/img/loader-icon-star.png" width="32" height="32" style="object-fit:contain;display:block;filter:brightness(1.3) saturate(1.2);">',
+    '<div style="width:28px;height:28px;border-radius:50%;border:1.5px solid #D4AF37;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 35% 30%,rgba(212,175,55,.3),rgba(20,16,8,.5));"><span style="color:#f4d98a;font-size:14px;font-weight:700;line-height:1;">✓</span></div>',
     '<img src="/img/loader-icon-crescent.png" width="32" height="32" style="object-fit:contain;display:block;">',
     '<img src="/img/loader-icon-ring.png" width="32" height="32" style="object-fit:contain;display:block;">',
   ];
+  const ICON_PLACEHOLDER = '';
 
   const STEPS = [
     '당신의 출생 차트 천체 위치 확인 중...',
@@ -2137,9 +2138,10 @@ function showAnnualLoader(numEvents) {
   const stepsHtml = STEPS.map((txt, i) => {
     const on = i === 0;
     return '<div id="alStep' + i + '" style="display:flex;align-items:center;gap:14px;padding:10px 0;opacity:' + (on ? '1' : '.3') + ';transition:opacity .5s;">' +
-      '<div id="alStepIco' + i + '" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .5s;' + (on ? 'filter:drop-shadow(0 0 6px rgba(212,175,55,.5));' : 'filter:opacity(.4);') + '">' + ICONS[i] + '</div>' +
+      // 아직 도달하지 않은 단계는 아이콘도 미리 노출하지 않음(자리표시자만 표시), 활성화 시점에 JS로 채움
+      '<div id="alStepIco' + i + '" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .5s;' + (on ? 'filter:drop-shadow(0 0 6px rgba(212,175,55,.5));' : 'filter:opacity(.4);') + '">' + (on ? ICONS[i] : ICON_PLACEHOLDER) + '</div>' +
       // 아직 도달하지 않은 단계는 문구를 미리 노출하지 않음(자리표시자만 표시), 활성화 시점에 JS로 채움
-      '<span id="alStepTxt' + i + '" style="font-size:14px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? '#e8d9b0' : '#3a4a5a') + ';transition:all .5s;font-family:Helvetica Neue,sans-serif;letter-spacing:.01em;">' + (on ? txt : '···') + '</span>' +
+      '<span id="alStepTxt' + i + '" style="font-size:14px;font-weight:' + (on ? '600' : '400') + ';color:' + (on ? '#e8d9b0' : '#3a4a5a') + ';transition:all .5s;font-family:Helvetica Neue,sans-serif;letter-spacing:.01em;">' + (on ? txt : '') + '</span>' +
       '</div>';
   }).join('');
 
@@ -2240,7 +2242,7 @@ function showAnnualLoader(numEvents) {
       const curTxt = document.getElementById('alStepTxt' + i);
       const stEl   = document.getElementById('alStatusText');
       if (cur)    cur.style.opacity = '1';
-      if (curIco) curIco.style.filter = 'drop-shadow(0 0 8px rgba(212,175,55,.6))';
+      if (curIco) { curIco.innerHTML = ICONS[i]; curIco.style.filter = 'drop-shadow(0 0 8px rgba(212,175,55,.6))'; }
       if (curTxt) { curTxt.textContent = STEPS[i]; curTxt.style.color = '#e8d9b0'; curTxt.style.fontWeight = '600'; }
       if (stEl)   stEl.textContent = STEPS[i];
     }, t);
