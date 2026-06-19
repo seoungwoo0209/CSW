@@ -2304,33 +2304,53 @@ function _buildAnnualHTML(engineData, aiText) {
   const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
   const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
 
-  /* ── NASA 공개 이미지 — Wikimedia Commons 호스팅 (핫링킹 허용, 퍼블릭 도메인) ── */
-  const WM = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
+  /* ── NASA 공개 이미지 — Wikimedia Commons Special:FilePath (해시경로 불필요, 핫링킹 허용) ── */
+  const FP = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
   const NASA_IMGS = {
-    '목성':   { url: WM+'2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/600px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg', cap:'Jupiter · Juno / NASA' },
-    '토성':   { url: WM+'c/c7/Saturn_during_Equinox.jpg/600px-Saturn_during_Equinox.jpg', cap:'Saturn · Cassini / NASA' },
-    '화성':   { url: WM+'0/02/OSIRIS_Mars_true_color.jpg/600px-OSIRIS_Mars_true_color.jpg', cap:'Mars · ESA/Rosetta' },
-    '금성':   { url: WM+'e/e5/Venus-real_color.jpg/600px-Venus-real_color.jpg', cap:'Venus · Mariner 10 / NASA' },
-    '수성':   { url: WM+'4/4a/Mercury_in_true_color.jpg/600px-Mercury_in_true_color.jpg', cap:'Mercury · MESSENGER / NASA' },
-    '천왕성': { url: WM+'3/3d/Uranus2.jpg/600px-Uranus2.jpg', cap:'Uranus · Voyager 2 / NASA' },
-    '해왕성': { url: WM+'b/b9/Neptune_Voyager2_color_calibrated.png/600px-Neptune_Voyager2_color_calibrated.png', cap:'Neptune · Voyager 2 / NASA' },
-    '명왕성': { url: WM+'e/ef/Pluto_in_True_Color_-_High-Res.jpg/600px-Pluto_in_True_Color_-_High-Res.jpg', cap:'Pluto · New Horizons / NASA' },
-    '달':     { url: WM+'e/e1/FullMoon2010.jpg/600px-FullMoon2010.jpg', cap:'Moon · NASA' },
-    '태양':   { url: WM+'b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/600px-thumbnail.jpg', cap:'Sun · SDO / NASA' },
-    cosmos:   { url: WM+'6/68/Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg/600px-Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg', cap:'Pillars of Creation · Hubble / NASA' },
-    nebula:   { url: WM+'0/00/Crab_Nebula.jpg/600px-Crab_Nebula.jpg', cap:'Crab Nebula · Hubble / NASA' },
-    galaxy:   { url: WM+'9/98/Andromeda_Galaxy_%28with_h-alpha%29.jpg/600px-Andromeda_Galaxy_%28with_h-alpha%29.jpg', cap:'Andromeda Galaxy · NASA' },
+    '목성':   { url: FP+'Jupiter_and_its_shrunken_Great_Red_Spot.jpg?width=600', cap:'Jupiter · Hubble / NASA' },
+    '토성':   { url: FP+'Saturn_during_Equinox.jpg?width=600',                   cap:'Saturn · Cassini / NASA' },
+    '화성':   { url: FP+'OSIRIS_Mars_true_color.jpg?width=600',                  cap:'Mars · ESA/Rosetta' },
+    '금성':   { url: FP+'Venus_globe.jpg?width=600',                             cap:'Venus · Magellan / NASA' },
+    '수성':   { url: FP+'Mercury_in_true_color.jpg?width=600',                   cap:'Mercury · MESSENGER / NASA' },
+    '천왕성': { url: FP+'Uranus2.jpg?width=600',                                 cap:'Uranus · Voyager 2 / NASA' },
+    '해왕성': { url: FP+'Neptune_Full.jpg?width=600',                            cap:'Neptune · Voyager 2 / NASA' },
+    '명왕성': { url: FP+'Pluto_in_True_Color_-_High-Res.jpg?width=600',          cap:'Pluto · New Horizons / NASA' },
+    '달':     { url: FP+'FullMoon2010.jpg?width=600',                            cap:'Moon · NASA' },
+    '태양':   { url: FP+'The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg?width=600', cap:'Sun · SDO / NASA' },
+    cosmos:   { url: FP+'Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg?width=600', cap:'Pillars of Creation · Hubble / NASA' },
+    nebula:   { url: FP+'Crab_Nebula.jpg?width=600',                            cap:'Crab Nebula · Hubble / NASA' },
+    galaxy:   { url: FP+'Andromeda_Galaxy_%28with_h-alpha%29.jpg?width=600',    cap:'Andromeda · Hubble / NASA' },
+  };
+
+  /* 하우스 번호 → 테마 이미지 매핑 */
+  const HOUSE_IMGS = {
+    1:  NASA_IMGS['태양'],    // 자아·정체성
+    2:  NASA_IMGS.galaxy,    // 재물·소유
+    3:  NASA_IMGS['수성'],   // 소통·이동
+    4:  NASA_IMGS['달'],     // 가정·뿌리
+    5:  NASA_IMGS['금성'],   // 창조·연애
+    6:  NASA_IMGS['화성'],   // 건강·일상
+    7:  NASA_IMGS.nebula,    // 파트너십
+    8:  NASA_IMGS.cosmos,    // 변환·심층
+    9:  NASA_IMGS['목성'],   // 철학·여행·확장
+    10: NASA_IMGS['토성'],   // 커리어·사회적 위치
+    11: NASA_IMGS.galaxy,    // 공동체·미래
+    12: NASA_IMGS.cosmos,    // 영성·무의식
   };
 
   function getSlideImg(s) {
     if (s.t === 'event') {
-      const bodies = Array.isArray(s.e.bodies) ? s.e.bodies : [];
+      const e = s.e;
+      const bodies = Array.isArray(e.bodies) ? e.bodies : [];
+      // 1순위: 행성 매칭
       for (const b of bodies) {
         const found = Object.entries(NASA_IMGS).find(([k]) =>
           k !== 'cosmos' && k !== 'nebula' && k !== 'galaxy' && b.includes(k)
         );
         if (found) return found[1];
       }
+      // 2순위: 하우스 기반 테마 이미지
+      if (e.house && HOUSE_IMGS[e.house]) return HOUSE_IMGS[e.house];
       return NASA_IMGS.cosmos;
     }
     if (/MOOD/.test(s.badge || '')) return NASA_IMGS.nebula;
