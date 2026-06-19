@@ -103,12 +103,9 @@ function runAll() {
     }
     setTimeout(() => _tryRenderAnalysis(0), 50);
 
-    // ── 인생 그래프 렌더링
-    if (window.LifeGraphUI) {
-      const cityName = getCitySelectValue();
-      const { lat, lng, utcOffset } = getCityCoords(cityName);
-      window.LifeGraphUI.renderLifeGraph({ birthDate, birthTime, lat, lng, utcOffset }, window.AstroResult);
-    }
+    // ── 연간 운세 탭: 로딩 상태
+    const _lgp = document.getElementById('lifeGraphPanel');
+    if (_lgp) _lgp.innerHTML = '<div style="color:#a5b4fc;font-size:13px;padding:30px;text-align:center;">⭐ 차트 계산 중...</div>';
 
     // ── 점성술 차트 미리 계산
     scheduleAstroCalc();
@@ -158,15 +155,8 @@ async function runAstroCalc() {
     // 나탈 차트 그리드 표시
     renderAstroNatal(astroData);
 
-    // 인생 그래프 재렌더 (AstroResult로 정확도 향상)
-    if (window.LifeGraphUI) {
-      const _city = getCitySelectValue();
-      const { lat: _lat, lng: _lng, utcOffset: _utcOff } = getCityCoords(_city);
-      window.LifeGraphUI.renderLifeGraph(
-        { birthDate, birthTime, lat: _lat, lng: _lng, utcOffset: _utcOff },
-        astroData
-      );
-    }
+    // 연간 운세 패널 초기화
+    renderAnnualEventsPanel(astroData);
 
     if (statusEl) {
       statusEl.textContent = "✅ 차트 계산 완료 — AI 해석 버튼을 눌러주세요.";
@@ -1974,7 +1964,6 @@ async function renderTransitPanel(astroData) {
   else return;
 
   await calcTransitChart();
-  if (typeof renderAnnualEventsPanel === 'function') renderAnnualEventsPanel(astroData);
 }
 
 async function calcTransitChart() {
@@ -2029,12 +2018,11 @@ async function calcTransitChart() {
 }
 
 /* =========================================================
-   연간 점성술 리포트 패널 (A단계 엔진 → B단계 Gemini)
+   연간 운세 패널 (🔮 연간 운세 탭 — lifeGraphPanel에 렌더)
    ========================================================= */
 function renderAnnualEventsPanel(astroData) {
-  const existing = document.getElementById('astroAnnualEventsPanel');
-  if (existing) existing.remove();
-  if (!astroData?.meta) return;
+  const container = document.getElementById('lifeGraphPanel');
+  if (!container || !astroData?.meta) return;
 
   const curY = new Date().getFullYear();
   const opts = [];
@@ -2042,37 +2030,35 @@ function renderAnnualEventsPanel(astroData) {
     opts.push(`<option value="${y}"${y === curY ? ' selected' : ''}>${y}년</option>`);
   }
 
-  const panel = document.createElement('div');
-  panel.id = 'astroAnnualEventsPanel';
-  panel.style.cssText = 'margin-top:12px;';
-  panel.innerHTML = `
-    <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(99,102,241,.3);border-radius:16px;padding:20px;
-    ">
-      <div style="font-size:12px;color:#818cf8;letter-spacing:2px;margin-bottom:4px;">🌌 연간 점성술 리포트</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:16px;">
-        A단계 엔진(트랜짓·프로펙션·생애주기) → B단계 AI 해석
+  container.innerHTML = `
+    <div style="padding:4px 0 16px;">
+      <div style="
+        background:linear-gradient(135deg,rgba(10,15,40,.98),rgba(25,10,60,.95));
+        border:1px solid rgba(232,192,105,.25);border-radius:20px;padding:24px;
+      ">
+        <div style="font-size:11px;color:#e8c069;letter-spacing:3px;font-weight:700;margin-bottom:8px;">🔮 연간 점성술 운세</div>
+        <div style="font-size:13px;color:#aab2d6;margin-bottom:18px;line-height:1.6;">
+          점성술 엔진이 계산한 연간 이벤트를 AI가 삶의 언어로 해석해드립니다.<br>
+          <span style="color:#7e87ad;font-size:11px;">프로펙션 · 트랜짓 임팩트 · 생애주기 · 일식 기준</span>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px;">
+          <select id="annualReportYear" style="
+            padding:8px 12px;border-radius:10px;
+            border:1px solid rgba(232,192,105,.3);background:rgba(232,192,105,.08);
+            color:#f4d98a;font-size:14px;font-weight:700;cursor:pointer;
+          ">${opts.join('')}</select>
+          <button onclick="generateAnnualReport()" id="annualReportBtn" style="
+            background:linear-gradient(135deg,rgba(232,192,105,.2),rgba(183,156,255,.15));
+            border:1px solid rgba(232,192,105,.45);color:#f4d98a;
+            border-radius:10px;padding:9px 22px;font-size:13px;font-weight:700;
+            cursor:pointer;letter-spacing:.5px;
+          ">⭐ 리포트 생성</button>
+        </div>
+        <div id="annualReportStatus" style="display:none;font-size:12px;color:#64748b;"></div>
       </div>
-      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
-        <select id="annualReportYear" style="padding:6px 10px;border-radius:8px;
-          border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);
-          color:#e2e8f0;font-size:13px;">
-          ${opts.join('')}
-        </select>
-        <button onclick="generateAnnualReport()" style="
-          background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4);
-          color:#818cf8;border-radius:8px;padding:8px 18px;font-size:12px;
-          cursor:pointer;letter-spacing:1px;
-        ">🌌 리포트 생성</button>
-      </div>
-      <div id="annualReportStatus" style="font-size:11px;color:#64748b;margin-bottom:10px;display:none;"></div>
-      <div id="annualReportResult"></div>
+      <div id="annualReportResult" style="margin-top:16px;"></div>
     </div>
   `;
-
-  const transitPanel = document.getElementById('astroTransitPanel');
-  if (transitPanel) transitPanel.after(panel);
 }
 
 async function generateAnnualReport() {
@@ -2082,6 +2068,7 @@ async function generateAnnualReport() {
   const yearEl   = document.getElementById('annualReportYear');
   const statusEl = document.getElementById('annualReportStatus');
   const resultEl = document.getElementById('annualReportResult');
+  const btn      = document.getElementById('annualReportBtn');
   if (!yearEl || !statusEl || !resultEl) return;
 
   const year      = parseInt(yearEl.value, 10);
@@ -2092,7 +2079,7 @@ async function generateAnnualReport() {
     lat: meta.lat, lng: meta.lng, utcOffset: meta.utcOffset,
   };
 
-  /* A단계: 엔진 계산 (클라이언트 사이드, 동기) */
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
   statusEl.style.display = 'block';
   statusEl.textContent   = '⚙️ 이벤트 계산 중...';
   resultEl.innerHTML     = '';
@@ -2101,13 +2088,13 @@ async function generateAnnualReport() {
   try {
     engineData = window.AstroEventsEngine.computeYearEvents(input, astroData, year);
     if (!engineData) throw new Error('이벤트 계산 실패');
-    statusEl.textContent = `✅ 이벤트 ${engineData.events.length}건 확인 — AI 해석 시작...`;
+    statusEl.textContent = `✅ 이벤트 ${engineData.events.length}건 — AI 해석 시작 (30~60초)...`;
   } catch (e) {
     statusEl.textContent = `⚠️ 엔진 오류: ${e.message}`;
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     return;
   }
 
-  /* B단계: Gemini 해석 (서버 사이드 API) */
   try {
     const res = await fetch('/api/gemini-events', {
       method: 'POST',
@@ -2120,29 +2107,162 @@ async function generateAnnualReport() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'AI 해석 오류');
 
-    const formatted = (data.result || '')
-      .replace(/## (.+)/g,  '<h3 style="color:#818cf8;margin:16px 0 8px;font-size:14px;letter-spacing:1px;">$1</h3>')
-      .replace(/### (.+)/g, '<h4 style="color:#a5b4fc;margin:12px 0 6px;font-size:13px;">$1</h4>')
-      .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
-      .replace(/\n/g, '<br>');
-
-    resultEl.innerHTML = `
-      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;
-        border-top:1px solid rgba(99,102,241,.2);padding-top:14px;">
-        ${formatted}
-      </div>
-      <div style="margin-top:14px;text-align:right;">
-        <button onclick="generateAnnualReport()" style="
-          background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
-          color:#818cf8;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
-        ">🔄 다시 생성</button>
-      </div>
-    `;
+    resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '');
     statusEl.textContent = `✅ ${year}년 리포트 완료`;
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
   } catch (err) {
     statusEl.textContent = `⚠️ ${err.message}`;
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
   }
+}
+
+function _buildAnnualHTML(engineData, aiText) {
+  const { year, profection, events = [] } = engineData;
+
+  /* ── AI 섹션 파싱 ─────────────────────────────── */
+  const sections = {};
+  const rawParts = aiText.split(/\n(?=## )/);
+  for (const part of rawParts) {
+    const m = part.match(/^## (.+)\n([\s\S]*)/);
+    if (m) sections[m[1].trim()] = m[2].trim();
+  }
+
+  /* ── 유틸 ─────────────────────────────────────── */
+  const valCol = { supportive:'#e8c069', challenging:'#ff8a8a', double_edged:'#b79cff', neutral:'#7e87ad' };
+  const valKR  = { supportive:'기회·상승', challenging:'긴장·도전', double_edged:'양면 에너지', neutral:'중립' };
+  const valIco = { supportive:'▲', challenging:'▼', double_edged:'⇕', neutral:'→' };
+
+  function fmtText(t) {
+    if (!t) return '';
+    return t
+      .replace(/### (.+)/g, '<div style="font-size:13px;font-weight:800;color:#f3f5ff;margin:14px 0 5px;">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f3f5ff;">$1</strong>')
+      .replace(/\n/g, '<br>');
+  }
+
+  function secCard(icon, title, bodyHtml, bdrColor) {
+    const bc = bdrColor || 'rgba(255,255,255,.10)';
+    return `
+      <div style="margin-top:20px;">
+        <div style="font-size:11px;letter-spacing:3px;color:#e8c069;font-weight:700;
+          display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <span>${icon} ${title}</span>
+          <div style="flex:1;height:1px;background:rgba(255,255,255,.07);"></div>
+        </div>
+        <div style="background:rgba(20,25,48,.66);border:1px solid ${bc};
+          border-radius:20px;padding:22px;font-size:13px;line-height:1.8;color:#aab2d6;">
+          ${bodyHtml}
+        </div>
+      </div>`;
+  }
+
+  /* ── 주요 이벤트 카드 ─────────────────────────── */
+  const majorEvents = events.filter(e => e.importance === 'major');
+  const majorCardsHtml = majorEvents.map(e => {
+    const col = valCol[e.valence] || '#7e87ad';
+    return `
+      <div style="background:rgba(20,25,48,.66);border:1px solid rgba(255,255,255,.10);
+        border-radius:18px;padding:18px 20px;position:relative;overflow:hidden;">
+        <div style="position:absolute;left:0;top:0;bottom:0;width:4px;
+          background:linear-gradient(180deg,${col},transparent);border-radius:4px 0 0 4px;"></div>
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
+          <div style="font-size:13px;font-weight:700;color:#f3f5ff;line-height:1.5;">${e.fact}</div>
+          <span style="white-space:nowrap;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;
+            color:${col};background:${col}22;border:1px solid ${col}55;flex-shrink:0;">
+            ${valIco[e.valence] || ''} ${valKR[e.valence] || e.valence}
+          </span>
+        </div>
+        <div style="font-size:11px;color:#7e87ad;">${e.when || ''}${e.technique ? ' · ' + e.technique : ''}</div>
+      </div>`;
+  }).join('');
+
+  /* ── 섹션 키 매핑 ─────────────────────────────── */
+  const flowKey  = Object.keys(sections).find(k => k === '올해의 큰 흐름') || '';
+  const moodKey  = Object.keys(sections).find(k => k.startsWith('올해의 무드')) || '';
+  const flowText = flowKey ? sections[flowKey] : '';
+  const moodText = moodKey ? sections[moodKey] : '';
+  const thesis   = flowText.split('\n')[0].replace(/\*\*(.+?)\*\*/g, '$1');
+
+  const secIcons = { '핵심 사건과 시기':'⚡', '영역별 흐름':'🗂️', '주목할 포인트':'🎯' };
+  const otherSections = Object.entries(sections).filter(([k]) =>
+    k !== flowKey && k !== moodKey && k !== '마무리'
+  );
+
+  /* ── HTML 조립 ────────────────────────────────── */
+  return `
+    <div style="max-width:860px;">
+
+      <!-- HERO -->
+      <div style="padding:20px 4px 12px;">
+        <div style="font-size:11px;color:#e8c069;letter-spacing:4px;font-weight:700;margin-bottom:10px;">
+          ANNUAL FORECAST · ${year}
+        </div>
+        <div style="font-size:clamp(56px,18vw,96px);line-height:.9;font-weight:900;letter-spacing:-2px;
+          background:linear-gradient(180deg,#fff 30%,#cfd6f5);
+          -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:12px;">
+          ${year}
+        </div>
+        ${thesis ? `<div style="font-size:15px;font-weight:700;color:#f3f5ff;margin-bottom:12px;letter-spacing:-.2px;">${thesis}</div>` : ''}
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:12px;color:#f4d98a;border:1px solid rgba(232,192,105,.4);
+            background:rgba(232,192,105,.08);padding:6px 12px;border-radius:999px;">
+            만 ${profection.age}세 · ${profection.house}하우스의 해 · ${profection.theme}
+          </span>
+          <span style="font-size:12px;color:#aab2d6;border:1px solid rgba(255,255,255,.10);
+            background:rgba(16,20,40,.55);padding:6px 12px;border-radius:999px;">
+            올해의 별 · ${profection.lord}
+          </span>
+        </div>
+      </div>
+
+      <!-- 올해의 큰 흐름 -->
+      ${flowText ? secCard('🌊', '올해의 큰 흐름', fmtText(flowText), 'rgba(232,192,105,.2)') : ''}
+
+      <!-- 올해의 무드 -->
+      ${moodText ? secCard('🎭', moodKey || '올해의 무드', fmtText(moodText)) : ''}
+
+      <!-- 핵심 이벤트 카드 -->
+      ${majorEvents.length > 0 ? `
+        <div style="margin-top:20px;">
+          <div style="font-size:11px;letter-spacing:3px;color:#e8c069;font-weight:700;
+            display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+            <span>⭐ 핵심 전환 이벤트</span>
+            <div style="flex:1;height:1px;background:rgba(255,255,255,.07);"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:10px;">${majorCardsHtml}</div>
+        </div>` : ''}
+
+      <!-- 나머지 AI 섹션 -->
+      ${otherSections.map(([k, v]) => secCard(secIcons[k] || '✦', k, fmtText(v))).join('')}
+
+      <!-- 마무리 클로징 -->
+      ${sections['마무리'] ? `
+        <div style="margin-top:24px;padding:26px 22px;border-radius:20px;
+          background:linear-gradient(135deg,rgba(232,192,105,.10),rgba(139,123,255,.10));
+          border:1px solid rgba(255,255,255,.10);">
+          <div style="font-size:15px;line-height:1.75;font-weight:700;color:#f3f5ff;">
+            ${fmtText(sections['마무리'])}
+          </div>
+        </div>` : ''}
+
+      <!-- 다시 생성 -->
+      <div style="margin-top:14px;text-align:right;">
+        <button onclick="generateAnnualReport()" style="
+          background:rgba(232,192,105,.12);border:1px solid rgba(232,192,105,.3);
+          color:#f4d98a;font-size:11px;border-radius:8px;padding:5px 14px;cursor:pointer;
+        ">🔄 다시 생성</button>
+      </div>
+
+      <!-- 면책 -->
+      <div style="margin-top:14px;font-size:11px;color:#7e87ad;line-height:1.6;
+        border-top:1px solid rgba(255,255,255,.07);padding-top:12px;">
+        점성술은 경향성(날씨)이지 운명 결정이 아닙니다. 본 내용은
+        <strong style="color:#aab2d6;">'가능성·타이밍 창'</strong>이며,
+        실제 결과는 본인의 선택과 외부 상황에 달려 있습니다.
+      </div>
+    </div>
+  `;
 }
 
 /* =========================================================
