@@ -2127,7 +2127,8 @@ async function generateAnnualReport() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'AI 해석 오류');
 
-    resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '');
+    const userName = _$('name')?.value?.trim() || '';
+    resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '', userName);
     // innerHTML로 삽입된 <script>는 자동 실행되지 않으므로 수동 실행
     resultEl.querySelectorAll('script').forEach(s => {
       const ns = document.createElement('script');
@@ -2288,7 +2289,7 @@ function _buildTimeline(events) {
     </div>`;
 }
 
-function _buildAnnualHTML(engineData, aiText) {
+function _buildAnnualHTML(engineData, aiText, userName = '') {
   const { year, profection, events = [] } = engineData;
   const did = 'adeck' + year; // 고유 덱 ID — 함수명·요소 ID 모두 이 접두사 사용
 
@@ -2426,26 +2427,51 @@ function _buildAnnualHTML(engineData, aiText) {
 
   function buildSlide(s, n) {
     if (s.t === 'cover') return `
-      <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;text-align:center;gap:14px;padding:0 24px;">
-        <div style="width:88px;height:88px;border-radius:50%;border:2px solid rgba(223,186,107,.3);
-          background:rgba(223,186,107,.05);display:flex;align-items:center;justify-content:center;
-          box-shadow:0 0 30px rgba(223,186,107,.12);">
-          <span style="font-family:Georgia,serif;font-size:24px;color:#dfba6b;font-weight:300;">${year}</span>
+      <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;text-align:center;padding:0 28px;gap:0;">
+        <!-- 연도 원형 -->
+        <div style="width:70px;height:70px;border-radius:50%;
+          border:1px solid rgba(223,186,107,.55);
+          display:flex;align-items:center;justify-content:center;
+          flex-shrink:0;margin-bottom:22px;">
+          <span style="font-family:Georgia,serif;font-size:19px;color:#dfba6b;font-weight:300;letter-spacing:.06em;">${year}</span>
         </div>
-        <div>
-          <h1 style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;margin:0 0 8px;">연간 운세</h1>
-          ${thesis ? `<p style="font-size:12px;color:#94a3b8;line-height:1.65;max-width:260px;margin:0 auto;">${thesis}</p>` : ''}
+        <!-- 메인 타이틀 -->
+        <div style="flex-shrink:0;margin-bottom:12px;">
+          <h1 style="font-size:26px;font-weight:900;color:#fff;
+            letter-spacing:.12em;margin:0;line-height:1.15;
+            font-family:Georgia,serif;text-transform:uppercase;">
+            THE <span style="color:#dfba6b;">SOVEREIGN</span> CYCLE
+          </h1>
         </div>
-        <div style="width:56px;height:1px;background:linear-gradient(90deg,transparent,rgba(223,186,107,.45),transparent);"></div>
-        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;">
-          <span style="font-size:11px;color:#fbbf24;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.07);padding:4px 11px;border-radius:999px;white-space:nowrap;">
-            만 ${profection.age}세 · ${profection.house}하우스 · ${profection.theme}
+        <!-- 구분선 -->
+        <div style="width:36px;height:1px;flex-shrink:0;margin-bottom:13px;
+          background:linear-gradient(90deg,transparent,rgba(223,186,107,.6),transparent);"></div>
+        <!-- 서브타이틀 -->
+        <p style="font-size:10.5px;color:#94a3b8;letter-spacing:.14em;
+          margin:0 0 10px;flex-shrink:0;font-family:Georgia,serif;">
+          ${userName ? `${userName} 님 · ` : ''}프리미엄 ${TOTAL}단계 마스터 플랜
+        </p>
+        <!-- 태그라인 -->
+        <p style="font-size:11px;color:#475569;line-height:1.7;
+          max-width:250px;margin:0 0 24px;flex-shrink:0;">
+          실제 행성의 궤도와 정밀한 각도가<br>만들어내는 당신만의 천문학적 서사.
+        </p>
+        <!-- 프로펙션 필 -->
+        <div style="display:flex;flex-direction:column;gap:7px;align-items:center;flex-shrink:0;">
+          <span style="font-size:11px;color:#fbbf24;
+            border:1px solid rgba(251,191,36,.28);background:rgba(251,191,36,.06);
+            padding:5px 14px;border-radius:999px;white-space:nowrap;">
+            만 ${profection.age}세 · ${profection.house}하우스 연도 · ${profection.theme}
           </span>
-          <span style="font-size:11px;color:#94a3b8;border:1px solid rgba(148,163,184,.18);background:rgba(148,163,184,.05);padding:4px 11px;border-radius:999px;white-space:nowrap;">
-            올해의 별 · ${profection.lord}
+          <span style="font-size:11px;color:#94a3b8;
+            border:1px solid rgba(148,163,184,.16);background:rgba(148,163,184,.04);
+            padding:5px 14px;border-radius:999px;white-space:nowrap;">
+            올해의 지배성 · ${profection.lord}
           </span>
         </div>
-        <p style="font-size:10px;color:#334155;letter-spacing:.08em;">총 ${TOTAL}개 챕터 · 좌우로 넘겨보세요</p>
+        <p style="font-size:9px;color:#1e293b;letter-spacing:.1em;margin-top:18px;flex-shrink:0;">
+          ← 좌우로 넘기세요 →
+        </p>
       </div>`;
 
     if (s.t === 'text') {
