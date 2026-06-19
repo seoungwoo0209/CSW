@@ -2304,21 +2304,22 @@ function _buildAnnualHTML(engineData, aiText) {
   const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
   const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
 
-  /* ── NASA 공개 이미지 (퍼블릭 도메인) ── */
+  /* ── NASA 공개 이미지 — Wikimedia Commons 호스팅 (핫링킹 허용, 퍼블릭 도메인) ── */
+  const WM = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
   const NASA_IMGS = {
-    '목성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA21775.jpg', cap:'Jupiter · Juno' },
-    '토성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA14944.jpg', cap:'Saturn · Cassini' },
-    '화성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA22763.jpg', cap:'Mars · MRO' },
-    '금성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA00271.jpg', cap:'Venus · Magellan' },
-    '수성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA15162.jpg', cap:'Mercury · MESSENGER' },
-    '천왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA18182.jpg', cap:'Uranus · Voyager 2' },
-    '해왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA02210.jpg', cap:'Neptune · Voyager 2' },
-    '명왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA19858.jpg', cap:'Pluto · New Horizons' },
-    '달':     { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA00139.jpg', cap:'Moon · Galileo' },
-    '태양':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA03149.jpg', cap:'Sun · SOHO' },
-    cosmos:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA23645.jpg', cap:'Deep Space · Spitzer' },
-    nebula:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA20912.jpg', cap:'Nebula · Hubble' },
-    galaxy:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA15416.jpg', cap:'Galaxy · Hubble' },
+    '목성':   { url: WM+'2/2b/Jupiter_and_its_shrunken_Great_Red_Spot.jpg/600px-Jupiter_and_its_shrunken_Great_Red_Spot.jpg', cap:'Jupiter · Juno / NASA' },
+    '토성':   { url: WM+'c/c7/Saturn_during_Equinox.jpg/600px-Saturn_during_Equinox.jpg', cap:'Saturn · Cassini / NASA' },
+    '화성':   { url: WM+'0/02/OSIRIS_Mars_true_color.jpg/600px-OSIRIS_Mars_true_color.jpg', cap:'Mars · ESA/Rosetta' },
+    '금성':   { url: WM+'e/e5/Venus-real_color.jpg/600px-Venus-real_color.jpg', cap:'Venus · Mariner 10 / NASA' },
+    '수성':   { url: WM+'4/4a/Mercury_in_true_color.jpg/600px-Mercury_in_true_color.jpg', cap:'Mercury · MESSENGER / NASA' },
+    '천왕성': { url: WM+'3/3d/Uranus2.jpg/600px-Uranus2.jpg', cap:'Uranus · Voyager 2 / NASA' },
+    '해왕성': { url: WM+'b/b9/Neptune_Voyager2_color_calibrated.png/600px-Neptune_Voyager2_color_calibrated.png', cap:'Neptune · Voyager 2 / NASA' },
+    '명왕성': { url: WM+'e/ef/Pluto_in_True_Color_-_High-Res.jpg/600px-Pluto_in_True_Color_-_High-Res.jpg', cap:'Pluto · New Horizons / NASA' },
+    '달':     { url: WM+'e/e1/FullMoon2010.jpg/600px-FullMoon2010.jpg', cap:'Moon · NASA' },
+    '태양':   { url: WM+'b/b4/The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg/600px-thumbnail.jpg', cap:'Sun · SDO / NASA' },
+    cosmos:   { url: WM+'6/68/Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg/600px-Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg', cap:'Pillars of Creation · Hubble / NASA' },
+    nebula:   { url: WM+'0/00/Crab_Nebula.jpg/600px-Crab_Nebula.jpg', cap:'Crab Nebula · Hubble / NASA' },
+    galaxy:   { url: WM+'9/98/Andromeda_Galaxy_%28with_h-alpha%29.jpg/600px-Andromeda_Galaxy_%28with_h-alpha%29.jpg', cap:'Andromeda Galaxy · NASA' },
   };
 
   function getSlideImg(s) {
