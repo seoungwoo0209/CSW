@@ -2530,31 +2530,29 @@ function _buildAnnualHTML(engineData, aiText) {
     if (s.t === 'closing') {
       const text = s.text || '';
       const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      // 첫 번째 ✓ 이전 줄들 = 인용구, 이후 = 불릿
-      const quoteLines = [], rawBullets = [];
-      let hitBullet = false;
-      for (const l of lines) {
-        if (/^✓/.test(l)) { hitBullet = true; }
-        if (hitBullet) rawBullets.push(l);
-        else quoteLines.push(l.replace(/^["""]\s*|\s*["""]$/g, ''));
-      }
-      const quote = quoteLines.join(' ').replace(/\*\*(.+?)\*\*/g, '$1').trim();
-      const bullets = rawBullets.filter(l => /^✓/.test(l)).map(l => {
+      const bulletLines  = lines.filter(l => /^✓/.test(l));
+      const quoteLines   = lines.filter(l => !/^✓/.test(l));
+      const quoteHtml    = quoteLines
+        .map(l => l.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f1f5f9;">$1</strong>'))
+        .join('<br>');
+      const bullets = bulletLines.map(l => {
         const m = l.match(/^✓\s*\[?([^\]:：\]]+)\]?\s*[:：]\s*(.*)/);
         return m ? { label: m[1].trim(), content: m[2].trim() }
                  : { label: '', content: l.replace(/^✓\s*/, '') };
       });
       return `
         <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;
-          padding:14px 24px 18px;gap:0;overflow:hidden;">
-          <div style="font-size:58px;color:rgba(223,186,107,.32);font-family:Georgia,serif;
-            line-height:1;flex-shrink:0;text-align:center;width:100%;">&ldquo;</div>
-          <div style="flex-shrink:0;text-align:center;padding:2px 0 18px;width:100%;">
-            <p style="font-size:14px;font-style:italic;color:#e2e8f0;line-height:1.82;margin:0;">${quote}</p>
+          padding:16px 24px 18px;gap:0;overflow:hidden;">
+          <div style="font-size:52px;color:rgba(223,186,107,.38);font-family:Georgia,serif;
+            line-height:1;flex-shrink:0;text-align:center;width:100%;margin-bottom:10px;">&ldquo;</div>
+          <div style="flex-shrink:0;text-align:center;width:100%;
+            ${bullets.length > 0 ? 'padding-bottom:18px;' : 'padding-bottom:0;flex:1;display:flex;align-items:center;justify-content:center;'}">
+            <p style="font-size:14px;font-style:italic;color:#e2e8f0;line-height:1.85;margin:0;">${quoteHtml}</p>
           </div>
-          <div style="flex-shrink:0;width:48px;height:1px;margin-bottom:18px;
+          ${bullets.length > 0 ? `
+          <div style="flex-shrink:0;width:48px;height:1px;margin-bottom:16px;
             background:linear-gradient(90deg,transparent,rgba(223,186,107,.65),transparent);"></div>
-          <div style="width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+          <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%;">
             ${bullets.map(b=>`
               <div style="display:flex;gap:8px;margin-bottom:11px;align-items:flex-start;">
                 <span style="color:#dfba6b;flex-shrink:0;font-size:12px;margin-top:1px;">✓</span>
@@ -2562,7 +2560,7 @@ function _buildAnnualHTML(engineData, aiText) {
                   ${b.label ? `<strong style="color:#dfba6b;">${b.label}:</strong> ` : ''}${b.content}
                 </p>
               </div>`).join('')}
-          </div>
+          </div>` : ''}
         </div>`;
     }
     return '';
