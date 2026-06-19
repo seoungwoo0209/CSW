@@ -2121,11 +2121,11 @@ function showAnnualLoader(numEvents) {
   // ── 행성 궤도 [색, 글로우RGB, 반지름px, 공전초, 시작각, 크기px] ──
   // 300px 컨테이너 기준, 각 행성 div는 컨테이너 중심(top50%,left50%)에 배치
   const PL = [
-    {col:'#D8D2C4',g:'216,210,196',r:147,d:26,a:15, s:16},
-    {col:'#C89640',g:'200,150,64', r:122,d:44,a:138,s:15},
-    {col:'#3A7FAA',g:'58,127,170', r:98, d:32,a:252,s:14},
-    {col:'#C87844',g:'200,120,68', r:73, d:18,a:62, s:12},
-    {col:'#4A8C72',g:'74,140,114', r:50, d:58,a:178,s:11},
+    {col:'#D8D2C4',g:'216,210,196',r:165,d:26,a:15, s:18},
+    {col:'#C89640',g:'200,150,64', r:137,d:44,a:138,s:17},
+    {col:'#3A7FAA',g:'58,127,170', r:110,d:32,a:252,s:16},
+    {col:'#C87844',g:'200,120,68', r:82, d:18,a:62, s:13},
+    {col:'#4A8C72',g:'74,140,114', r:56, d:58,a:178,s:12},
   ];
   const orbitCss = PL.map((p,i)=>
     '@keyframes _oP'+i+'{from{transform:rotate('+p.a+'deg) translateX('+p.r+'px)}to{transform:rotate('+(p.a+360)+'deg) translateX('+p.r+'px)}}'
@@ -2158,8 +2158,8 @@ function showAnnualLoader(numEvents) {
     // 아스트롤라베: 정적 이미지 + 그 위에 개별 행성 div (이미지 자체는 transform 없음)
     // 하단 텍스트 줄(al-bot, padding 22px + max-width:390px)과 가로 폭을 정확히 맞춤
     '<div style="flex-shrink:0;margin-top:10px;width:100%;padding:0 22px;box-sizing:border-box;">' +
-    '<div style="position:relative;width:100%;max-width:390px;aspect-ratio:1/1;margin:0 auto;">' +
-    '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;" alt=""/>' +
+    '<div style="position:relative;width:100%;max-width:390px;aspect-ratio:520/582;margin:0 auto;">' +
+    '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:cover;display:block;pointer-events:none;" alt=""/>' +
     '<div style="position:absolute;inset:0;pointer-events:none;">' + orbitHtml +
     '<div style="position:absolute;top:50%;left:50%;width:24px;height:24px;margin:-12px;border-radius:50%;background:radial-gradient(circle,rgba(255,240,200,.4),transparent);animation:_alGemP 3.5s ease-in-out infinite;"></div>' +
     '</div>' +
