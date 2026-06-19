@@ -2120,12 +2120,23 @@ async function generateAnnualReport() {
 function _buildTimeline(events) {
   function parseMonth(when) {
     if (!when) return null;
-    if (/통년|연중|연간/.test(when)) return null;
-    const qm = when.match(/Q([1-4])/i) || when.match(/([1-4])분기/);
+    // "2026" → 연간 전체, 핀 없음
+    if (/^\d{4}$/.test(when)) return null;
+    // "2026-07~09" → 평균
+    const rangeM = when.match(/^(?:\d{4}-)?(\d{2})~(\d{2})$/);
+    if (rangeM) return (parseInt(rangeM[1]) + parseInt(rangeM[2])) / 2;
+    // "2026-02-17" → 월만 추출
+    const fullDate = when.match(/^(?:\d{4}-)?(\d{2})-\d{2}$/);
+    if (fullDate) return parseInt(fullDate[1]);
+    // "2026-03" → 월
+    const monthOnly = when.match(/^(?:\d{4}-)?(\d{2})$/);
+    if (monthOnly) return parseInt(monthOnly[1]);
+    // 한국어 형식 폴백
+    const qm = when.match(/Q([1-4])/i);
     if (qm) return [2, 5, 8, 11][parseInt(qm[1]) - 1];
-    const rng = when.replace(/\d{4}년\s*/, '').match(/(\d+)[~\-](\d+)월/);
+    const rng = when.match(/(\d+)[~\-](\d+)월/);
     if (rng) return (parseInt(rng[1]) + parseInt(rng[2])) / 2;
-    const sm = when.replace(/\d{4}년\s*/, '').match(/(\d+)월/);
+    const sm = when.match(/(\d+)월/);
     if (sm) return parseInt(sm[1]);
     return null;
   }
