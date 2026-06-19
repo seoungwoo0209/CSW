@@ -2117,6 +2117,102 @@ async function generateAnnualReport() {
   }
 }
 
+function _buildTimeline(events) {
+  function parseMonth(when) {
+    if (!when) return null;
+    if (/통년|연중|연간/.test(when)) return null;
+    const qm = when.match(/Q([1-4])/i) || when.match(/([1-4])분기/);
+    if (qm) return [2, 5, 8, 11][parseInt(qm[1]) - 1];
+    const rng = when.replace(/\d{4}년\s*/, '').match(/(\d+)[~\-](\d+)월/);
+    if (rng) return (parseInt(rng[1]) + parseInt(rng[2])) / 2;
+    const sm = when.replace(/\d{4}년\s*/, '').match(/(\d+)월/);
+    if (sm) return parseInt(sm[1]);
+    return null;
+  }
+
+  const timedEvs = events
+    .filter(e => parseMonth(e.when) !== null)
+    .sort((a, b) => parseMonth(a.when) - parseMonth(b.when))
+    .slice(0, 8);
+
+  if (timedEvs.length === 0) return '';
+
+  const iconFor = e => {
+    if (e.layer === 'lifecycle')        return '🌱';
+    if (e.valence === 'double_edged')   return '⚡';
+    if (e.valence === 'supportive')     return '⭐';
+    if (e.valence === 'challenging')    return '🔴';
+    return '•';
+  };
+
+  const pinsHtml = timedEvs.map((e, idx) => {
+    const month = parseMonth(e.when);
+    const left  = Math.min(94, Math.max(4, ((month - 0.5) / 12) * 100));
+    const isMajor = e.importance === 'major';
+    const isDE    = e.valence === 'double_edged';
+    const isUp    = idx % 2 === 0;
+    const dotSize = isMajor ? 20 : 13;
+
+    const dotBg = (isMajor && isDE)
+      ? 'radial-gradient(circle,#fff 30%,#b79cff)'
+      : isMajor ? 'radial-gradient(circle,#fff,#e8c069)'
+      : (e.layer === 'lifecycle' && !isMajor) ? 'transparent' : '#7e87ad';
+
+    const dotShadow = (isMajor && isDE)
+      ? '0 0 0 4px rgba(183,156,255,.2),0 0 22px rgba(183,156,255,.55)'
+      : isMajor ? '0 0 0 4px rgba(232,192,105,.18),0 0 22px rgba(232,192,105,.55)' : 'none';
+
+    const dotBorder = (e.layer === 'lifecycle' && !isMajor)
+      ? '2px dashed rgba(183,156,255,.6)' : '2px solid #070a14';
+
+    const shortFact = (e.fact || '').length > 20 ? (e.fact || '').slice(0, 20) + '…' : (e.fact || '');
+
+    const dotHtml = `<div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;
+      background:${dotBg};border:${dotBorder};box-shadow:${dotShadow};flex-shrink:0;"></div>`;
+
+    const labJust = isUp ? 'justify-content:flex-end;padding-bottom:6px;' : 'justify-content:flex-start;padding-top:6px;';
+    const labHtml = `<div style="width:92px;text-align:center;font-size:10px;line-height:1.35;color:#aab2d6;
+      flex:1;display:flex;flex-direction:column;${labJust}">
+      <span style="font-size:12px;display:block;margin-bottom:2px;">${iconFor(e)}</span>
+      <b style="color:#f3f5ff;font-size:9.5px;display:block;">${e.when || ''}</b>
+      <span style="font-size:9.5px;">${shortFact}</span>
+    </div>`;
+
+    const pinStyle = isUp
+      ? `position:absolute;left:${left}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center;height:100px;width:92px;`
+      : `position:absolute;left:${left}%;top:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;height:100px;width:92px;`;
+
+    return `<div style="${pinStyle}">${dotHtml}${labHtml}</div>`;
+  }).join('');
+
+  const bandEvs = events.filter(e => e.layer === 'common').slice(0, 1);
+  const bandHtml = bandEvs.map(e => `
+    <div style="position:absolute;top:calc(50% - 9px);left:3%;right:3%;height:18px;border-radius:999px;
+      border:1px dashed rgba(255,255,255,.12);background:rgba(255,255,255,.03);">
+      <span style="position:absolute;top:-16px;left:8px;font-size:10px;color:#7e87ad;
+        white-space:nowrap;overflow:hidden;max-width:90%;">${(e.fact || '').slice(0, 35)}</span>
+    </div>`).join('');
+
+  return `
+    <div style="margin:24px 0 4px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;">
+      <span style="font-size:11px;letter-spacing:3px;color:#7e87ad;font-weight:700;">YEAR TIMELINE</span>
+      <span style="font-size:10px;color:#7e87ad;">⭐ 핵심 · 일반 · 미래</span>
+    </div>
+    <div style="position:relative;min-width:320px;height:220px;margin-top:8px;overflow-x:auto;">
+      <div style="position:relative;height:100%;min-width:320px;">
+        <div style="position:absolute;left:0;right:0;top:50%;height:2px;transform:translateY(-50%);
+          background:linear-gradient(90deg,transparent,rgba(232,192,105,.5) 12%,rgba(183,156,255,.5) 78%,transparent);"></div>
+        ${bandHtml}
+        <div style="position:absolute;left:0;right:0;top:calc(50% + 12px);display:grid;grid-template-columns:repeat(4,1fr);">
+          ${['Q1','Q2','Q3','Q4'].map(q =>
+            `<span style="font-size:10px;color:#7e87ad;text-align:center;letter-spacing:1px;">${q}</span>`
+          ).join('')}
+        </div>
+        ${pinsHtml}
+      </div>
+    </div>`;
+}
+
 function _buildAnnualHTML(engineData, aiText) {
   const { year, profection, events = [] } = engineData;
 
@@ -2182,7 +2278,13 @@ function _buildAnnualHTML(engineData, aiText) {
   const moodKey  = Object.keys(sections).find(k => k.startsWith('올해의 무드')) || '';
   const flowText = flowKey ? sections[flowKey] : '';
   const moodText = moodKey ? sections[moodKey] : '';
-  const thesis   = flowText.split('\n')[0].replace(/\*\*(.+?)\*\*/g, '$1');
+  // 히어로: 첫 줄(thesis), 카드: 나머지 본문 (중복 방지)
+  const flowLines = flowText.split('\n');
+  const firstNonEmpty = flowLines.findIndex(l => l.trim());
+  const thesis   = firstNonEmpty >= 0 ? flowLines[firstNonEmpty].replace(/\*\*(.+?)\*\*/g, '$1') : '';
+  const flowBody = firstNonEmpty >= 0
+    ? flowLines.slice(firstNonEmpty + 1).join('\n').trim()
+    : flowText;
 
   const secIcons = { '핵심 사건과 시기':'⚡', '영역별 흐름':'🗂️', '주목할 포인트':'🎯' };
   const otherSections = Object.entries(sections).filter(([k]) =>
@@ -2216,8 +2318,11 @@ function _buildAnnualHTML(engineData, aiText) {
         </div>
       </div>
 
-      <!-- 올해의 큰 흐름 -->
-      ${flowText ? secCard('🌊', '올해의 큰 흐름', fmtText(flowText), 'rgba(232,192,105,.2)') : ''}
+      <!-- 연간 타임라인 (히어로 바로 아래) -->
+      ${_buildTimeline(events)}
+
+      <!-- 올해의 큰 흐름 (히어로 thesis와 중복 방지 — 본문만 표시) -->
+      ${(flowBody || flowText) ? secCard('🌊', '올해의 큰 흐름', fmtText(flowBody || flowText), 'rgba(232,192,105,.2)') : ''}
 
       <!-- 올해의 무드 -->
       ${moodText ? secCard('🎭', moodKey || '올해의 무드', fmtText(moodText)) : ''}
