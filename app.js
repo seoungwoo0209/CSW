@@ -2437,8 +2437,8 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
         </div>
         <!-- 메인 타이틀 -->
         <div style="flex-shrink:0;margin-bottom:12px;">
-          <h1 style="font-size:22px;font-weight:900;color:#fff;
-            letter-spacing:.08em;margin:0;line-height:1.15;
+          <h1 style="font-size:clamp(17px,5vw,24px);font-weight:900;color:#fff;
+            letter-spacing:.06em;margin:0;line-height:1.15;
             font-family:Georgia,serif;text-transform:uppercase;white-space:nowrap;">
             THE <span style="color:#dfba6b;">SOVEREIGN</span> CYCLE
           </h1>
