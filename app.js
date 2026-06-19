@@ -2088,16 +2088,11 @@ function showAnnualLoader(numEvents) {
   if (old) old.remove();
   clearInterval(window._alProgressInterval);
 
-  // 참고 이미지의 아이콘을 SVG로 재현
   const ICONS = [
-    // 8각 별 (outline) — 스캔 중
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 2l1.8 6.2L20 12l-6.2 1.8L12 22l-1.8-6.2L4 12l6.2-1.8z" stroke="#D4AF37" stroke-width="1.1" fill="rgba(212,175,55,.12)"/><circle cx="12" cy="12" r="2.2" fill="#D4AF37" opacity=".5"/></svg>',
-    // 4각 별 (solid) — 계산 완료
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 3l2.5 6.5L22 12l-7.5 2.5L12 21l-2.5-6.5L4 12l7.5-2.5z" fill="#D4AF37" opacity=".9"/></svg>',
-    // 초승달 + 별 — 분석 중
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M13 3a9 9 0 1 0 0 18 6 6 0 0 1 0-18z" fill="#D4AF37" opacity=".8"/><circle cx="18" cy="5" r="1.8" fill="#D4AF37" opacity=".65"/></svg>',
-    // 빈 원 — 대기
-    '<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#D4AF37" stroke-width="1.3" opacity=".38"/><circle cx="12" cy="12" r="5" stroke="#D4AF37" stroke-width=".7" opacity=".18"/></svg>',
+    '<img src="/img/loader-icon-star.png" width="32" height="32" style="object-fit:contain;display:block;">',
+    '<img src="/img/loader-icon-star.png" width="32" height="32" style="object-fit:contain;display:block;filter:brightness(1.3) saturate(1.2);">',
+    '<img src="/img/loader-icon-crescent.png" width="32" height="32" style="object-fit:contain;display:block;">',
+    '<img src="/img/loader-icon-ring.png" width="32" height="32" style="object-fit:contain;display:block;">',
   ];
 
   const STEPS = [
@@ -2115,13 +2110,11 @@ function showAnnualLoader(numEvents) {
       '</div>';
   }).join('');
 
-  // 봉인 버튼 (왁스 씰)
   const waxBtn =
     '<div id="alWaxBtn" style="width:100%;max-width:380px;margin:18px 0 0;border-radius:12px;overflow:hidden;display:flex;align-items:center;background:linear-gradient(135deg,#3b0f0f 0%,#6a1e1e 45%,#3b0f0f 100%);border:1px solid rgba(150,65,45,.4);box-shadow:0 4px 24px rgba(80,10,10,.5);">' +
-    '<div style="width:72px;height:72px;background:radial-gradient(circle at 38% 33%,#7d2626,#4a1212);border-right:1px solid rgba(150,65,45,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
-    '<div style="width:48px;height:48px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#9e3232,#5c1818);border:1.5px solid rgba(212,175,55,.28);display:flex;align-items:center;justify-content:center;box-shadow:inset 0 2px 6px rgba(0,0,0,.5);">' +
-    '<svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M11 2l2 5.5L19 11l-6 2L11 20l-2-7-6-2 6-2z" fill="rgba(212,175,55,.7)"/></svg>' +
-    '</div></div>' +
+    '<div style="width:72px;height:72px;border-right:1px solid rgba(150,65,45,.35);display:flex;align-items:center;justify-content:center;flex-shrink:0;">' +
+    '<img src="/img/loader-waxseal.png" width="58" height="58" style="object-fit:contain;display:block;">' +
+    '</div>' +
     '<span style="flex:1;text-align:center;font-size:14.5px;font-weight:700;color:#D4AF37;letter-spacing:.06em;text-shadow:0 0 14px rgba(212,175,55,.4);font-family:Helvetica Neue,sans-serif;">깊은 지혜의 리포트 잠금 해제</span>' +
     '</div>';
 
