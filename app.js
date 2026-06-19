@@ -526,32 +526,35 @@ function buildCitySelect() {
    aspects: [{ point1, point2, aspect, symbol, orb, applying }]
    ========================================================= */
 function renderAspectAccordion(aspects, title, icon, accentColor) {
+  const gold = accentColor || '#dfba6b';
   const list = aspects || [];
   const itemsHtml = list.length > 0
     ? list.map(a => `
         <div style="
           display:grid;grid-template-columns:1fr auto 1fr auto;gap:8px;align-items:center;
-          background:rgba(255,255,255,.04);border-radius:6px;
-          padding:6px 10px;font-size:11px;color:#94a3b8;
-          border-left:2px solid ${accentColor}66;
+          background:rgba(200,168,96,.05);border-radius:8px;
+          padding:8px 12px;font-size:11px;color:#9b8f74;
+          border-left:2px solid ${gold}55;
         ">
-          <span style="color:${accentColor};">${a.point1}</span>
-          <span style="color:#64748b;white-space:nowrap;">${a.symbol} ${a.aspect}</span>
-          <span style="color:#e2e8f0;text-align:right;">${a.point2}</span>
-          <span style="color:#475569;white-space:nowrap;">orb ${a.orb}°</span>
+          <span style="color:${gold};">${a.point1}</span>
+          <span style="color:#7d7257;white-space:nowrap;">${a.symbol} ${a.aspect}</span>
+          <span style="color:#cabfa0;text-align:right;">${a.point2}</span>
+          <span style="color:#5c5440;white-space:nowrap;">orb ${a.orb}°</span>
         </div>
       `).join('')
-    : `<div style="color:#475569;font-size:12px;">에스펙트 없음</div>`;
+    : `<div style="color:#5c5440;font-size:12px;">에스펙트 없음</div>`;
 
   return `
     <details style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid ${accentColor}33;border-radius:16px;padding:16px 20px;margin-top:12px;
+      position:relative;
+      background:radial-gradient(115% 80% at 50% -10%,#171232 0%,#0c0a20 55%,#07060f 100%);
+      border:1px solid ${gold}40;border-radius:16px;padding:16px 20px;margin-top:12px;
+      box-shadow:0 14px 36px -18px rgba(0,0,0,.75),inset 0 1px 0 rgba(255,255,255,.04);
     ">
-      <summary style="cursor:pointer;font-size:12px;color:${accentColor};letter-spacing:2px;">
-        ${icon} ${title} (${list.length}개) — 클릭하여 펼치기
+      <summary style="cursor:pointer;font-size:12px;color:${gold};letter-spacing:.1em;font-family:Georgia,serif;">
+        ${icon} ${title} <span style="color:#7d7257;">(${list.length}개)</span> — 클릭하여 펼치기
       </summary>
-      <div style="display:flex;flex-direction:column;gap:4px;margin-top:12px;">
+      <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;">
         ${itemsHtml}
       </div>
     </details>
@@ -2961,15 +2964,15 @@ function renderTodayPlanetPanel(todayData) {
   if (!moonPhaseEl && dateLabel) {
     moonPhaseEl = document.createElement('div');
     moonPhaseEl.id = 'todayMoonPhaseEl';
-    moonPhaseEl.style.cssText = 'margin:6px 0 10px;font-size:12px;padding:7px 12px;background:rgba(165,180,252,.07);border-radius:8px;border:1px solid rgba(165,180,252,.15);';
+    moonPhaseEl.style.cssText = 'margin:8px 0 12px;font-size:12px;padding:10px 14px;background:rgba(200,168,96,.06);border-radius:10px;border:1px solid rgba(200,168,96,.22);font-family:Georgia,serif;';
     dateLabel.after(moonPhaseEl);
   }
   if (moonPhaseEl && todayData.moonPhase) {
     const mp = todayData.moonPhase;
     moonPhaseEl.innerHTML =
-      `${mp.phaseIcon} <span style="color:#a5b4fc;font-weight:600;">${mp.phaseName}</span>` +
-      `<span style="color:#64748b;font-size:10px;margin-left:6px;">조도 ${mp.illumination}%</span>` +
-      `<span style="color:#94a3b8;font-size:11px;margin-left:8px;">— ${mp.energy}</span>`;
+      `${mp.phaseIcon} <span style="color:#dfba6b;font-weight:600;">${mp.phaseName}</span>` +
+      `<span style="color:#7d7257;font-size:10px;margin-left:6px;">조도 ${mp.illumination}%</span>` +
+      `<span style="color:#9b8f74;font-size:11px;margin-left:8px;">— ${mp.energy}</span>`;
   }
 
   // 프로그레션 태양/달 뱃지
@@ -2977,15 +2980,15 @@ function renderTodayPlanetPanel(todayData) {
   if (!progEl && moonPhaseEl) {
     progEl = document.createElement('div');
     progEl.id = 'todayProgEl';
-    progEl.style.cssText = 'margin-bottom:10px;font-size:11px;padding:7px 12px;background:rgba(52,211,153,.05);border-radius:8px;border:1px solid rgba(52,211,153,.12);display:flex;gap:16px;flex-wrap:wrap;';
+    progEl.style.cssText = 'margin-bottom:14px;font-size:11px;padding:10px 14px;background:rgba(200,168,96,.04);border-radius:10px;border:1px solid rgba(200,168,96,.16);display:flex;gap:16px;flex-wrap:wrap;font-family:Georgia,serif;';
     moonPhaseEl.after(progEl);
   }
   if (progEl && todayData.progression) {
     const pg = todayData.progression;
     progEl.innerHTML =
-      `<span><span style="color:#34d399;font-size:10px;">☀ 프로그 태양</span> <span style="color:#e2e8f0;">${pg.sun.sign} ${pg.sun.degree}° · ${pg.sun.house}H</span></span>` +
-      `<span><span style="color:#34d399;font-size:10px;">🌙 프로그 달</span> <span style="color:#e2e8f0;">${pg.moon.sign} ${pg.moon.degree}° · ${pg.moon.house}H</span></span>` +
-      `<span><span style="color:#34d399;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#e2e8f0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>`;
+      `<span><span style="color:#c8a860;font-size:10px;">☀ 프로그 태양</span> <span style="color:#cabfa0;">${pg.sun.sign} ${pg.sun.degree}° · ${pg.sun.house}H</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">🌙 프로그 달</span> <span style="color:#cabfa0;">${pg.moon.sign} ${pg.moon.degree}° · ${pg.moon.house}H</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#cabfa0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>`;
   }
 
   panel.style.display = "block";
@@ -2998,7 +3001,7 @@ function renderTodayPlanetPanel(todayData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'todayAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      todayData.todayAspectsFull, '트랜짓-나탈 에스펙트', '🌅', '#fcd34d'
+      todayData.todayAspectsFull, '트랜짓-나탈 에스펙트', '🌅', '#dfba6b'
     );
     panel.after(aspectPanel);
   }
@@ -3011,7 +3014,7 @@ function renderTodayPlanetPanel(todayData) {
     const progAspPanel = document.createElement('div');
     progAspPanel.id = 'todayProgTransitAspectPanel';
     progAspPanel.innerHTML = renderAspectAccordion(
-      todayData.progTransitAspects, '프로그레션→트랜짓 에스펙트', '🔭', '#34d399'
+      todayData.progTransitAspects, '프로그레션→트랜짓 에스펙트', '🔭', '#c8a860'
     );
     const transitAspPanel = document.getElementById('todayAspectPanel');
     if (transitAspPanel) transitAspPanel.after(progAspPanel);
