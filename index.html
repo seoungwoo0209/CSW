@@ -18,9 +18,15 @@
     <!-- 홈 헤더 -->
     <header class="home-header">
       <div class="home-brand">
-        <div class="home-logo">☯</div>
+        <div class="home-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"/>
+            <path d="M17 4a2 2 0 0 0 2 2a2 2 0 0 0 -2 2a2 2 0 0 0 -2 -2a2 2 0 0 0 2 -2"/>
+            <path d="M19 11h2m-1 -1v2"/>
+          </svg>
+        </div>
         <div>
-          <div class="home-title">사주 카페</div>
+          <div class="home-title gold-text">사주 카페</div>
           <div class="home-sub">AI 사주 · 점성술 분석</div>
         </div>
       </div>
@@ -39,43 +45,64 @@
     <div class="home-cards">
 
       <div class="home-card" onclick="enterScreen('saju')">
-        <div class="home-card-badge" style="color:#e8c069;">☯︎</div>
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3a9 9 0 1 0 9 9a9 9 0 0 0 -9 -9z"/>
+            <path d="M12 3a4.5 4.5 0 1 0 0 9a4.5 4.5 0 0 1 0 9"/>
+            <circle cx="12" cy="7.5" r=".6" fill="currentColor" stroke="none"/>
+            <circle cx="12" cy="16.5" r=".6" fill="currentColor" stroke="none"/>
+          </svg>
+        </div>
         <div class="home-card-body">
-          <span class="home-card-num" style="color:#e8c069;">01</span>
+          <span class="home-card-num gold-text">01</span>
           <strong class="home-card-title">정통 사주</strong>
           <span class="home-card-desc">타고난 그릇의 크기를 봅니다</span>
         </div>
-        <span class="home-card-arrow">→</span>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
       <div class="home-card" onclick="enterScreen('today')">
-        <div class="home-card-badge" style="color:#fb923c;">☼︎</div>
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 12m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0"/>
+            <path d="M3 12h1m8 -9v1m8 8h1m-9 8v1m-6.4 -15.4l.7 .7m12.1 -.7l-.7 .7m0 11.4l.7 .7m-12.1 -.7l-.7 .7"/>
+          </svg>
+        </div>
         <div class="home-card-body">
-          <span class="home-card-num" style="color:#fb923c;">02</span>
+          <span class="home-card-num gold-text">02</span>
           <strong class="home-card-title">오늘의 운세</strong>
           <span class="home-card-desc">오늘 하늘의 흐름을 읽다</span>
         </div>
-        <span class="home-card-arrow">→</span>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
       <div class="home-card" onclick="enterScreen('annual')">
-        <div class="home-card-badge"><img src="/img/loader-icon-star.png" alt=""></div>
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 18a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm0 -12a2 2 0 0 1 2 2a2 2 0 0 1 2 -2a2 2 0 0 1 -2 -2a2 2 0 0 1 -2 2zm-7 12a6 6 0 0 1 6 -6a6 6 0 0 1 -6 -6a6 6 0 0 1 -6 6a6 6 0 0 1 6 6z"/>
+          </svg>
+        </div>
         <div class="home-card-body">
-          <span class="home-card-num" style="color:#dfba6b;">03</span>
+          <span class="home-card-num gold-text">03</span>
           <strong class="home-card-title">연간 운세</strong>
           <span class="home-card-desc">2026 마스터 리포트</span>
         </div>
-        <span class="home-card-arrow">→</span>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
       <div class="home-card" onclick="enterScreen('astro')">
-        <div class="home-card-badge"><img src="/img/loader-icon-ring.png" alt=""></div>
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18.816 13.58c2.292 2.138 3.546 4 3.092 4.9c-.745 1.46 -5.783 -.259 -11.255 -3.838c-5.47 -3.579 -9.304 -7.664 -8.56 -9.123c.464 -.91 2.926 -.444 5.81 .986"/>
+            <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0"/>
+          </svg>
+        </div>
         <div class="home-card-body">
-          <span class="home-card-num" style="color:#a78bfa;">04</span>
+          <span class="home-card-num gold-text">04</span>
           <strong class="home-card-title">점성술</strong>
           <span class="home-card-desc">행성이 그리는 나의 차트</span>
         </div>
-        <span class="home-card-arrow">→</span>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
     </div>

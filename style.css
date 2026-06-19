@@ -105,13 +105,17 @@ body{
   width: 42px; height: 42px;
   display: grid; place-items: center;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, rgba(232,192,105,.28), rgba(20,16,8,.6));
-  border: 1px solid rgba(232,192,105,.45);
-  box-shadow: 0 0 14px rgba(232,192,105,.18), inset 0 1px 0 rgba(255,255,255,.15);
-  font-size: 18px;
-  color: #f0d896;
+  background: radial-gradient(circle at 38% 32%, rgba(244,230,189,.25), rgba(20,16,40,.5) 72%);
+  border: 1px solid rgba(200,168,96,.55);
+  box-shadow: 0 0 16px -2px rgba(200,160,70,.45);
+  color: #e6cd8a;
 }
-.home-title { font-size: 16px; font-weight: 800; font-family: Georgia, serif; letter-spacing: .02em; color: #f4e9cf; }
+.home-logo svg { width: 20px; height: 20px; }
+.gold-text {
+  background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.home-title { font-size: 16px; font-weight: 600; font-family: Georgia, serif; letter-spacing: .06em; }
 .home-sub { font-size: 10.5px; color: #9a8a5e; margin-top: 2px; letter-spacing: .04em; }
 .home-badges { display: flex; flex-wrap: wrap; gap: 6px; }
 
@@ -131,11 +135,11 @@ body{
 }
 .home-hero-title {
   font-size: 27px; font-weight: 700; font-family: Georgia, serif;
-  line-height: 1.32; margin: 0 0 12px;
-  background: linear-gradient(135deg, #fdf6e3 20%, #dfba6b 55%, #b8942a);
-  -webkit-background-clip: text; background-clip: text; color: transparent;
+  line-height: 1.32; margin: 0 0 14px; letter-spacing: .005em;
+  background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
 }
-.home-hero-desc { font-size: 13px; color: var(--muted); line-height: 1.7; margin: 0; }
+.home-hero-desc { font-size: 13px; color: #cabfa0; font-weight: 300; line-height: 1.8; margin: 0; }
 
 .home-cards {
   display: flex;
@@ -149,45 +153,36 @@ body{
   display: flex;
   align-items: center;
   gap: 16px;
-  padding: 16px 18px;
-  border-radius: 18px;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 15% 0%, rgba(183,156,255,.08), transparent 60%),
-    linear-gradient(135deg, rgba(16,14,32,.92), rgba(11,9,22,.92));
-  border: 1px solid rgba(232,192,105,.16);
-  box-shadow: 0 10px 28px rgba(0,0,0,.4), inset 0 1px 0 rgba(255,255,255,.04);
+  padding: 18px;
+  border-radius: 16px;
+  background: linear-gradient(158deg, rgba(44,36,82,.5) 0%, rgba(17,13,36,.6) 100%);
+  border: 1px solid rgba(200,168,96,.2);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
   cursor: pointer;
-  transition: transform .15s, border-color .15s, box-shadow .15s;
+  transition: transform .25s ease, border-color .25s ease;
   -webkit-tap-highlight-color: transparent;
 }
-.home-card::before {
-  content: "";
-  position: absolute; top: 0; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(223,186,107,.55), transparent);
-}
 .home-card:active {
-  transform: scale(.97);
-  border-color: rgba(232,192,105,.4);
-  box-shadow: 0 4px 14px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04);
+  transform: translateY(-2px);
+  border-color: rgba(200,168,96,.45);
 }
 
 .home-card-img,
 .home-card-badge {
-  width: 58px; height: 58px;
+  width: 50px; height: 50px;
   border-radius: 50%;
   flex-shrink: 0;
   display: grid; place-items: center;
-  border: 1px solid rgba(232,192,105,.4);
-  box-shadow: 0 0 16px rgba(232,192,105,.14), inset 0 1px 0 rgba(255,255,255,.12);
+  border: 1px solid rgba(200,168,96,.4);
+  box-shadow: 0 0 14px -2px rgba(200,160,70,.4), inset 0 0 8px rgba(200,160,70,.2);
   background-size: cover;
   background-position: center;
 }
 .home-card-badge {
-  font-size: 26px;
-  background: radial-gradient(circle at 35% 30%, rgba(232,192,105,.22), rgba(16,12,6,.7));
+  background: radial-gradient(circle at 38% 32%, rgba(244,230,189,.28), rgba(20,16,40,.6) 72%);
+  color: #e6cd8a;
 }
-.home-card-badge img { width: 32px; height: 32px; object-fit: contain; display: block; filter: drop-shadow(0 0 4px rgba(0,0,0,.4)); }
+.home-card-badge svg { width: 24px; height: 24px; }
 
 .home-card-body {
   flex: 1;
@@ -195,10 +190,10 @@ body{
   flex-direction: column;
   gap: 3px;
 }
-.home-card-num { font-size: 11px; font-weight: 700; letter-spacing: .18em; font-family: Georgia, serif; opacity: .85; }
-.home-card-title { font-size: 16px; font-weight: 800; color: #f4ecd8; }
+.home-card-num { font-size: 11px; font-weight: 600; letter-spacing: .2em; font-family: Georgia, serif; }
+.home-card-title { font-size: 17px; font-weight: 500; color: #efe8d6; font-family: Georgia, serif; margin: 1px 0 3px; }
 .home-card-desc { font-size: 12px; color: var(--muted); }
-.home-card-arrow { font-size: 16px; color: rgba(232,192,105,.4); flex-shrink: 0; }
+.home-card-arrow { width: 22px; height: 22px; color: #7d7257; flex-shrink: 0; }
 
 .home-footer {
   padding: 18px 16px 24px;
