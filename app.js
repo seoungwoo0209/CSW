@@ -2385,6 +2385,16 @@ function _buildAnnualHTML(engineData, aiText) {
   const fni = flowLines.findIndex(l => l.trim());
   const thesis = fni >= 0 ? flowLines[fni].replace(/\*\*(.+?)\*\*/g, '$1') : '';
 
+  /* ── 이벤트 개별 해석 파싱 (### E1, E2, ...) ── */
+  const eventInterps = {};
+  const interpSection = sections['이벤트 개별 해석'] || '';
+  if (interpSection) {
+    for (const part of interpSection.split(/\n(?=### E\d)/)) {
+      const m = part.match(/^### E(\d+)\n?([\s\S]*)/);
+      if (m) eventInterps[parseInt(m[1]) - 1] = m[2].trim(); // 0-indexed
+    }
+  }
+
   const majorEvents = events.filter(e => e.importance === 'major').slice(0, 6);
   const aiExtras = ['핵심 사건과 시기', '영역별 흐름', '주목할 포인트'];
   const extBadge = ['KEY EVENTS', 'DOMAIN FLOW', 'FOCUS POINTS'];
@@ -2473,8 +2483,9 @@ function _buildAnnualHTML(engineData, aiText) {
     if (s.t === 'event') {
       const e = s.e; const col = s.col;
       const img = getSlideImg(s);
-      const layerDesc = { eclipse:'🌑 일식/월식 — 근본적 전환점.',lifecycle:'🌱 생애 주기 — 장기적 구조 변화.',impact:'💥 강한 임팩트 — 단기간 강렬한 체감.',common:'🔄 일반 트랜짓 — 일상적 흐름.' };
       const bodies = Array.isArray(e.bodies) ? e.bodies : [];
+      const eventIdx = majorEvents.indexOf(e);
+      const interp = eventInterps[eventIdx] || '';
       return `
         <div id="${did}_s${n}" style="${BASE}flex-direction:row;overflow:hidden;">
           <div style="flex:1;display:flex;flex-direction:column;padding:14px 16px 12px;gap:7px;overflow:hidden;min-width:0;">
@@ -2487,20 +2498,22 @@ function _buildAnnualHTML(engineData, aiText) {
               <span style="font-size:10px;color:#475569;flex-shrink:0;">${sWhen(e.when)}</span>
             </div>
             <div style="flex-shrink:0;">
-              <p style="font-size:13.5px;font-weight:800;color:#f1f5f9;margin:0 0 5px;line-height:1.3;">${e.fact||''}</p>
+              <p style="font-size:13px;font-weight:800;color:#f1f5f9;margin:0 0 5px;line-height:1.3;">${e.fact||''}</p>
               <div style="display:flex;flex-wrap:wrap;gap:4px;">
                 ${e.technique ? `<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${e.technique}</span>` : ''}
                 ${bodies.map(b=>`<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${b}</span>`).join('')}
               </div>
             </div>
             <div style="flex-shrink:0;height:1px;background:linear-gradient(90deg,${col}55,transparent);"></div>
-            <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-              <p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.06em;margin:0 0 6px;">${V_KR[e.valence]||e.valence}</p>
-              <p style="font-size:11px;line-height:1.7;color:#94a3b8;margin:0 0 6px;">${layerDesc[e.layer]||''}</p>
+            <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px;">
+              ${interp
+                ? `<p style="font-size:11.5px;line-height:1.82;color:#cbd5e1;margin:0 0 8px;">${fmt(interp)}</p>`
+                : `<p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.06em;margin:0 0 5px;">${V_KR[e.valence]||e.valence}</p>`
+              }
               ${e.house ? `<p style="font-size:10px;color:#475569;margin:0;">${e.house}하우스 영역</p>` : ''}
             </div>
           </div>
-          <div style="width:38%;flex-shrink:0;position:relative;overflow:hidden;
+          <div style="width:37%;flex-shrink:0;position:relative;overflow:hidden;
             border-left:1px solid rgba(255,255,255,.04);">
             <img src="${img.url}" alt="${img.cap}"
               style="width:100%;height:100%;object-fit:cover;display:block;opacity:.82;"
