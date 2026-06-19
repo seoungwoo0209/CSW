@@ -2052,7 +2052,7 @@ function renderAnnualEventsPanel(astroData) {
 
   container.innerHTML = `
     <div style="padding:4px 0 16px;">
-      <div style="
+      <div id="annualInputCard" style="
         background:linear-gradient(135deg,rgba(10,15,40,.98),rgba(25,10,60,.95));
         border:1px solid rgba(232,192,105,.25);border-radius:20px;padding:24px;
       ">
@@ -2236,6 +2236,13 @@ function hideAnnualLoader() {
 
 /* ─── 연간 리포트 생성 ──────────────────────────────────────────────── */
 
+function closeAnnualReport() {
+  const resultEl  = document.getElementById('annualReportResult');
+  const inputCard = document.getElementById('annualInputCard');
+  if (resultEl)  resultEl.innerHTML = '';
+  if (inputCard) inputCard.style.display = '';
+}
+
 async function generateAnnualReport() {
   if (!window.AstroResult)       { alert('차트 계산 완료 후 사용 가능합니다.'); return; }
   if (!window.AstroEventsEngine) { alert('astro-events-engine.js가 로드되지 않았습니다.'); return; }
@@ -2292,6 +2299,8 @@ async function generateAnnualReport() {
       document.body.appendChild(ns);
       s.remove();
     });
+    const inputCard = document.getElementById('annualInputCard');
+    if (inputCard) inputCard.style.display = 'none';
   } catch (err) {
     hideAnnualLoader();
     statusEl.style.display = 'block';
@@ -2785,8 +2794,14 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
             box-shadow:0 0 7px #dfba6b;animation:${did}_pulse 2s ease-in-out infinite;"></div>
           <span style="font-size:9px;font-weight:700;letter-spacing:.22em;color:#dfba6b;font-family:Georgia,serif;">ANNUAL MASTER REPORT</span>
         </div>
-        <div style="font-size:9px;color:#334155;letter-spacing:.12em;font-family:Georgia,serif;">
-          ${year} · <span id="${did}_idx" style="color:#dfba6b;font-weight:700;">1</span>&thinsp;/&thinsp;${TOTAL}
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:9px;color:#334155;letter-spacing:.12em;font-family:Georgia,serif;">
+            ${year} · <span id="${did}_idx" style="color:#dfba6b;font-weight:700;">1</span>&thinsp;/&thinsp;${TOTAL}
+          </div>
+          <button onclick="closeAnnualReport()" title="닫기" style="
+            width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.12);
+            background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:12px;
+            display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
         </div>
       </header>
 
