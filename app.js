@@ -2529,48 +2529,39 @@ function _buildAnnualHTML(engineData, aiText) {
 
     if (s.t === 'closing') {
       const text = s.text || '';
-      // 큰따옴표 안 인용구 파싱
-      const qm = text.match(/["""]([^"""]+)["""]/s);
-      const quote = qm ? qm[1].trim() : '';
-      // ✓ 불릿 파싱
-      const bullets = text.split('\n')
-        .filter(l => /^✓/.test(l.trim()))
-        .map(l => {
-          const m = l.match(/^✓\s*\[?([^\]:：]+)\]?\s*[:：]\s*(.*)/);
-          return m ? { label: m[1].trim(), content: m[2].trim() } : { label: '', content: l.replace(/^✓\s*/,'') };
-        });
-      // 폴백: 구조 없을 때
-      const fallback = !quote && bullets.length === 0
-        ? text.split('\n').filter(l=>l.trim()).slice(0,5)
-        : [];
+      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+      // 첫 번째 ✓ 이전 줄들 = 인용구, 이후 = 불릿
+      const quoteLines = [], rawBullets = [];
+      let hitBullet = false;
+      for (const l of lines) {
+        if (/^✓/.test(l)) { hitBullet = true; }
+        if (hitBullet) rawBullets.push(l);
+        else quoteLines.push(l.replace(/^["""]\s*|\s*["""]$/g, ''));
+      }
+      const quote = quoteLines.join(' ').replace(/\*\*(.+?)\*\*/g, '$1').trim();
+      const bullets = rawBullets.filter(l => /^✓/.test(l)).map(l => {
+        const m = l.match(/^✓\s*\[?([^\]:：\]]+)\]?\s*[:：]\s*(.*)/);
+        return m ? { label: m[1].trim(), content: m[2].trim() }
+                 : { label: '', content: l.replace(/^✓\s*/, '') };
+      });
       return `
-        <div id="${did}_s${n}" style="${BASE}padding:18px 22px 14px;overflow:hidden;">
-          <div style="font-size:72px;color:rgba(223,186,107,.18);line-height:.65;font-family:Georgia,serif;flex-shrink:0;">"</div>
-          <div style="flex-shrink:0;text-align:center;padding:6px 4px 14px;">
-            ${quote
-              ? `<p style="font-size:14px;font-style:italic;color:#f1f5f9;line-height:1.8;margin:0;">${quote.replace(/\n/g,'<br>')}</p>`
-              : fallback.map(l=>`<p style="font-size:12px;color:#94a3b8;line-height:1.8;margin:0 0 6px;">${l.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#dfba6b;">$1</strong>')}</p>`).join('')
-            }
+        <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;
+          padding:14px 24px 18px;gap:0;overflow:hidden;">
+          <div style="font-size:58px;color:rgba(223,186,107,.32);font-family:Georgia,serif;
+            line-height:1;flex-shrink:0;text-align:center;width:100%;">&ldquo;</div>
+          <div style="flex-shrink:0;text-align:center;padding:2px 0 18px;width:100%;">
+            <p style="font-size:14px;font-style:italic;color:#e2e8f0;line-height:1.82;margin:0;">${quote}</p>
           </div>
-          ${bullets.length > 0 ? `
-          <div style="flex-shrink:0;width:52px;height:1px;margin:0 auto 12px;
-            background:linear-gradient(90deg,transparent,rgba(223,186,107,.55),transparent);"></div>
-          <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%;">
+          <div style="flex-shrink:0;width:48px;height:1px;margin-bottom:18px;
+            background:linear-gradient(90deg,transparent,rgba(223,186,107,.65),transparent);"></div>
+          <div style="width:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;">
             ${bullets.map(b=>`
-              <div style="display:flex;gap:8px;margin-bottom:9px;align-items:flex-start;">
-                <span style="color:#dfba6b;flex-shrink:0;font-size:11px;margin-top:2px;">✓</span>
-                <p style="font-size:11.5px;color:#94a3b8;line-height:1.65;margin:0;">
+              <div style="display:flex;gap:8px;margin-bottom:11px;align-items:flex-start;">
+                <span style="color:#dfba6b;flex-shrink:0;font-size:12px;margin-top:1px;">✓</span>
+                <p style="font-size:12px;color:#94a3b8;line-height:1.65;margin:0;">
                   ${b.label ? `<strong style="color:#dfba6b;">${b.label}:</strong> ` : ''}${b.content}
                 </p>
               </div>`).join('')}
-          </div>` : `<div style="flex:1;"></div>`}
-          <div style="flex-shrink:0;padding-top:10px;display:flex;justify-content:center;">
-            <button onclick="generateAnnualReport()" style="
-              background:rgba(223,186,107,.08);border:1px solid rgba(223,186,107,.28);
-              color:#dfba6b;font-size:11px;border-radius:8px;padding:7px 20px;
-              cursor:pointer;letter-spacing:.06em;font-family:Georgia,serif;">
-              🔄 다시 생성
-            </button>
           </div>
         </div>`;
     }
