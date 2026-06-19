@@ -2121,11 +2121,11 @@ function showAnnualLoader(numEvents) {
   // ── 행성 궤도 [색, 글로우RGB, 반지름px, 공전초, 시작각, 크기px] ──
   // 300px 컨테이너 기준, 각 행성 div는 컨테이너 중심(top50%,left50%)에 배치
   const PL = [
-    {col:'#D8D2C4',g:'216,210,196',r:113,d:26,a:15, s:13},
-    {col:'#C89640',g:'200,150,64', r:94, d:44,a:138,s:12},
-    {col:'#3A7FAA',g:'58,127,170', r:75, d:32,a:252,s:11},
-    {col:'#C87844',g:'200,120,68', r:56, d:18,a:62, s:9 },
-    {col:'#4A8C72',g:'74,140,114', r:38, d:58,a:178,s:8 },
+    {col:'#D8D2C4',g:'216,210,196',r:136,d:26,a:15, s:15},
+    {col:'#C89640',g:'200,150,64', r:113,d:44,a:138,s:14},
+    {col:'#3A7FAA',g:'58,127,170', r:90, d:32,a:252,s:13},
+    {col:'#C87844',g:'200,120,68', r:67, d:18,a:62, s:11},
+    {col:'#4A8C72',g:'74,140,114', r:46, d:58,a:178,s:10},
   ];
   const orbitCss = PL.map((p,i)=>
     '@keyframes _oP'+i+'{from{transform:rotate('+p.a+'deg) translateX('+p.r+'px)}to{transform:rotate('+(p.a+360)+'deg) translateX('+p.r+'px)}}'
@@ -2157,7 +2157,7 @@ function showAnnualLoader(numEvents) {
 
     // 아스트롤라베: 정적 이미지 + 그 위에 개별 행성 div (이미지 자체는 transform 없음)
     '<div style="flex-shrink:0;margin-top:10px;">' +
-    '<div style="position:relative;width:82vw;max-width:300px;height:82vw;max-height:300px;margin:0 auto;">' +
+    '<div style="position:relative;width:94vw;max-width:360px;height:94vw;max-height:360px;margin:0 auto;">' +
     '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;" alt=""/>' +
     '<div style="position:absolute;inset:0;pointer-events:none;">' + orbitHtml +
     '<div style="position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:radial-gradient(circle,rgba(255,240,200,.4),transparent);animation:_alGemP 3.5s ease-in-out infinite;"></div>' +
