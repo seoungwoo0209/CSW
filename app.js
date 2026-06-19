@@ -1974,6 +1974,7 @@ async function renderTransitPanel(astroData) {
   else return;
 
   await calcTransitChart();
+  if (typeof renderAnnualEventsPanel === 'function') renderAnnualEventsPanel(astroData);
 }
 
 async function calcTransitChart() {
@@ -2024,6 +2025,123 @@ async function calcTransitChart() {
   } catch (err) {
     console.warn('트랜짓 계산 실패:', err.message);
     if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 트랜짓 계산 실패: ${err.message}</div>`;
+  }
+}
+
+/* =========================================================
+   연간 점성술 리포트 패널 (A단계 엔진 → B단계 Gemini)
+   ========================================================= */
+function renderAnnualEventsPanel(astroData) {
+  const existing = document.getElementById('astroAnnualEventsPanel');
+  if (existing) existing.remove();
+  if (!astroData?.meta) return;
+
+  const curY = new Date().getFullYear();
+  const opts = [];
+  for (let y = curY - 1; y <= curY + 5; y++) {
+    opts.push(`<option value="${y}"${y === curY ? ' selected' : ''}>${y}년</option>`);
+  }
+
+  const panel = document.createElement('div');
+  panel.id = 'astroAnnualEventsPanel';
+  panel.style.cssText = 'margin-top:12px;';
+  panel.innerHTML = `
+    <div style="
+      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
+      border:1px solid rgba(99,102,241,.3);border-radius:16px;padding:20px;
+    ">
+      <div style="font-size:12px;color:#818cf8;letter-spacing:2px;margin-bottom:4px;">🌌 연간 점성술 리포트</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:16px;">
+        A단계 엔진(트랜짓·프로펙션·생애주기) → B단계 AI 해석
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;">
+        <select id="annualReportYear" style="padding:6px 10px;border-radius:8px;
+          border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.07);
+          color:#e2e8f0;font-size:13px;">
+          ${opts.join('')}
+        </select>
+        <button onclick="generateAnnualReport()" style="
+          background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.4);
+          color:#818cf8;border-radius:8px;padding:8px 18px;font-size:12px;
+          cursor:pointer;letter-spacing:1px;
+        ">🌌 리포트 생성</button>
+      </div>
+      <div id="annualReportStatus" style="font-size:11px;color:#64748b;margin-bottom:10px;display:none;"></div>
+      <div id="annualReportResult"></div>
+    </div>
+  `;
+
+  const transitPanel = document.getElementById('astroTransitPanel');
+  if (transitPanel) transitPanel.after(panel);
+}
+
+async function generateAnnualReport() {
+  if (!window.AstroResult)       { alert('차트 계산 완료 후 사용 가능합니다.'); return; }
+  if (!window.AstroEventsEngine) { alert('astro-events-engine.js가 로드되지 않았습니다.'); return; }
+
+  const yearEl   = document.getElementById('annualReportYear');
+  const statusEl = document.getElementById('annualReportStatus');
+  const resultEl = document.getElementById('annualReportResult');
+  if (!yearEl || !statusEl || !resultEl) return;
+
+  const year      = parseInt(yearEl.value, 10);
+  const astroData = window.AstroResult;
+  const meta      = astroData.meta || {};
+  const input     = {
+    birthDate: meta.birthDate, birthTime: meta.birthTime,
+    lat: meta.lat, lng: meta.lng, utcOffset: meta.utcOffset,
+  };
+
+  /* A단계: 엔진 계산 (클라이언트 사이드, 동기) */
+  statusEl.style.display = 'block';
+  statusEl.textContent   = '⚙️ 이벤트 계산 중...';
+  resultEl.innerHTML     = '';
+
+  let engineData;
+  try {
+    engineData = window.AstroEventsEngine.computeYearEvents(input, astroData, year);
+    if (!engineData) throw new Error('이벤트 계산 실패');
+    statusEl.textContent = `✅ 이벤트 ${engineData.events.length}건 확인 — AI 해석 시작...`;
+  } catch (e) {
+    statusEl.textContent = `⚠️ 엔진 오류: ${e.message}`;
+    return;
+  }
+
+  /* B단계: Gemini 해석 (서버 사이드 API) */
+  try {
+    const res = await fetch('/api/gemini-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        engineData,
+        meta: { name: meta.name || '', birthDate: meta.birthDate, gender: meta.gender },
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'AI 해석 오류');
+
+    const formatted = (data.result || '')
+      .replace(/## (.+)/g,  '<h3 style="color:#818cf8;margin:16px 0 8px;font-size:14px;letter-spacing:1px;">$1</h3>')
+      .replace(/### (.+)/g, '<h4 style="color:#a5b4fc;margin:12px 0 6px;font-size:13px;">$1</h4>')
+      .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
+      .replace(/\n/g, '<br>');
+
+    resultEl.innerHTML = `
+      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;
+        border-top:1px solid rgba(99,102,241,.2);padding-top:14px;">
+        ${formatted}
+      </div>
+      <div style="margin-top:14px;text-align:right;">
+        <button onclick="generateAnnualReport()" style="
+          background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);
+          color:#818cf8;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
+        ">🔄 다시 생성</button>
+      </div>
+    `;
+    statusEl.textContent = `✅ ${year}년 리포트 완료`;
+    setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
+  } catch (err) {
+    statusEl.textContent = `⚠️ ${err.message}`;
   }
 }
 
