@@ -2304,22 +2304,21 @@ function _buildAnnualHTML(engineData, aiText) {
   const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
   const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
 
-  /* ── NASA 공개 이미지 — Wikimedia Commons Special:FilePath (해시경로 불필요, 핫링킹 허용) ── */
-  const FP = 'https://commons.wikimedia.org/wiki/Special:FilePath/';
+  /* ── NASA 공개 이미지 — 로컬 /img/ 폴더 (퍼블릭 도메인, Wikimedia/NASA CDN 원본) ── */
   const NASA_IMGS = {
-    '목성':   { url: FP+'Jupiter_and_its_shrunken_Great_Red_Spot.jpg?width=600', cap:'Jupiter · Hubble / NASA' },
-    '토성':   { url: FP+'Saturn_during_Equinox.jpg?width=600',                   cap:'Saturn · Cassini / NASA' },
-    '화성':   { url: FP+'OSIRIS_Mars_true_color.jpg?width=600',                  cap:'Mars · ESA/Rosetta' },
-    '금성':   { url: FP+'Venus_globe.jpg?width=600',                             cap:'Venus · Magellan / NASA' },
-    '수성':   { url: FP+'Mercury_in_true_color.jpg?width=600',                   cap:'Mercury · MESSENGER / NASA' },
-    '천왕성': { url: FP+'Uranus2.jpg?width=600',                                 cap:'Uranus · Voyager 2 / NASA' },
-    '해왕성': { url: FP+'Neptune_Full.jpg?width=600',                            cap:'Neptune · Voyager 2 / NASA' },
-    '명왕성': { url: FP+'Pluto_in_True_Color_-_High-Res.jpg?width=600',          cap:'Pluto · New Horizons / NASA' },
-    '달':     { url: FP+'FullMoon2010.jpg?width=600',                            cap:'Moon · NASA' },
-    '태양':   { url: FP+'The_Sun_by_the_Atmospheric_Imaging_Assembly_of_NASA%27s_Solar_Dynamics_Observatory_-_20100819.jpg?width=600', cap:'Sun · SDO / NASA' },
-    cosmos:   { url: FP+'Pillars_of_creation_2014_HST_WFC3-UVIS_full-res_denoised.jpg?width=600', cap:'Pillars of Creation · Hubble / NASA' },
-    nebula:   { url: FP+'Crab_Nebula.jpg?width=600',                            cap:'Crab Nebula · Hubble / NASA' },
-    galaxy:   { url: FP+'Andromeda_Galaxy_%28with_h-alpha%29.jpg?width=600',    cap:'Andromeda · Hubble / NASA' },
+    '목성':   { url:'/img/jupiter.jpg', cap:'Jupiter · Hubble / NASA' },
+    '토성':   { url:'/img/saturn.jpg',  cap:'Saturn · Cassini / NASA' },
+    '화성':   { url:'/img/mars.jpg',    cap:'Mars · ESA / NASA' },
+    '금성':   { url:'/img/venus.jpg',   cap:'Venus · Magellan / NASA' },
+    '수성':   { url:'/img/mercury.jpg', cap:'Mercury · MESSENGER / NASA' },
+    '천왕성': { url:'/img/uranus.jpg',  cap:'Uranus · Voyager 2 / NASA' },
+    '해왕성': { url:'/img/neptune.jpg', cap:'Neptune · Voyager 2 / NASA' },
+    '명왕성': { url:'/img/pluto.jpg',   cap:'Pluto · New Horizons / NASA' },
+    '달':     { url:'/img/moon.jpg',    cap:'Moon · NASA' },
+    '태양':   { url:'/img/sun.jpg',     cap:'Sun · SDO / NASA' },
+    cosmos:   { url:'/img/cosmos.jpg',  cap:'Cosmos · NASA / WISE' },
+    nebula:   { url:'/img/nebula.jpg',  cap:'Nebula · Hubble / NASA' },
+    galaxy:   { url:'/img/galaxy.jpg',  cap:'Galaxy · NASA' },
   };
 
   /* 하우스 번호 → 테마 이미지 매핑 */
