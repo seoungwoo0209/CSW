@@ -2125,45 +2125,67 @@ function showAnnualLoader(numEvents) {
     '<span style="flex:1;text-align:center;font-size:14.5px;font-weight:700;color:#D4AF37;letter-spacing:.06em;text-shadow:0 0 14px rgba(212,175,55,.4);font-family:Helvetica Neue,sans-serif;">깊은 지혜의 리포트 잠금 해제</span>' +
     '</div>';
 
+  // ── 행성 궤도 [색, 글로우RGB, 반지름px, 공전초, 시작각, 크기px] ──
+  // 300px 컨테이너 기준, 각 행성 div는 컨테이너 중심(top50%,left50%)에 배치
+  const PL = [
+    {col:'#D8D2C4',g:'216,210,196',r:113,d:26,a:15, s:13},
+    {col:'#C89640',g:'200,150,64', r:94, d:44,a:138,s:12},
+    {col:'#3A7FAA',g:'58,127,170', r:75, d:32,a:252,s:11},
+    {col:'#C87844',g:'200,120,68', r:56, d:18,a:62, s:9 },
+    {col:'#4A8C72',g:'74,140,114', r:38, d:58,a:178,s:8 },
+  ];
+  const orbitCss = PL.map((p,i)=>
+    '@keyframes _oP'+i+'{from{transform:rotate('+p.a+'deg) translateX('+p.r+'px)}to{transform:rotate('+(p.a+360)+'deg) translateX('+p.r+'px)}}'
+  ).join('');
+  const orbitHtml = PL.map((p,i)=>{
+    const h=p.s/2;
+    return '<div style="position:absolute;top:50%;left:50%;width:'+p.s+'px;height:'+p.s+'px;'+
+      'margin-top:-'+h+'px;margin-left:-'+h+'px;border-radius:50%;'+
+      'background:radial-gradient(circle at 35% 30%,'+p.col+',rgba(10,8,30,.55));'+
+      'box-shadow:0 0 5px rgba('+p.g+',.65),inset 0 1px 2px rgba(255,255,255,.25);'+
+      'animation:_oP'+i+' '+p.d+'s linear infinite;will-change:transform;"></div>';
+  }).join('');
+
   const loaderHtml =
-    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#060310;display:flex;flex-direction:column;align-items:stretch;overflow:hidden;">' +
+    '<div id="annualLoader" style="position:fixed;inset:0;z-index:9999;background:#060310;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
 
     '<style>' +
-    '@keyframes _alRot{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}' +
+    orbitCss +
+    '@keyframes _alGemP{0%,100%{opacity:.5;transform:scale(1)}50%{opacity:.9;transform:scale(1.18)}}' +
     '@keyframes _alBS{from{background-position:200% center}to{background-position:-200% center}}' +
-    '@keyframes _alWP{0%,100%{box-shadow:0 4px 24px rgba(80,10,10,.5)}50%{box-shadow:0 4px 36px rgba(140,30,30,.7),0 0 16px rgba(212,175,55,.12)}}' +
-    '@keyframes _alFI{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}' +
+    '@keyframes _alWP{0%,100%{box-shadow:0 4px 20px rgba(80,10,10,.5)}50%{box-shadow:0 6px 34px rgba(140,30,30,.8),0 0 16px rgba(212,175,55,.12)}}' +
+    '@keyframes _alFI{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}' +
     '.al-bf{background:linear-gradient(90deg,#b8942a 0%,#D4AF37 30%,#fff5c0 50%,#D4AF37 70%,#b8942a 100%);background-size:300% auto;animation:_alBS 2s linear infinite}' +
     '#alWaxBtn{animation:_alWP 3.5s ease-in-out infinite}' +
-    '.al-content{animation:_alFI .7s ease .2s both}' +
+    '.al-bot{animation:_alFI .6s ease .25s both}' +
     '</style>' +
 
-    // 상단: 회전하는 아스트롤라베 이미지
-    '<div style="display:flex;justify-content:center;align-items:center;padding:18px 0 8px;flex-shrink:0;">' +
-    '<img src="/img/astrolabe-loader.png" id="alImg" style="width:82vw;max-width:320px;height:auto;display:block;animation:_alRot 40s linear infinite;transform-origin:center;" alt=""/>' +
+    '<div style="margin-top:16px;letter-spacing:.42em;font-size:9px;color:rgba(212,175,55,.5);text-transform:uppercase;font-family:Helvetica Neue,sans-serif;flex-shrink:0;">Annual Cosmos Report</div>' +
+
+    // 아스트롤라베: 정적 이미지 + 그 위에 개별 행성 div (이미지 자체는 transform 없음)
+    '<div style="flex-shrink:0;margin-top:10px;">' +
+    '<div style="position:relative;width:82vw;max-width:300px;height:82vw;max-height:300px;margin:0 auto;">' +
+    '<img src="/img/astrolabe-loader.png" style="width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;" alt=""/>' +
+    '<div style="position:absolute;inset:0;pointer-events:none;">' + orbitHtml +
+    '<div style="position:absolute;top:50%;left:50%;width:22px;height:22px;margin:-11px;border-radius:50%;background:radial-gradient(circle,rgba(255,240,200,.4),transparent);animation:_alGemP 3.5s ease-in-out infinite;"></div>' +
+    '</div>' +
+    '</div>' +
     '</div>' +
 
-    // 하단: 텍스트/UI 영역
-    '<div class="al-content" style="flex:1;padding:4px 22px 18px;display:flex;flex-direction:column;align-items:center;overflow:hidden;">' +
+    // 하단 UI (정적, transform 없음)
+    '<div class="al-bot" style="flex:1;padding:6px 22px 16px;display:flex;flex-direction:column;align-items:center;overflow:hidden;width:100%;">' +
 
-    // 진행률 바
-    '<div style="width:100%;max-width:390px;margin-bottom:12px;">' +
-    '<div style="display:flex;justify-content:space-between;margin-bottom:8px;align-items:center;">' +
-    '<span id="alStatusText" style="font-size:12px;color:rgba(180,160,100,.8);font-style:italic;font-family:Helvetica Neue,sans-serif;">심연의 지혜를 정렬하는 중...</span>' +
-    '<span id="alPct" style="font-size:12px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:40px;text-align:right;">0%</span>' +
+    '<div style="width:100%;max-width:390px;margin-bottom:10px;">' +
+    '<div style="display:flex;justify-content:space-between;margin-bottom:7px;align-items:center;">' +
+    '<span id="alStatusText" style="font-size:11.5px;color:rgba(180,160,100,.8);font-style:italic;font-family:Helvetica Neue,sans-serif;">심연의 지혜를 정렬하는 중...</span>' +
+    '<span id="alPct" style="font-size:11.5px;color:#D4AF37;font-weight:700;font-family:Helvetica Neue,sans-serif;letter-spacing:.06em;min-width:40px;text-align:right;">0%</span>' +
     '</div>' +
     '<div style="height:2px;background:rgba(255,255,255,.07);border-radius:1px;overflow:hidden;"><div id="alBarFill" class="al-bf" style="height:100%;width:0%;border-radius:1px;transition:width 1s cubic-bezier(.25,.46,.45,.94);"></div></div>' +
     '</div>' +
 
-    // 단계 목록
     '<div style="width:100%;max-width:390px;">' + stepsHtml + '</div>' +
-
-    // 봉인 버튼
     waxBtn +
-
-    // 인용구
-    '<p style="font-size:11px;font-style:italic;color:rgba(160,140,90,.55);line-height:1.8;font-family:Georgia,serif;margin:14px 0 0;text-align:center;">"우주의 속삭임을 해독하여, 당신만의 삶의<br>길을 안내합니다. 잠시만 기다려 주세요."</p>' +
-
+    '<p style="font-size:10.5px;font-style:italic;color:rgba(160,140,90,.5);line-height:1.8;font-family:Georgia,serif;margin:12px 0 0;text-align:center;">"우주의 속삭임을 해독하여, 당신만의 삶의<br>길을 안내합니다. 잠시만 기다려 주세요."</p>' +
     '</div>' +
     '</div>';
 
