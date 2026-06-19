@@ -23,20 +23,36 @@ function setAlert(msg) {
 }
 
 /* =========================================================
-   탭 전환
+   스크린 내비게이션 (모바일 앱 구조)
    ========================================================= */
-function setTabs() {
-  document.querySelectorAll(".tab").forEach(tab => {
-    tab.addEventListener("click", () => {
-      const targetId = tab.getAttribute("data-tab");
-      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-      document.querySelectorAll(".tabpane").forEach(p => p.classList.remove("active"));
-      tab.classList.add("active");
-      const pane = document.getElementById(targetId);
-      if (pane) pane.classList.add("active");
-    });
-  });
+function enterScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const target = document.getElementById('screen-' + id);
+  if (target) target.classList.add('active');
+  window.scrollTo(0, 0);
+
+  // 연간 운세 진입 시: 사주 데이터 있으면 패널 즉시 세팅
+  if (id === 'annual') {
+    const panel = document.getElementById('lifeGraphPanel');
+    const hasDefault = panel && panel.querySelector('[data-default-msg]');
+    const birthDate = _$('birthDate')?.value;
+    if (birthDate && window.AstroResult) {
+      renderAnnualEventsPanel(window.AstroResult);
+    } else if (birthDate && !window.AstroResult) {
+      if (panel) panel.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">🔄 점성술 데이터 계산 중...</div>';
+    }
+  }
 }
+
+function goHome() {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  const home = document.getElementById('screen-home');
+  if (home) home.classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+// 하위 호환: 기존 setTabs() 호출 대비
+function setTabs() {}
 
 /* =========================================================
    메인 사주 계산 및 렌더링
@@ -53,6 +69,10 @@ function runAll() {
     setAlert("생년월일과 출생시각을 모두 입력해주세요.");
     return;
   }
+
+  // 결과 영역 표시
+  const resultArea = _$('saju-result-area');
+  if (resultArea) resultArea.style.display = 'block';
 
   // ── 사주 계산
   const { fourPillars, birthUtc, approx } = getFourPillars({ birthDate, birthTime });
@@ -2108,6 +2128,13 @@ async function generateAnnualReport() {
     if (!res.ok || data.error) throw new Error(data.error || 'AI 해석 오류');
 
     resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '');
+    // innerHTML로 삽입된 <script>는 자동 실행되지 않으므로 수동 실행
+    resultEl.querySelectorAll('script').forEach(s => {
+      const ns = document.createElement('script');
+      ns.textContent = s.textContent;
+      document.body.appendChild(ns);
+      s.remove();
+    });
     statusEl.textContent = `✅ ${year}년 리포트 완료`;
     setTimeout(() => { statusEl.style.display = 'none'; }, 3000);
   } catch (err) {
@@ -2120,18 +2147,13 @@ async function generateAnnualReport() {
 function _buildTimeline(events) {
   function parseMonth(when) {
     if (!when) return null;
-    // "2026" → 연간 전체, 핀 없음
     if (/^\d{4}$/.test(when)) return null;
-    // "2026-07~09" → 평균
-    const rangeM = when.match(/^(?:\d{4}-)?(\d{2})~(\d{2})$/);
+    const rangeM = when.match(/(\d{2})~(\d{2})$/);
     if (rangeM) return (parseInt(rangeM[1]) + parseInt(rangeM[2])) / 2;
-    // "2026-02-17" → 월만 추출
-    const fullDate = when.match(/^(?:\d{4}-)?(\d{2})-\d{2}$/);
+    const fullDate = when.match(/^\d{4}-(\d{2})-\d{2}$/);
     if (fullDate) return parseInt(fullDate[1]);
-    // "2026-03" → 월
-    const monthOnly = when.match(/^(?:\d{4}-)?(\d{2})$/);
+    const monthOnly = when.match(/^\d{4}-(\d{2})$/);
     if (monthOnly) return parseInt(monthOnly[1]);
-    // 한국어 형식 폴백
     const qm = when.match(/Q([1-4])/i);
     if (qm) return [2, 5, 8, 11][parseInt(qm[1]) - 1];
     const rng = when.match(/(\d+)[~\-](\d+)월/);
@@ -2141,244 +2163,406 @@ function _buildTimeline(events) {
     return null;
   }
 
-  const timedEvs = events
-    .filter(e => parseMonth(e.when) !== null)
-    .sort((a, b) => parseMonth(a.when) - parseMonth(b.when))
-    .slice(0, 8);
+  function toLeft(month) {
+    return Math.min(93, Math.max(5, ((month - 0.5) / 12) * 100));
+  }
 
-  if (timedEvs.length === 0) return '';
+  /* ── 이벤트 선택: major 우선, 최소 12% 간격 유지, 최대 6개 ── */
+  const allTimed = events
+    .filter(e => parseMonth(e.when) !== null)
+    .map(e => ({ ...e, _m: parseMonth(e.when) }))
+    .sort((a, b) => {
+      // major 먼저, 같으면 월 순
+      if (a.importance === 'major' && b.importance !== 'major') return -1;
+      if (b.importance === 'major' && a.importance !== 'major') return 1;
+      return a._m - b._m;
+    });
+
+  const MIN_GAP = 13; // % 단위 최소 간격
+  const selected = [];
+  const usedLefts = [];
+
+  for (const e of allTimed) {
+    const left = toLeft(e._m);
+    const tooClose = usedLefts.some(l => Math.abs(l - left) < MIN_GAP);
+    if (tooClose) continue;
+    selected.push({ ...e, _left: left });
+    usedLefts.push(left);
+    if (selected.length >= 6) break;
+  }
+
+  // 렌더링 순서는 월 순으로
+  selected.sort((a, b) => a._m - b._m);
+
+  if (selected.length === 0) return '';
 
   const iconFor = e => {
-    if (e.layer === 'lifecycle')        return '🌱';
-    if (e.valence === 'double_edged')   return '⚡';
-    if (e.valence === 'supportive')     return '⭐';
-    if (e.valence === 'challenging')    return '🔴';
-    return '•';
+    if (e.layer === 'lifecycle')      return '🌱';
+    if (e.valence === 'double_edged') return '⚡';
+    if (e.valence === 'supportive')   return '⭐';
+    if (e.valence === 'challenging')  return '🔴';
+    return '·';
   };
 
-  const pinsHtml = timedEvs.map((e, idx) => {
-    const month = parseMonth(e.when);
-    const left  = Math.min(94, Math.max(4, ((month - 0.5) / 12) * 100));
+  // 월 레이블 간략화: "2026-03" → "3월", "2026-03-15" → "3/15"
+  function shortWhen(when) {
+    const fd = when.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if (fd) return `${parseInt(fd[1])}/${parseInt(fd[2])}`;
+    const mo = when.match(/^\d{4}-(\d{2})$/);
+    if (mo) return `${parseInt(mo[1])}월`;
+    const rg = when.match(/(\d{2})~(\d{2})$/);
+    if (rg) return `${parseInt(rg[1])}~${parseInt(rg[2])}월`;
+    return when;
+  }
+
+  /* ── 핀 HTML ── */
+  // 컨테이너 높이 240px, 축은 top:120px(50%)
+  // up핀: top:0 ~ 120px, 라벨 위 / 점 아래
+  // down핀: top:120px ~ 240px, 점 위 / 라벨 아래
+  const AXIS = 120;
+
+  const pinsHtml = selected.map((e, idx) => {
+    const left    = e._left;
     const isMajor = e.importance === 'major';
     const isDE    = e.valence === 'double_edged';
     const isUp    = idx % 2 === 0;
-    const dotSize = isMajor ? 20 : 13;
+    const dotSize = isMajor ? 18 : 11;
+    const half    = dotSize / 2;
 
-    const dotBg = (isMajor && isDE)
-      ? 'radial-gradient(circle,#fff 30%,#b79cff)'
-      : isMajor ? 'radial-gradient(circle,#fff,#e8c069)'
-      : (e.layer === 'lifecycle' && !isMajor) ? 'transparent' : '#7e87ad';
-
+    const dotBg = (isMajor && isDE) ? 'radial-gradient(circle,#fff 30%,#b79cff)'
+      : isMajor                     ? 'radial-gradient(circle,#fff,#e8c069)'
+      : (e.layer === 'lifecycle')   ? 'transparent' : '#7e87ad';
     const dotShadow = (isMajor && isDE)
-      ? '0 0 0 4px rgba(183,156,255,.2),0 0 22px rgba(183,156,255,.55)'
-      : isMajor ? '0 0 0 4px rgba(232,192,105,.18),0 0 22px rgba(232,192,105,.55)' : 'none';
-
+      ? '0 0 0 3px rgba(183,156,255,.25),0 0 18px rgba(183,156,255,.6)'
+      : isMajor ? '0 0 0 3px rgba(232,192,105,.2),0 0 18px rgba(232,192,105,.6)' : 'none';
     const dotBorder = (e.layer === 'lifecycle' && !isMajor)
-      ? '2px dashed rgba(183,156,255,.6)' : '2px solid #070a14';
+      ? '2px dashed rgba(183,156,255,.7)' : '2px solid #070a14';
 
-    const shortFact = (e.fact || '').length > 20 ? (e.fact || '').slice(0, 20) + '…' : (e.fact || '');
+    const shortF = (e.fact || '').length > 18 ? (e.fact || '').slice(0, 18) + '…' : (e.fact || '');
 
-    const dotHtml = `<div style="width:${dotSize}px;height:${dotSize}px;border-radius:50%;
-      background:${dotBg};border:${dotBorder};box-shadow:${dotShadow};flex-shrink:0;"></div>`;
+    // 점의 절대 위치: 축 위/아래 half px
+    const dotTop = isUp ? AXIS - half : AXIS - half;
 
-    const labJust = isUp ? 'justify-content:flex-end;padding-bottom:6px;' : 'justify-content:flex-start;padding-top:6px;';
-    const labHtml = `<div style="width:92px;text-align:center;font-size:10px;line-height:1.35;color:#aab2d6;
-      flex:1;display:flex;flex-direction:column;${labJust}">
-      <span style="font-size:12px;display:block;margin-bottom:2px;">${iconFor(e)}</span>
-      <b style="color:#f3f5ff;font-size:9.5px;display:block;">${e.when || ''}</b>
-      <span style="font-size:9.5px;">${shortFact}</span>
-    </div>`;
+    // 라벨: up이면 점 위, down이면 점 아래
+    // up: top=4, height → dot top까지 (= AXIS-half-4-4 = 103px), flex-end → 내용이 107px에 위치
+    // down: top=dot bottom+6, height = 남은 공간, flex-start → 내용이 135px에 위치
+    const labPosStyle = isUp
+      ? `top:4px;height:${AXIS - half - 4 - 4}px;`
+      : `top:${AXIS + half + 6}px;height:${240 - (AXIS + half + 6) - 4}px;`;
 
-    const pinStyle = isUp
-      ? `position:absolute;left:${left}%;top:0;transform:translateX(-50%);display:flex;flex-direction:column-reverse;align-items:center;height:100px;width:92px;`
-      : `position:absolute;left:${left}%;top:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;height:100px;width:92px;`;
-
-    return `<div style="${pinStyle}">${dotHtml}${labHtml}</div>`;
+    return `
+      <div style="position:absolute;left:${left}%;transform:translateX(-50%);top:0;width:90px;height:240px;">
+        <!-- 라벨 -->
+        <div style="position:absolute;${labPosStyle}left:0;right:0;
+          display:flex;flex-direction:column;${isUp ? 'justify-content:flex-end;' : 'justify-content:flex-start;'}
+          align-items:center;text-align:center;gap:1px;">
+          <span style="font-size:13px;line-height:1;">${iconFor(e)}</span>
+          <b style="color:#f3f5ff;font-size:9px;display:block;line-height:1.2;">${shortWhen(e.when)}</b>
+          <span style="font-size:9px;color:#aab2d6;line-height:1.2;">${shortF}</span>
+        </div>
+        <!-- 점 -->
+        <div style="position:absolute;left:50%;top:${dotTop}px;transform:translateX(-50%);
+          width:${dotSize}px;height:${dotSize}px;border-radius:50%;
+          background:${dotBg};border:${dotBorder};box-shadow:${dotShadow};"></div>
+      </div>`;
   }).join('');
 
-  const bandEvs = events.filter(e => e.layer === 'common').slice(0, 1);
-  const bandHtml = bandEvs.map(e => `
-    <div style="position:absolute;top:calc(50% - 9px);left:3%;right:3%;height:18px;border-radius:999px;
-      border:1px dashed rgba(255,255,255,.12);background:rgba(255,255,255,.03);">
-      <span style="position:absolute;top:-16px;left:8px;font-size:10px;color:#7e87ad;
-        white-space:nowrap;overflow:hidden;max-width:90%;">${(e.fact || '').slice(0, 35)}</span>
-    </div>`).join('');
-
   return `
-    <div style="margin:24px 0 4px;display:flex;align-items:baseline;justify-content:space-between;gap:10px;">
+    <div style="margin:24px 0 6px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
       <span style="font-size:11px;letter-spacing:3px;color:#7e87ad;font-weight:700;">YEAR TIMELINE</span>
       <span style="font-size:10px;color:#7e87ad;">⭐ 핵심 · 일반 · 미래</span>
     </div>
-    <div style="position:relative;min-width:320px;height:220px;margin-top:8px;overflow-x:auto;">
-      <div style="position:relative;height:100%;min-width:320px;">
-        <div style="position:absolute;left:0;right:0;top:50%;height:2px;transform:translateY(-50%);
-          background:linear-gradient(90deg,transparent,rgba(232,192,105,.5) 12%,rgba(183,156,255,.5) 78%,transparent);"></div>
-        ${bandHtml}
-        <div style="position:absolute;left:0;right:0;top:calc(50% + 12px);display:grid;grid-template-columns:repeat(4,1fr);">
-          ${['Q1','Q2','Q3','Q4'].map(q =>
-            `<span style="font-size:10px;color:#7e87ad;text-align:center;letter-spacing:1px;">${q}</span>`
-          ).join('')}
-        </div>
-        ${pinsHtml}
+    <div style="position:relative;height:240px;overflow:hidden;border-radius:12px;">
+      <!-- 축 -->
+      <div style="position:absolute;left:0;right:0;top:${AXIS}px;height:2px;
+        background:linear-gradient(90deg,transparent 2%,rgba(232,192,105,.55) 15%,rgba(183,156,255,.55) 80%,transparent 98%);"></div>
+      <!-- Q 라벨 -->
+      <div style="position:absolute;left:0;right:0;top:${AXIS + 10}px;
+        display:grid;grid-template-columns:repeat(4,1fr);">
+        ${['Q1','Q2','Q3','Q4'].map(q =>
+          `<span style="font-size:10px;color:#475569;text-align:center;letter-spacing:1px;">${q}</span>`
+        ).join('')}
       </div>
+      <!-- 핀 -->
+      ${pinsHtml}
     </div>`;
 }
 
 function _buildAnnualHTML(engineData, aiText) {
   const { year, profection, events = [] } = engineData;
+  const did = 'adeck' + year; // 고유 덱 ID — 함수명·요소 ID 모두 이 접두사 사용
 
-  /* ── AI 섹션 파싱 ─────────────────────────────── */
+  /* ── AI 섹션 파싱 ── */
   const sections = {};
-  const rawParts = aiText.split(/\n(?=## )/);
-  for (const part of rawParts) {
+  for (const part of aiText.split(/\n(?=## )/)) {
     const m = part.match(/^## (.+)\n([\s\S]*)/);
     if (m) sections[m[1].trim()] = m[2].trim();
   }
 
-  /* ── 유틸 ─────────────────────────────────────── */
-  const valCol = { supportive:'#e8c069', challenging:'#ff8a8a', double_edged:'#b79cff', neutral:'#7e87ad' };
-  const valKR  = { supportive:'기회·상승', challenging:'긴장·도전', double_edged:'양면 에너지', neutral:'중립' };
-  const valIco = { supportive:'▲', challenging:'▼', double_edged:'⇕', neutral:'→' };
+  /* ── 유틸 ── */
+  const V_COL  = { supportive:'#dfba6b', challenging:'#f87171', double_edged:'#a78bfa', neutral:'#94a3b8' };
+  const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
+  const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
 
-  function fmtText(t) {
+  function fmt(t) {
     if (!t) return '';
     return t
-      .replace(/### (.+)/g, '<div style="font-size:13px;font-weight:800;color:#f3f5ff;margin:14px 0 5px;">$1</div>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f3f5ff;">$1</strong>')
-      .replace(/\n/g, '<br>');
+      .replace(/### (.+)/g, '<div style="font-size:12px;font-weight:800;color:#f1f5f9;margin:10px 0 3px;">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f1f5f9;">$1</strong>')
+      .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
   }
 
-  function secCard(icon, title, bodyHtml, bdrColor) {
-    const bc = bdrColor || 'rgba(255,255,255,.10)';
-    return `
-      <div style="margin-top:20px;">
-        <div style="font-size:11px;letter-spacing:3px;color:#e8c069;font-weight:700;
-          display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-          <span>${icon} ${title}</span>
-          <div style="flex:1;height:1px;background:rgba(255,255,255,.07);"></div>
-        </div>
-        <div style="background:rgba(20,25,48,.66);border:1px solid ${bc};
-          border-radius:20px;padding:22px;font-size:13px;line-height:1.8;color:#aab2d6;">
-          ${bodyHtml}
-        </div>
-      </div>`;
+  function sWhen(w) {
+    if (!w) return '';
+    const fd = w.match(/^\d{4}-(\d{2})-(\d{2})$/);
+    if (fd) return `${+fd[1]}월 ${+fd[2]}일`;
+    const mo = w.match(/^\d{4}-(\d{2})$/);
+    if (mo) return `${+mo[1]}월`;
+    const rg = w.match(/(\d{2})~(\d{2})$/);
+    if (rg) return `${+rg[1]}~${+rg[2]}월`;
+    return w;
   }
 
-  /* ── 주요 이벤트 카드 ─────────────────────────── */
-  const majorEvents = events.filter(e => e.importance === 'major');
-  const majorCardsHtml = majorEvents.map(e => {
-    const col = valCol[e.valence] || '#7e87ad';
-    return `
-      <div style="background:rgba(20,25,48,.66);border:1px solid rgba(255,255,255,.10);
-        border-radius:18px;padding:18px 20px;position:relative;overflow:hidden;">
-        <div style="position:absolute;left:0;top:0;bottom:0;width:4px;
-          background:linear-gradient(180deg,${col},transparent);border-radius:4px 0 0 4px;"></div>
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px;">
-          <div style="font-size:13px;font-weight:700;color:#f3f5ff;line-height:1.5;">${e.fact}</div>
-          <span style="white-space:nowrap;font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;
-            color:${col};background:${col}22;border:1px solid ${col}55;flex-shrink:0;">
-            ${valIco[e.valence] || ''} ${valKR[e.valence] || e.valence}
-          </span>
-        </div>
-        <div style="font-size:11px;color:#7e87ad;">${e.when || ''}${e.technique ? ' · ' + e.technique : ''}</div>
-      </div>`;
-  }).join('');
-
-  /* ── 섹션 키 매핑 ─────────────────────────────── */
+  /* ── 섹션 키 찾기 ── */
   const flowKey  = Object.keys(sections).find(k => k === '올해의 큰 흐름') || '';
-  const moodKey  = Object.keys(sections).find(k => k.startsWith('올해의 무드')) || '';
-  const flowText = flowKey ? sections[flowKey] : '';
-  const moodText = moodKey ? sections[moodKey] : '';
-  // 히어로: 첫 줄(thesis), 카드: 나머지 본문 (중복 방지)
+  const moodKey  = Object.keys(sections).find(k => /무드|심리/.test(k)) || '';
+  const flowText = sections[flowKey] || '';
+  const moodText = sections[moodKey] || '';
   const flowLines = flowText.split('\n');
-  const firstNonEmpty = flowLines.findIndex(l => l.trim());
-  const thesis   = firstNonEmpty >= 0 ? flowLines[firstNonEmpty].replace(/\*\*(.+?)\*\*/g, '$1') : '';
-  const flowBody = firstNonEmpty >= 0
-    ? flowLines.slice(firstNonEmpty + 1).join('\n').trim()
-    : flowText;
+  const fni = flowLines.findIndex(l => l.trim());
+  const thesis = fni >= 0 ? flowLines[fni].replace(/\*\*(.+?)\*\*/g, '$1') : '';
 
-  const secIcons = { '핵심 사건과 시기':'⚡', '영역별 흐름':'🗂️', '주목할 포인트':'🎯' };
-  const otherSections = Object.entries(sections).filter(([k]) =>
-    k !== flowKey && k !== moodKey && k !== '마무리'
-  );
+  const majorEvents = events.filter(e => e.importance === 'major').slice(0, 6);
+  const aiExtras = ['핵심 사건과 시기', '영역별 흐름', '주목할 포인트'];
+  const extBadge = ['KEY EVENTS', 'DOMAIN FLOW', 'FOCUS POINTS'];
 
-  /* ── HTML 조립 ────────────────────────────────── */
-  return `
-    <div style="max-width:860px;">
+  /* ── 슬라이드 배열 ── */
+  const slides = [];
 
-      <!-- HERO -->
-      <div style="padding:20px 4px 12px;">
-        <div style="font-size:11px;color:#e8c069;letter-spacing:4px;font-weight:700;margin-bottom:10px;">
-          ANNUAL FORECAST · ${year}
+  // 슬라이드 1: 커버
+  slides.push({ t: 'cover' });
+  // 슬라이드 2: 큰흐름
+  if (flowText) slides.push({ t:'text', badge:'THE BIG FLOW', title:'올해의 큰 흐름', body:fmt(flowText), col:'#dfba6b' });
+  // 슬라이드 3: 무드
+  if (moodText) slides.push({ t:'text', badge:'THE MOOD', title: moodKey||'올해의 무드', body:fmt(moodText), col:'#a78bfa' });
+  // 슬라이드 4~N: 주요 이벤트 (각 1슬라이드)
+  majorEvents.forEach(e => {
+    slides.push({ t:'event', e, col: V_COL[e.valence]||'#94a3b8' });
+  });
+  // 나머지 AI 섹션
+  aiExtras.forEach((k, i) => {
+    if (sections[k]) slides.push({ t:'text', badge:extBadge[i], title:k, body:fmt(sections[k]), col:'#64748b' });
+  });
+  // 마무리
+  if (sections['마무리']) slides.push({ t:'closing', text:sections['마무리'] });
+
+  const TOTAL = slides.length;
+
+  /* ── 슬라이드 HTML 빌더 ── */
+  const BASE = 'position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;';
+
+  function buildSlide(s, n) {
+    if (s.t === 'cover') return `
+      <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;text-align:center;gap:14px;padding:0 24px;">
+        <div style="width:88px;height:88px;border-radius:50%;border:2px solid rgba(223,186,107,.3);
+          background:rgba(223,186,107,.05);display:flex;align-items:center;justify-content:center;
+          box-shadow:0 0 30px rgba(223,186,107,.12);">
+          <span style="font-family:Georgia,serif;font-size:24px;color:#dfba6b;font-weight:300;">${year}</span>
         </div>
-        <div style="font-size:clamp(56px,18vw,96px);line-height:.9;font-weight:900;letter-spacing:-2px;
-          background:linear-gradient(180deg,#fff 30%,#cfd6f5);
-          -webkit-background-clip:text;background-clip:text;color:transparent;margin-bottom:12px;">
-          ${year}
+        <div>
+          <h1 style="font-size:26px;font-weight:900;color:#fff;letter-spacing:-1px;margin:0 0 8px;">연간 운세</h1>
+          ${thesis ? `<p style="font-size:12px;color:#94a3b8;line-height:1.65;max-width:260px;margin:0 auto;">${thesis}</p>` : ''}
         </div>
-        ${thesis ? `<div style="font-size:15px;font-weight:700;color:#f3f5ff;margin-bottom:12px;letter-spacing:-.2px;">${thesis}</div>` : ''}
-        <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <span style="font-size:12px;color:#f4d98a;border:1px solid rgba(232,192,105,.4);
-            background:rgba(232,192,105,.08);padding:6px 12px;border-radius:999px;">
-            만 ${profection.age}세 · ${profection.house}하우스의 해 · ${profection.theme}
+        <div style="width:56px;height:1px;background:linear-gradient(90deg,transparent,rgba(223,186,107,.45),transparent);"></div>
+        <div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center;">
+          <span style="font-size:11px;color:#fbbf24;border:1px solid rgba(251,191,36,.3);background:rgba(251,191,36,.07);padding:4px 11px;border-radius:999px;white-space:nowrap;">
+            만 ${profection.age}세 · ${profection.house}하우스 · ${profection.theme}
           </span>
-          <span style="font-size:12px;color:#aab2d6;border:1px solid rgba(255,255,255,.10);
-            background:rgba(16,20,40,.55);padding:6px 12px;border-radius:999px;">
+          <span style="font-size:11px;color:#94a3b8;border:1px solid rgba(148,163,184,.18);background:rgba(148,163,184,.05);padding:4px 11px;border-radius:999px;white-space:nowrap;">
             올해의 별 · ${profection.lord}
           </span>
         </div>
-      </div>
+        <p style="font-size:10px;color:#334155;letter-spacing:.08em;">총 ${TOTAL}개 챕터 · 좌우로 넘겨보세요</p>
+      </div>`;
 
-      <!-- 연간 타임라인 (히어로 바로 아래) -->
-      ${_buildTimeline(events)}
+    if (s.t === 'text') return `
+      <div id="${did}_s${n}" style="${BASE}padding:6px 22px 14px;gap:10px;overflow:hidden;">
+        <div style="flex-shrink:0;">
+          <span style="display:inline-block;padding:3px 11px;border-radius:999px;
+            background:${s.col}18;border:1px solid ${s.col}38;
+            font-size:9px;font-weight:700;color:${s.col};letter-spacing:.2em;font-family:Georgia,serif;">
+            ${String(n-1).padStart(2,'0')}. ${s.badge}
+          </span>
+        </div>
+        <h2 style="flex-shrink:0;font-size:17px;font-weight:800;color:#f1f5f9;margin:0;line-height:1.2;">${s.title}</h2>
+        <div style="flex:1;overflow-y:auto;font-size:12px;line-height:1.85;color:#94a3b8;
+          -webkit-overflow-scrolling:touch;padding-right:2px;">
+          ${s.body}
+        </div>
+      </div>`;
 
-      <!-- 올해의 큰 흐름 (히어로 thesis와 중복 방지 — 본문만 표시) -->
-      ${(flowBody || flowText) ? secCard('🌊', '올해의 큰 흐름', fmtText(flowBody || flowText), 'rgba(232,192,105,.2)') : ''}
-
-      <!-- 올해의 무드 -->
-      ${moodText ? secCard('🎭', moodKey || '올해의 무드', fmtText(moodText)) : ''}
-
-      <!-- 핵심 이벤트 카드 -->
-      ${majorEvents.length > 0 ? `
-        <div style="margin-top:20px;">
-          <div style="font-size:11px;letter-spacing:3px;color:#e8c069;font-weight:700;
-            display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-            <span>⭐ 핵심 전환 이벤트</span>
-            <div style="flex:1;height:1px;background:rgba(255,255,255,.07);"></div>
+    if (s.t === 'event') {
+      const e = s.e; const col = s.col;
+      const layerDesc = { eclipse:'🌑 일식/월식 — 근본적 전환점.',lifecycle:'🌱 생애 주기 — 장기적 구조 변화.',impact:'💥 강한 임팩트 — 단기간 강렬한 체감.',common:'🔄 일반 트랜짓 — 일상적 흐름.' };
+      const bodies = Array.isArray(e.bodies) ? e.bodies : [];
+      return `
+        <div id="${did}_s${n}" style="${BASE}padding:6px 22px 14px;gap:8px;overflow:hidden;">
+          <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+            <span style="display:inline-block;padding:3px 11px;border-radius:999px;
+              background:${col}18;border:1px solid ${col}38;
+              font-size:9px;font-weight:700;color:${col};letter-spacing:.18em;font-family:Georgia,serif;">
+              EVENT · ${V_BADG[e.valence]||'TRANSIT'}
+            </span>
+            <span style="font-size:11px;color:#475569;">${sWhen(e.when)}</span>
           </div>
-          <div style="display:flex;flex-direction:column;gap:10px;">${majorCardsHtml}</div>
-        </div>` : ''}
-
-      <!-- 나머지 AI 섹션 -->
-      ${otherSections.map(([k, v]) => secCard(secIcons[k] || '✦', k, fmtText(v))).join('')}
-
-      <!-- 마무리 클로징 -->
-      ${sections['마무리'] ? `
-        <div style="margin-top:24px;padding:26px 22px;border-radius:20px;
-          background:linear-gradient(135deg,rgba(232,192,105,.10),rgba(139,123,255,.10));
-          border:1px solid rgba(255,255,255,.10);">
-          <div style="font-size:15px;line-height:1.75;font-weight:700;color:#f3f5ff;">
-            ${fmtText(sections['마무리'])}
+          <div style="flex-shrink:0;">
+            <p style="font-size:15px;font-weight:800;color:#f1f5f9;margin:0 0 6px;line-height:1.35;">${e.fact||''}</p>
+            <div style="display:flex;flex-wrap:wrap;gap:5px;">
+              ${e.technique ? `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${e.technique}</span>` : ''}
+              ${bodies.map(b=>`<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${b}</span>`).join('')}
+            </div>
           </div>
-        </div>` : ''}
+          <div style="flex-shrink:0;height:1px;background:linear-gradient(90deg,${col}55,transparent);"></div>
+          <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+            <p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.08em;margin:0 0 7px;">${V_KR[e.valence]||e.valence}</p>
+            <p style="font-size:12px;line-height:1.75;color:#94a3b8;margin:0 0 8px;">${layerDesc[e.layer]||''}</p>
+            ${e.house ? `<p style="font-size:11px;color:#475569;margin:0;">${e.house}하우스 영역</p>` : ''}
+          </div>
+        </div>`;
+    }
 
-      <!-- 다시 생성 -->
-      <div style="margin-top:14px;text-align:right;">
-        <button onclick="generateAnnualReport()" style="
-          background:rgba(232,192,105,.12);border:1px solid rgba(232,192,105,.3);
-          color:#f4d98a;font-size:11px;border-radius:8px;padding:5px 14px;cursor:pointer;
-        ">🔄 다시 생성</button>
-      </div>
+    if (s.t === 'closing') {
+      const lines = s.text.split('\n').filter(l=>l.trim()).slice(0,8);
+      return `
+        <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;padding:0 24px;gap:12px;">
+          <div style="font-size:32px;color:rgba(223,186,107,.28);line-height:1;">"</div>
+          <div style="flex:1;overflow-y:auto;width:100%;-webkit-overflow-scrolling:touch;">
+            ${lines.map(l=>`<p style="font-size:12px;color:#94a3b8;line-height:1.8;margin:0 0 8px;">${l.replace(/\*\*(.+?)\*\*/g,'<strong style="color:#dfba6b;">$1</strong>')}</p>`).join('')}
+          </div>
+          <div style="width:72px;height:1.5px;background:linear-gradient(90deg,transparent,rgba(223,186,107,.5),transparent);flex-shrink:0;"></div>
+          <button onclick="generateAnnualReport()" style="flex-shrink:0;
+            background:rgba(223,186,107,.1);border:1px solid rgba(223,186,107,.28);
+            color:#dfba6b;font-size:11px;border-radius:8px;padding:6px 16px;cursor:pointer;">
+            🔄 다시 생성
+          </button>
+        </div>`;
+    }
+    return '';
+  }
 
-      <!-- 면책 -->
-      <div style="margin-top:14px;font-size:11px;color:#7e87ad;line-height:1.6;
-        border-top:1px solid rgba(255,255,255,.07);padding-top:12px;">
-        점성술은 경향성(날씨)이지 운명 결정이 아닙니다. 본 내용은
-        <strong style="color:#aab2d6;">'가능성·타이밍 창'</strong>이며,
-        실제 결과는 본인의 선택과 외부 상황에 달려 있습니다.
-      </div>
+  /* ── 도트 · 슬라이드 HTML ── */
+  const dotsHtml = slides.map((_,i)=>`
+    <div id="${did}_d${i+1}" onclick="${did}_go(${i+1})"
+      style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:all .3s ease;flex-shrink:0;
+      ${i===0?`background:#dfba6b;box-shadow:0 0 7px #dfba6b;width:18px;border-radius:4px;`:`background:rgba(255,255,255,.13);`}">
+    </div>`).join('');
+
+  const slidesHtml = slides.map((s,i)=>buildSlide(s,i+1)).join('');
+
+  /* ── 전체 조립 ── */
+  return `
+    <style>
+      #${did} ::-webkit-scrollbar{width:3px;}
+      #${did} ::-webkit-scrollbar-track{background:transparent;}
+      #${did} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:2px;}
+      @keyframes ${did}_pulse{0%,100%{opacity:1}50%{opacity:.45}}
+    </style>
+
+    <div id="${did}" style="
+      max-width:440px;width:100%;height:660px;margin:8px auto;
+      background:rgba(8,6,20,.96);
+      border:1px solid rgba(223,186,107,.18);border-radius:30px;overflow:hidden;
+      display:flex;flex-direction:column;position:relative;
+      box-shadow:0 24px 72px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06),0 0 44px rgba(124,58,237,.05);">
+
+      <!-- 상단 골드 라인 -->
+      <div style="position:absolute;top:0;left:0;right:0;height:2.5px;z-index:20;
+        background:linear-gradient(90deg,transparent,rgba(223,186,107,.72),transparent);"></div>
+
+      <!-- 헤더 -->
+      <header style="display:flex;justify-content:space-between;align-items:center;
+        padding:20px 22px 10px;flex-shrink:0;z-index:10;">
+        <div style="display:flex;align-items:center;gap:7px;">
+          <div style="width:7px;height:7px;border-radius:50%;background:#dfba6b;
+            box-shadow:0 0 7px #dfba6b;animation:${did}_pulse 2s ease-in-out infinite;"></div>
+          <span style="font-size:9px;font-weight:700;letter-spacing:.22em;color:#dfba6b;font-family:Georgia,serif;">ANNUAL MASTER REPORT</span>
+        </div>
+        <div style="font-size:9px;color:#334155;letter-spacing:.12em;font-family:Georgia,serif;">
+          ${year} · <span id="${did}_idx" style="color:#dfba6b;font-weight:700;">1</span>&thinsp;/&thinsp;${TOTAL}
+        </div>
+      </header>
+
+      <!-- 슬라이드 뷰포트 -->
+      <main id="${did}_vp" style="position:relative;flex:1;overflow:hidden;">
+        ${slidesHtml}
+      </main>
+
+      <!-- 푸터 -->
+      <footer style="display:flex;justify-content:space-between;align-items:center;
+        padding:10px 22px 18px;flex-shrink:0;z-index:10;">
+        <button onclick="${did}_go(Math.max(1,${did}_cur-1))" style="
+          width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);
+          background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:16px;
+          display:flex;align-items:center;justify-content:center;">‹</button>
+        <div style="display:flex;gap:5px;align-items:center;overflow-x:auto;max-width:220px;
+          padding:3px 0;scrollbar-width:none;-ms-overflow-style:none;">
+          ${dotsHtml}
+        </div>
+        <button onclick="${did}_go(Math.min(${TOTAL},${did}_cur+1))" style="
+          width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);
+          background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:16px;
+          display:flex;align-items:center;justify-content:center;">›</button>
+      </footer>
     </div>
-  `;
+
+    <script>
+    (function(){
+      const D='${did}', N=${TOTAL};
+      window[D+'_cur']=1;
+
+      window[D+'_go']=function(n){
+        n=Math.max(1,Math.min(N,n));
+        for(let i=1;i<=N;i++){
+          const el=document.getElementById(D+'_s'+i);
+          if(!el)continue;
+          if(i===n){
+            el.style.display='flex';
+            el.style.opacity='0';
+            el.style.transform='scale(0.97) translateY(10px)';
+            void el.offsetHeight;
+            el.style.transition='opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)';
+            el.style.opacity='1';
+            el.style.transform='scale(1) translateY(0)';
+          } else {
+            el.style.display='none';
+          }
+        }
+        const idx=document.getElementById(D+'_idx');
+        if(idx)idx.textContent=n;
+        for(let i=1;i<=N;i++){
+          const dot=document.getElementById(D+'_d'+i);
+          if(!dot)continue;
+          if(i===n){dot.style.cssText+='background:#dfba6b;box-shadow:0 0 7px #dfba6b;width:18px;border-radius:4px;';}
+          else{dot.style.background='rgba(255,255,255,.13)';dot.style.boxShadow='none';dot.style.width='8px';dot.style.borderRadius='50%';}
+        }
+        window[D+'_cur']=n;
+      };
+
+      // 터치 스와이프
+      const vp=document.getElementById(D+'_vp');
+      if(vp){
+        let tx=0;
+        vp.addEventListener('touchstart',e=>{tx=e.changedTouches[0].screenX;},{passive:true});
+        vp.addEventListener('touchend',e=>{
+          const dx=e.changedTouches[0].screenX-tx;
+          if(dx<-45)window[D+'_go'](window[D+'_cur']+1);
+          if(dx>45) window[D+'_go'](window[D+'_cur']-1);
+        },{passive:true});
+      }
+
+      window[D+'_go'](1);
+    })();
+    </script>`;
 }
 
 /* =========================================================
@@ -2843,6 +3027,13 @@ document.addEventListener("DOMContentLoaded", () => {
   try {
     setTabs();
     buildCitySelect();
+
+    // 홈 화면 날짜 라벨
+    const homeDateLabel = _$('homeDateLabel');
+    if (homeDateLabel) {
+      const now = new Date();
+      homeDateLabel.textContent = `${now.getFullYear()}년 ${now.getMonth()+1}월 ${now.getDate()}일`;
+    }
 
     // birthCity 포함 — 모든 입력 필드 이벤트 바인딩
     ["name", "birthDate", "birthTime", "gender", "birthCity"].forEach(id => {
