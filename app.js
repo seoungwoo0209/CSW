@@ -2304,6 +2304,39 @@ function _buildAnnualHTML(engineData, aiText) {
   const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
   const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
 
+  /* ── NASA 공개 이미지 (퍼블릭 도메인) ── */
+  const NASA_IMGS = {
+    '목성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA21775.jpg', cap:'Jupiter · Juno' },
+    '토성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA14944.jpg', cap:'Saturn · Cassini' },
+    '화성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA22763.jpg', cap:'Mars · MRO' },
+    '금성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA00271.jpg', cap:'Venus · Magellan' },
+    '수성':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA15162.jpg', cap:'Mercury · MESSENGER' },
+    '천왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA18182.jpg', cap:'Uranus · Voyager 2' },
+    '해왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA02210.jpg', cap:'Neptune · Voyager 2' },
+    '명왕성': { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA19858.jpg', cap:'Pluto · New Horizons' },
+    '달':     { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA00139.jpg', cap:'Moon · Galileo' },
+    '태양':   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA03149.jpg', cap:'Sun · SOHO' },
+    cosmos:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA23645.jpg', cap:'Deep Space · Spitzer' },
+    nebula:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA20912.jpg', cap:'Nebula · Hubble' },
+    galaxy:   { url:'https://photojournal.jpl.nasa.gov/jpeg/PIA15416.jpg', cap:'Galaxy · Hubble' },
+  };
+
+  function getSlideImg(s) {
+    if (s.t === 'event') {
+      const bodies = Array.isArray(s.e.bodies) ? s.e.bodies : [];
+      for (const b of bodies) {
+        const found = Object.entries(NASA_IMGS).find(([k]) =>
+          k !== 'cosmos' && k !== 'nebula' && k !== 'galaxy' && b.includes(k)
+        );
+        if (found) return found[1];
+      }
+      return NASA_IMGS.cosmos;
+    }
+    if (/MOOD/.test(s.badge || '')) return NASA_IMGS.nebula;
+    if (/FLOW/.test(s.badge || '')) return NASA_IMGS.galaxy;
+    return NASA_IMGS.cosmos;
+  }
+
   function fmt(t) {
     if (!t) return '';
     return t
@@ -2385,48 +2418,78 @@ function _buildAnnualHTML(engineData, aiText) {
         <p style="font-size:10px;color:#334155;letter-spacing:.08em;">총 ${TOTAL}개 챕터 · 좌우로 넘겨보세요</p>
       </div>`;
 
-    if (s.t === 'text') return `
-      <div id="${did}_s${n}" style="${BASE}padding:6px 22px 14px;gap:10px;overflow:hidden;">
-        <div style="flex-shrink:0;">
-          <span style="display:inline-block;padding:3px 11px;border-radius:999px;
-            background:${s.col}18;border:1px solid ${s.col}38;
-            font-size:9px;font-weight:700;color:${s.col};letter-spacing:.2em;font-family:Georgia,serif;">
-            ${String(n-1).padStart(2,'0')}. ${s.badge}
-          </span>
+    if (s.t === 'text') {
+      const img = getSlideImg(s);
+      return `
+      <div id="${did}_s${n}" style="${BASE}flex-direction:row;overflow:hidden;">
+        <div style="flex:1;display:flex;flex-direction:column;padding:14px 16px 12px;gap:8px;overflow:hidden;min-width:0;">
+          <div style="flex-shrink:0;">
+            <span style="display:inline-block;padding:2px 9px;border-radius:999px;
+              background:${s.col}18;border:1px solid ${s.col}38;
+              font-size:9px;font-weight:700;color:${s.col};letter-spacing:.18em;font-family:Georgia,serif;">
+              ${String(n-1).padStart(2,'0')}. ${s.badge}
+            </span>
+          </div>
+          <h2 style="flex-shrink:0;font-size:15px;font-weight:800;color:#f1f5f9;margin:0;line-height:1.2;">${s.title}</h2>
+          <div style="flex:1;overflow-y:auto;font-size:11.5px;line-height:1.85;color:#94a3b8;
+            -webkit-overflow-scrolling:touch;padding-right:3px;">
+            ${s.body}
+          </div>
         </div>
-        <h2 style="flex-shrink:0;font-size:17px;font-weight:800;color:#f1f5f9;margin:0;line-height:1.2;">${s.title}</h2>
-        <div style="flex:1;overflow-y:auto;font-size:12px;line-height:1.85;color:#94a3b8;
-          -webkit-overflow-scrolling:touch;padding-right:2px;">
-          ${s.body}
+        <div style="width:38%;flex-shrink:0;position:relative;overflow:hidden;
+          border-left:1px solid rgba(255,255,255,.04);">
+          <img src="${img.url}" alt="${img.cap}"
+            style="width:100%;height:100%;object-fit:cover;display:block;opacity:.82;"
+            onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(160deg,rgba(20,15,50,.9),rgba(5,3,15,1))'">
+          <div style="position:absolute;bottom:0;left:0;right:0;
+            background:linear-gradient(transparent,rgba(0,0,0,.85));
+            padding:28px 7px 10px;text-align:center;">
+            <span style="font-size:8px;color:${s.col};letter-spacing:.1em;font-family:Georgia,serif;line-height:1.3;">${img.cap}</span>
+          </div>
         </div>
       </div>`;
+    }
 
     if (s.t === 'event') {
       const e = s.e; const col = s.col;
+      const img = getSlideImg(s);
       const layerDesc = { eclipse:'🌑 일식/월식 — 근본적 전환점.',lifecycle:'🌱 생애 주기 — 장기적 구조 변화.',impact:'💥 강한 임팩트 — 단기간 강렬한 체감.',common:'🔄 일반 트랜짓 — 일상적 흐름.' };
       const bodies = Array.isArray(e.bodies) ? e.bodies : [];
       return `
-        <div id="${did}_s${n}" style="${BASE}padding:6px 22px 14px;gap:8px;overflow:hidden;">
-          <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
-            <span style="display:inline-block;padding:3px 11px;border-radius:999px;
-              background:${col}18;border:1px solid ${col}38;
-              font-size:9px;font-weight:700;color:${col};letter-spacing:.18em;font-family:Georgia,serif;">
-              EVENT · ${V_BADG[e.valence]||'TRANSIT'}
-            </span>
-            <span style="font-size:11px;color:#475569;">${sWhen(e.when)}</span>
-          </div>
-          <div style="flex-shrink:0;">
-            <p style="font-size:15px;font-weight:800;color:#f1f5f9;margin:0 0 6px;line-height:1.35;">${e.fact||''}</p>
-            <div style="display:flex;flex-wrap:wrap;gap:5px;">
-              ${e.technique ? `<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${e.technique}</span>` : ''}
-              ${bodies.map(b=>`<span style="font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${b}</span>`).join('')}
+        <div id="${did}_s${n}" style="${BASE}flex-direction:row;overflow:hidden;">
+          <div style="flex:1;display:flex;flex-direction:column;padding:14px 16px 12px;gap:7px;overflow:hidden;min-width:0;">
+            <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
+              <span style="display:inline-block;padding:2px 9px;border-radius:999px;
+                background:${col}18;border:1px solid ${col}38;
+                font-size:9px;font-weight:700;color:${col};letter-spacing:.15em;font-family:Georgia,serif;">
+                EVENT · ${V_BADG[e.valence]||'TRANSIT'}
+              </span>
+              <span style="font-size:10px;color:#475569;flex-shrink:0;">${sWhen(e.when)}</span>
+            </div>
+            <div style="flex-shrink:0;">
+              <p style="font-size:13.5px;font-weight:800;color:#f1f5f9;margin:0 0 5px;line-height:1.3;">${e.fact||''}</p>
+              <div style="display:flex;flex-wrap:wrap;gap:4px;">
+                ${e.technique ? `<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${e.technique}</span>` : ''}
+                ${bodies.map(b=>`<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${b}</span>`).join('')}
+              </div>
+            </div>
+            <div style="flex-shrink:0;height:1px;background:linear-gradient(90deg,${col}55,transparent);"></div>
+            <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
+              <p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.06em;margin:0 0 6px;">${V_KR[e.valence]||e.valence}</p>
+              <p style="font-size:11px;line-height:1.7;color:#94a3b8;margin:0 0 6px;">${layerDesc[e.layer]||''}</p>
+              ${e.house ? `<p style="font-size:10px;color:#475569;margin:0;">${e.house}하우스 영역</p>` : ''}
             </div>
           </div>
-          <div style="flex-shrink:0;height:1px;background:linear-gradient(90deg,${col}55,transparent);"></div>
-          <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;">
-            <p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.08em;margin:0 0 7px;">${V_KR[e.valence]||e.valence}</p>
-            <p style="font-size:12px;line-height:1.75;color:#94a3b8;margin:0 0 8px;">${layerDesc[e.layer]||''}</p>
-            ${e.house ? `<p style="font-size:11px;color:#475569;margin:0;">${e.house}하우스 영역</p>` : ''}
+          <div style="width:38%;flex-shrink:0;position:relative;overflow:hidden;
+            border-left:1px solid rgba(255,255,255,.04);">
+            <img src="${img.url}" alt="${img.cap}"
+              style="width:100%;height:100%;object-fit:cover;display:block;opacity:.82;"
+              onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(160deg,rgba(20,15,50,.9),rgba(5,3,15,1))'">
+            <div style="position:absolute;bottom:0;left:0;right:0;
+              background:linear-gradient(transparent,rgba(0,0,0,.85));
+              padding:28px 7px 10px;text-align:center;">
+              <span style="font-size:8px;color:${col};letter-spacing:.1em;font-family:Georgia,serif;">${img.cap}</span>
+            </div>
           </div>
         </div>`;
     }
