@@ -315,25 +315,20 @@ function submitProfileSheet() {
    메인 화면 상단 — 프로필 상태(두 모습) 렌더링
    ========================================================= */
 function renderHomeProfileStatus() {
-  const heroEl   = document.querySelector(".home-hero");
-  const emptyEl  = _$("homeProfileEmpty");
-  const cardEl   = _$("homeProfileCard");
-  const labelEl  = _$("homeCardsLabel");
-  const profile  = getProfile();
+  // 히어로 문구·4카드는 프로필 유무와 무관하게 항상 동일하다.
+  // 히어로 바로 아래 "프로필 만들기" 카드 ↔ 프로필 카드만 상태에 따라 바뀐다.
+  const emptyEl = _$("homeProfileEmpty");
+  const cardEl  = _$("homeProfileCard");
+  const profile = getProfile();
 
   if (!profile) {
-    if (heroEl)  heroEl.style.display  = "";
-    if (emptyEl) emptyEl.style.display = "block";
+    if (emptyEl) emptyEl.style.display = "flex";
     if (cardEl)  cardEl.style.display  = "none";
-    if (labelEl) labelEl.style.display = "none";
     return;
   }
 
-  // 프로필이 있으면 히어로 문구 자리를 프로필 카드가 대체한다
-  if (heroEl)  heroEl.style.display  = "none";
   if (emptyEl) emptyEl.style.display = "none";
   if (cardEl)  cardEl.style.display  = "block";
-  if (labelEl) labelEl.style.display = "block";
 
   const dateLine = _$("homeProfileDateLine");
   if (dateLine && profile.birthDate) {

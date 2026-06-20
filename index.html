@@ -40,12 +40,25 @@
       <p class="home-hero-desc">우주의 지혜가<br>삶의 길을 안내합니다.</p>
     </div>
 
-    <!-- 프로필 상태 (상태1: 안내 한 줄 / 상태2: 프로필 카드) -->
+    <!-- 프로필 상태 (상태1: 프로필 만들기 카드 / 상태2: 프로필 카드) -->
     <div id="homeProfileSlot" style="padding:0 16px;margin-bottom:18px;">
-      <div id="homeProfileEmpty" style="
-        text-align:center;font-size:12.5px;color:#9b8f74;
-        padding:14px 16px;border:1px dashed rgba(200,168,96,.28);border-radius:12px;">
-        생년월일을 입력하면 모든 운세가 열려요.
+      <div id="homeProfileEmpty" onclick="openProfileSheet(null, false)" style="
+        display:flex;align-items:center;gap:12px;cursor:pointer;
+        border-radius:16px;padding:14px 16px;
+        background:linear-gradient(158deg, rgba(40,32,76,.55) 0%, rgba(14,11,28,.7) 100%);
+        border:1px solid rgba(200,168,96,.26);">
+        <span style="width:34px;height:34px;border-radius:50%;flex:0 0 34px;display:flex;align-items:center;justify-content:center;
+          border:1px solid rgba(200,168,96,.4);
+          background:radial-gradient(circle at 38% 32%, rgba(244,230,189,.2), rgba(20,16,40,.5) 72%);">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#e6cd8a" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="7" r="4"/><path d="M5 21v-2a4 4 0 0 1 4 -4h6a4 4 0 0 1 4 4v2"/>
+          </svg>
+        </span>
+        <div style="flex:1;">
+          <div style="font-size:14px;color:#efe8d6;font-weight:600;margin-bottom:2px;">프로필 만들기</div>
+          <div style="font-size:11.5px;color:#9b8f74;">생년월일을 입력하면 모든 운세가 열려요.</div>
+        </div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8a860" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
       <div id="homeProfileCard" style="display:none;
@@ -78,11 +91,6 @@
         <div id="homeProfileDateLine" style="font-size:15px;color:#efe8d6;font-family:Georgia,serif;font-weight:600;margin-bottom:12px;"></div>
         <div id="homeProfileChips" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
       </div>
-    </div>
-
-    <!-- 운세 보기 (프로필 있을 때만 표시) -->
-    <div id="homeCardsLabel" style="display:none;padding:0 16px;margin-bottom:10px;">
-      <span style="font-size:11px;letter-spacing:.18em;color:#9b8f74;font-family:Georgia,serif;">운세 보기</span>
     </div>
 
     <!-- 기능 카드 목록 -->
