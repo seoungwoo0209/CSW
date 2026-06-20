@@ -3172,12 +3172,6 @@ async function requestGeminiFortune() {
 
     resultEl.innerHTML = `
       <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">${formatted}</div>
-      <div style="margin-top:12px;text-align:right;">
-        <button onclick="requestGeminiFortune()" style="
-          background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);
-          color:#a5b4fc;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
-        ">🔄 다시 보기</button>
-      </div>
     `;
     resultEl.style.display = "block";
 
