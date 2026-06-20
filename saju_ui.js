@@ -212,79 +212,59 @@ function renderPersonalityCard(cardData) {
   // 점수 높은 순 정렬
   const sorted = [...scores].sort((a, b) => b.score - a.score);
 
-  // 강도 색상
-  function scoreColor(s) {
-    if (s >= 95) return '#78ffa8';
-    if (s >= 88) return '#9ed0ff';
-    if (s >= 78) return '#ffd36a';
-    if (s >= 65) return '#ffb27a';
-    return '#ff9999';
-  }
-
-  // 신강약 배지 색
-  const strengthColor = strengthLabel === '신강'
-    ? 'rgba(120,255,168,.18);border-color:rgba(120,255,168,.5);color:#78ffa8'
-    : strengthLabel === '신약'
-    ? 'rgba(255,180,100,.18);border-color:rgba(255,180,100,.5);color:#ffb47a'
-    : 'rgba(158,208,255,.18);border-color:rgba(158,208,255,.5);color:#9ed0ff';
+  const goldText = 'background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);' +
+    '-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;';
+  const pillStyle = 'font-size:12px;letter-spacing:.1em;color:#ead9a6;border:1px solid rgba(200,168,96,.45);' +
+    'background:rgba(200,168,96,.07);padding:6px 15px;border-radius:999px;font-family:Georgia,serif;';
 
   c.innerHTML = `
+    <style>@keyframes _pcTw{0%,100%{opacity:.2}50%{opacity:.75}}</style>
+
     <!-- 유형 헤더 -->
     <div style="
-      background:linear-gradient(135deg,rgba(18,22,42,.95),rgba(40,20,80,.85));
-      border:1px solid rgba(160,100,255,.3);border-radius:18px;
-      padding:24px 20px 20px;margin-bottom:12px;text-align:center;
+      position:relative;overflow:hidden;border-radius:20px;
+      background:radial-gradient(120% 90% at 50% -10%, #241c4c 0%, #15103a 55%, #0b0a1e 100%);
+      border:1px solid rgba(200,168,96,.26);
+      box-shadow:0 22px 60px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
+      padding:26px 22px 24px;text-align:center;margin-bottom:14px;
     ">
-      <div style="font-size:11px;color:#a5b4fc;letter-spacing:3px;margin-bottom:12px;">당신이 타고난 잠재력</div>
+      <span style="position:absolute;top:20px;right:30px;width:2px;height:2px;border-radius:50%;
+        background:#f0e3b8;box-shadow:0 0 6px 1px rgba(240,227,184,.5);animation:_pcTw 3.6s ease-in-out infinite;"></span>
 
-      <div style="font-size:22px;font-weight:900;color:#e2e8f0;letter-spacing:.5px;
-        text-shadow:0 0 20px rgba(180,120,255,.4);margin-bottom:6px;">
+      <div style="font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:12px;">당신이 타고난 잠재력</div>
+
+      <div style="margin:0 0 10px;font-size:24px;line-height:1.4;font-weight:700;letter-spacing:.01em;font-family:Georgia,serif;${goldText}">
         ${typeName}
       </div>
-      <div style="font-size:13px;color:rgba(200,180,255,.7);margin-bottom:16px;">
+      <div style="margin:0 0 20px;font-size:13px;color:#bcb1d4;font-weight:300;letter-spacing:.02em;font-family:Georgia,serif;">
         ${typeDesc}
       </div>
 
       <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;">
-        <span style="
-          background:rgba(160,100,255,.18);border:1px solid rgba(160,100,255,.4);
-          color:#c4b5fd;font-size:11px;font-weight:700;
-          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
-        ">${ilju}</span>
-        <span style="
-          background:${strengthColor};
-          font-size:11px;font-weight:700;
-          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
-          border:1px solid transparent;
-        ">${strengthLabel}</span>
-        <span style="
-          background:rgba(255,211,106,.12);border:1px solid rgba(255,211,106,.35);
-          color:#ffd36a;font-size:11px;font-weight:700;
-          padding:4px 12px;border-radius:20px;letter-spacing:.5px;
-        ">${geokKr}</span>
+        <span style="${pillStyle}">${ilju}</span>
+        <span style="${pillStyle}">${strengthLabel}</span>
+        <span style="${pillStyle}">${geokKr}</span>
       </div>
     </div>
 
     <!-- 점수 카드 그리드 -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;">
       ${sorted.map(item => `
         <div style="
-          background:rgba(18,22,42,.78);
-          border:1px solid rgba(255,255,255,.08);
-          border-radius:14px;padding:16px 14px;
+          display:flex;flex-direction:column;padding:16px;border-radius:14px;
+          background:linear-gradient(158deg, rgba(44,36,82,.45) 0%, rgba(17,13,36,.6) 100%);
+          border:1px solid rgba(200,168,96,.2);
+          box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
         ">
-          <div style="font-size:12px;color:#94a3b8;margin-bottom:6px;">${item.label}</div>
-          <div style="display:flex;align-items:baseline;gap:6px;">
-            <div style="font-size:32px;font-weight:900;color:${scoreColor(item.score)};line-height:1;">
-              ${item.score}
-            </div>
-            ${item.rank ? `
-              <div style="
-                background:rgba(255,255,255,.08);border-radius:6px;
-                font-size:10px;font-weight:700;color:#94a3b8;
-                padding:2px 6px;white-space:nowrap;
-              ">${item.rank}</div>
-            ` : ''}
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:11px;">
+            <span style="font-size:13px;color:#bdb29a;letter-spacing:.02em;">${item.label}</span>
+            ${item.rank ? `<span style="font-size:10px;letter-spacing:.04em;color:#d6bf85;
+              border:1px solid rgba(200,168,96,.4);background:rgba(200,168,96,.08);
+              padding:3px 8px;border-radius:999px;white-space:nowrap;">${item.rank}</span>` : ''}
+          </div>
+          <div style="height:1px;background:linear-gradient(90deg,rgba(200,168,96,.28),transparent);margin-bottom:11px;"></div>
+          <div style="font-size:34px;font-weight:600;line-height:1;font-family:Georgia,serif;${item.rank ? goldText : 'color:#b0a487;'}">
+            ${item.score}
           </div>
         </div>
       `).join('')}
