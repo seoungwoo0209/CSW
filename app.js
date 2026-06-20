@@ -315,29 +315,35 @@ function submitProfileSheet() {
    메인 화면 상단 — 프로필 상태(두 모습) 렌더링
    ========================================================= */
 function renderHomeProfileStatus() {
-  const emptyEl = _$("homeProfileEmpty");
-  const cardEl  = _$("homeProfileCard");
-  const profile = getProfile();
+  const heroEl   = document.querySelector(".home-hero");
+  const emptyEl  = _$("homeProfileEmpty");
+  const cardEl   = _$("homeProfileCard");
+  const labelEl  = _$("homeCardsLabel");
+  const profile  = getProfile();
 
   if (!profile) {
+    if (heroEl)  heroEl.style.display  = "";
     if (emptyEl) emptyEl.style.display = "block";
     if (cardEl)  cardEl.style.display  = "none";
+    if (labelEl) labelEl.style.display = "none";
     return;
   }
 
+  // 프로필이 있으면 히어로 문구 자리를 프로필 카드가 대체한다
+  if (heroEl)  heroEl.style.display  = "none";
   if (emptyEl) emptyEl.style.display = "none";
   if (cardEl)  cardEl.style.display  = "block";
+  if (labelEl) labelEl.style.display = "block";
 
   const dateLine = _$("homeProfileDateLine");
   if (dateLine && profile.birthDate) {
     const calLabel  = profile.calendarType === "lunar" ? "음력" : "양력";
     const [y, m, d] = profile.birthDate.split("-");
     const timeLabel = profile.timeUnknown ? "시간 모름" : (profile.birthTime || "");
-    dateLine.textContent = `${calLabel} ${y}. ${Number(m)}. ${Number(d)}` + (timeLabel ? ` · ${timeLabel}` : "");
+    dateLine.textContent = `${calLabel} ${y}. ${Number(m)}. ${Number(d)}`
+      + (timeLabel ? ` · ${timeLabel}` : "")
+      + (profile.birthPlace ? ` · ${profile.birthPlace}` : "");
   }
-
-  const placeLine = _$("homeProfilePlaceLine");
-  if (placeLine) placeLine.textContent = `📍 출생지 ${profile.birthPlace}`;
 
   const chipsEl = _$("homeProfileChips");
   const pc = window.SajuResult?.personalityCard;
@@ -350,11 +356,6 @@ function renderHomeProfileStatus() {
       chipsEl.innerHTML = "";
     }
   }
-
-  // 오늘 한 줄 미리보기 — 엔진/해석 로직 연결 지점 (window.TodayOneLinePreview).
-  // 연동 전까지는 자리표시자만 표시하며, 하드코딩된 운세 문장은 넣지 않는다.
-  const previewEl = _$("homeProfilePreview");
-  if (previewEl) previewEl.textContent = window.TodayOneLinePreview || "⏳ 오늘의 운세 계산 중...";
 }
 
 /* =========================================================
