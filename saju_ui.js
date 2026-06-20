@@ -310,8 +310,12 @@ function renderFullAnalysis() {
     if (window.SajuEngine.computePersonalityCard) {
       const cardData = window.SajuEngine.computePersonalityCard(baseState, resourceResult);
       renderPersonalityCard(cardData);
+      if (window.SajuResult) window.SajuResult.personalityCard = cardData;
     }
   }
+
+  // 메인 화면 상단 프로필 카드(일주·격 칩)도 갱신
+  if (typeof renderHomeProfileStatus === "function") renderHomeProfileStatus();
 }
 
 /* =========================================================

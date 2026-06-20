@@ -23,6 +23,41 @@ function setAlert(msg) {
 }
 
 /* =========================================================
+   프로필 / 화면별 현재 위치 — localStorage 영구 저장
+   - profile: 생년월일·calendarType·출생시각·timeUnknown·출생지 (1회 입력, 영구)
+   - 화면별 위치: 오늘의 운세 / 점성술 각자 따로 보관, 기본값은 출생지
+   ========================================================= */
+const PROFILE_STORAGE_KEY   = "sajuCafe.profile";
+const LOCATION_STORAGE_KEYS = { today: "sajuCafe.todayFortune.location", astro: "sajuCafe.astrology.location" };
+
+function getProfile() {
+  try {
+    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) { return null; }
+}
+function saveProfileData(profile) {
+  try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile)); } catch (e) {}
+}
+function hasProfile() {
+  const p = getProfile();
+  return !!(p && p.birthDate && p.birthPlace);
+}
+function getScreenLocation(screenKey) {
+  try {
+    const raw = localStorage.getItem(LOCATION_STORAGE_KEYS[screenKey]);
+    if (raw) {
+      const v = JSON.parse(raw);
+      if (v && v.city) return v.city;
+    }
+  } catch (e) {}
+  return getProfile()?.birthPlace || null;
+}
+function setScreenLocation(screenKey, city) {
+  try { localStorage.setItem(LOCATION_STORAGE_KEYS[screenKey], JSON.stringify({ city })); } catch (e) {}
+}
+
+/* =========================================================
    스크린 내비게이션 (모바일 앱 구조)
    ========================================================= */
 function enterScreen(id) {
@@ -41,6 +76,23 @@ function enterScreen(id) {
     } else if (birthDate && !window.AstroResult) {
       if (panel) panel.innerHTML = '<div style="color:#94a3b8;font-size:13px;padding:20px;text-align:center;">🔄 점성술 데이터 계산 중...</div>';
     }
+  }
+
+  // 오늘의 운세 진입 시: 화면별로 보관된 현재 위치(기본값 출생지)를 입력칸에 채움
+  if (id === 'today') {
+    const input = _$('todayCityInput');
+    if (input) input.value = _todayCity || getCitySelectValue();
+  }
+}
+
+/* =========================================================
+   홈 카드 탭 분기 — 프로필 있으면 화면 이동, 없으면 입력 시트
+   ========================================================= */
+function onCardTap(feature) {
+  if (hasProfile()) {
+    enterScreen(feature);
+  } else {
+    openProfileSheet(feature, false);
   }
 }
 
@@ -82,6 +134,227 @@ function setCalendarType(type) {
   window.AstroResult = null;
   window.TodayResult = null;
   runAll();
+}
+
+/* =========================================================
+   프로필 입력 시트 (bottom sheet)
+   ========================================================= */
+const PROFILE_SHEET_COPY = {
+  saju:   { title: "정통 사주를 보려면",   ctaSuffix: "정통 사주 보기" },
+  today:  { title: "오늘의 운세를 보려면", ctaSuffix: "오늘의 운세 보기" },
+  annual: { title: "연간 리포트를 보려면", ctaSuffix: "연간 리포트 보기" },
+  astro:  { title: "나의 차트를 보려면",   ctaSuffix: "나의 차트 보기" },
+};
+
+let _profileSheetEnteredFrom = null;
+let _profileSheetEditMode    = false;
+
+function setProfileSheetCalType(type) {
+  const hidden = _$("psCalendarType");
+  if (hidden) hidden.value = type;
+
+  const activeStyle   = "background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;";
+  const inactiveStyle = "background:transparent;color:#9b8f74;font-weight:600;";
+  const baseStyle     = "padding:13px 14px;font-size:13px;border:none;cursor:pointer;font-family:inherit;";
+
+  const solarBtn = _$("psCalSolarBtn");
+  const lunarBtn = _$("psCalLunarBtn");
+  if (solarBtn) solarBtn.style.cssText = baseStyle + (type === "solar" ? activeStyle : inactiveStyle);
+  if (lunarBtn) lunarBtn.style.cssText = baseStyle + (type === "lunar" ? activeStyle : inactiveStyle);
+
+  const leapRow = _$("psLeapMonthRow");
+  if (leapRow) leapRow.style.display = type === "lunar" ? "flex" : "none";
+  if (type === "solar") {
+    const cb = _$("psIsLeapMonth");
+    if (cb) cb.checked = false;
+  }
+}
+
+function toggleProfileSheetTimeUnknown() {
+  const cb        = _$("psTimeUnknown");
+  const timeInput = _$("psBirthTime");
+  if (!cb || !timeInput) return;
+  timeInput.disabled = cb.checked;
+  if (cb.checked) timeInput.value = "";
+}
+
+function filterPsCityList(val) {
+  const dropdown = _$('psCityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectPsCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showPsCityList() {
+  const input = _$('psCityInput');
+  if (input) filterPsCityList(input.value);
+}
+function hidePsCityList() {
+  const d = _$('psCityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectPsCity(cityName) {
+  const input  = _$('psCityInput');
+  const hidden = _$('psCity');
+  if (input)  input.value  = cityName;
+  if (hidden) hidden.value = cityName;
+  hidePsCityList();
+}
+
+function openProfileSheet(feature, editMode) {
+  _profileSheetEnteredFrom = feature || null;
+  _profileSheetEditMode    = !!editMode;
+
+  const copy    = PROFILE_SHEET_COPY[feature] || PROFILE_SHEET_COPY.saju;
+  const titleEl = _$("profileSheetTitle");
+  const ctaEl   = _$("profileSheetSubmitLabel");
+  if (titleEl) titleEl.textContent = editMode ? "내 사주 정보 수정" : copy.title;
+  if (ctaEl)   ctaEl.textContent   = editMode ? "저장하기" : ("저장하고 " + copy.ctaSuffix);
+
+  const p = getProfile();
+  if (p) {
+    setProfileSheetCalType(p.calendarType || "solar");
+    if (_$("psBirthDate"))   _$("psBirthDate").value   = p.birthDate || "";
+    if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = !!p.isLeapMonth;
+    if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = !!p.timeUnknown;
+    if (_$("psBirthTime")) {
+      _$("psBirthTime").value    = p.timeUnknown ? "" : (p.birthTime || "");
+      _$("psBirthTime").disabled = !!p.timeUnknown;
+    }
+    if (_$("psCityInput")) _$("psCityInput").value = p.birthPlace || "";
+    if (_$("psCity"))      _$("psCity").value      = p.birthPlace || "";
+  } else {
+    setProfileSheetCalType("solar");
+    if (_$("psBirthDate"))   _$("psBirthDate").value   = "";
+    if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = false;
+    if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = false;
+    if (_$("psBirthTime")) { _$("psBirthTime").value = ""; _$("psBirthTime").disabled = false; }
+    if (_$("psCityInput")) _$("psCityInput").value = "";
+    if (_$("psCity"))      _$("psCity").value      = "";
+  }
+
+  const alertEl = _$("psAlert");
+  if (alertEl) { alertEl.style.display = "none"; alertEl.textContent = ""; }
+
+  const overlay = _$("profileSheetOverlay");
+  if (overlay) overlay.style.display = "block";
+}
+
+function closeProfileSheet() {
+  const overlay = _$("profileSheetOverlay");
+  if (overlay) overlay.style.display = "none";
+}
+
+function submitProfileSheet() {
+  const alertEl = _$("psAlert");
+  function showErr(msg) {
+    if (alertEl) { alertEl.textContent = msg; alertEl.style.display = "block"; }
+  }
+  if (alertEl) alertEl.style.display = "none";
+
+  const calendarType = _$("psCalendarType")?.value || "solar";
+  const rawDate       = _$("psBirthDate")?.value || "";
+  const isLeapMonth   = !!_$("psIsLeapMonth")?.checked;
+  const timeUnknown   = !!_$("psTimeUnknown")?.checked;
+  const birthTime     = timeUnknown ? null : (_$("psBirthTime")?.value || "");
+  const birthPlace    = (_$("psCity")?.value || _$("psCityInput")?.value || "").trim();
+
+  if (!rawDate)              { showErr("생년월일을 입력해주세요."); return; }
+  if (!birthPlace)           { showErr("출생지를 입력해주세요."); return; }
+  if (!timeUnknown && !birthTime) { showErr("출생 시각을 입력하거나 '시간 모름'을 선택해주세요."); return; }
+
+  // 음력 입력은 항상 양력으로 변환해 저장 (계산 엔진은 항상 양력 기준 날짜를 받음)
+  let solarBirthDate = rawDate;
+  if (calendarType === "lunar") {
+    const [ly, lm, ld] = rawDate.split("-").map(Number);
+    try {
+      const solar = window.LunarCalendar.lunarToSolar(ly, lm, ld, isLeapMonth);
+      solarBirthDate = `${solar.year}-${String(solar.month).padStart(2, "0")}-${String(solar.day).padStart(2, "0")}`;
+    } catch (e) {
+      showErr("음력 날짜 변환 오류: " + (e.message || e));
+      return;
+    }
+  }
+
+  const profile = {
+    birthDate: rawDate,
+    solarBirthDate,
+    calendarType,
+    isLeapMonth,
+    birthTime,
+    timeUnknown,
+    birthPlace,
+  };
+  saveProfileData(profile);
+
+  // 기존 사주 화면 폼에도 값을 동기화해 runAll() 등 기존 계산 로직을 그대로 재사용
+  if (_$("birthDate"))      _$("birthDate").value      = solarBirthDate;
+  if (_$("birthTime"))      _$("birthTime").value      = timeUnknown ? "12:00" : birthTime;
+  if (_$("birthCityInput")) _$("birthCityInput").value = birthPlace;
+  if (_$("birthCity"))      _$("birthCity").value      = birthPlace;
+
+  window.AstroResult = null;
+  window.TodayResult = null;
+  setCalendarType("solar"); // 폼 토글 동기화 + 내부적으로 runAll() 실행
+
+  renderHomeProfileStatus();
+  closeProfileSheet();
+
+  if (!_profileSheetEditMode && _profileSheetEnteredFrom) {
+    enterScreen(_profileSheetEnteredFrom);
+  }
+  _profileSheetEnteredFrom = null;
+  _profileSheetEditMode    = false;
+}
+
+/* =========================================================
+   메인 화면 상단 — 프로필 상태(두 모습) 렌더링
+   ========================================================= */
+function renderHomeProfileStatus() {
+  const emptyEl = _$("homeProfileEmpty");
+  const cardEl  = _$("homeProfileCard");
+  const profile = getProfile();
+
+  if (!profile) {
+    if (emptyEl) emptyEl.style.display = "block";
+    if (cardEl)  cardEl.style.display  = "none";
+    return;
+  }
+
+  if (emptyEl) emptyEl.style.display = "none";
+  if (cardEl)  cardEl.style.display  = "block";
+
+  const dateLine = _$("homeProfileDateLine");
+  if (dateLine && profile.birthDate) {
+    const calLabel  = profile.calendarType === "lunar" ? "음력" : "양력";
+    const [y, m, d] = profile.birthDate.split("-");
+    const timeLabel = profile.timeUnknown ? "시간 모름" : (profile.birthTime || "");
+    dateLine.textContent = `${calLabel} ${y}. ${Number(m)}. ${Number(d)}` + (timeLabel ? ` · ${timeLabel}` : "");
+  }
+
+  const placeLine = _$("homeProfilePlaceLine");
+  if (placeLine) placeLine.textContent = `📍 출생지 ${profile.birthPlace}`;
+
+  const chipsEl = _$("homeProfileChips");
+  const pc = window.SajuResult?.personalityCard;
+  if (chipsEl) {
+    if (pc) {
+      const pillStyle = "font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid rgba(200,168,96,.35);color:#dfba6b;background:rgba(200,168,96,.08);";
+      chipsEl.innerHTML = [pc.ilju, pc.strengthLabel, pc.geokKr].filter(Boolean)
+        .map(t => `<span style="${pillStyle}">${t}</span>`).join("");
+    } else {
+      chipsEl.innerHTML = "";
+    }
+  }
+
+  // 오늘 한 줄 미리보기 — 엔진/해석 로직 연결 지점 (window.TodayOneLinePreview).
+  // 연동 전까지는 자리표시자만 표시하며, 하드코딩된 운세 문장은 넣지 않는다.
+  const previewEl = _$("homeProfilePreview");
+  if (previewEl) previewEl.textContent = window.TodayOneLinePreview || "⏳ 오늘의 운세 계산 중...";
 }
 
 /* =========================================================
@@ -1494,7 +1767,7 @@ function renderSaturnReturnPanel(astroData) {
 /* =========================================================
    솔라리턴 적용 도시 선택 (기본값: 출생 도시)
    ========================================================= */
-let _solarReturnCity = null;
+let _solarReturnCity = getScreenLocation('astro');
 
 function filterSolarCityList(val) {
   const dropdown = _$('solarReturnCityDropdown');
@@ -1517,6 +1790,7 @@ function hideSolarCityList() {
 }
 function selectSolarCity(cityName) {
   _solarReturnCity = cityName;
+  setScreenLocation('astro', cityName);
   hideSolarCityList();
   if (window.AstroResult) renderSolarReturnPanel(window.AstroResult);
 }
@@ -1943,7 +2217,7 @@ function selectTransitCity(cityName) {
 /* =========================================================
    오늘의 운세 현재 위치 도시 선택
    ========================================================= */
-let _todayCity = null;
+let _todayCity = getScreenLocation('today');
 
 function filterTodayCityList(val) {
   const dropdown = _$('todayCityDropdown');
@@ -1966,6 +2240,7 @@ function hideTodayCityList() {
 }
 function selectTodayCity(cityName) {
   _todayCity = cityName;
+  setScreenLocation('today', cityName);
   const input = _$('todayCityInput');
   if (input) input.value = cityName;
   hideTodayCityList();
@@ -3475,7 +3750,18 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    runAll();
+    // 저장된 프로필이 있으면 사주 폼에 채워서 그대로 계산, 없으면 빈 상태로 둠
+    const _existingProfile = getProfile();
+    if (_existingProfile) {
+      if (_$("birthDate"))      _$("birthDate").value      = _existingProfile.solarBirthDate || _existingProfile.birthDate;
+      if (_$("birthTime"))      _$("birthTime").value      = _existingProfile.timeUnknown ? "12:00" : (_existingProfile.birthTime || "");
+      if (_$("birthCityInput")) _$("birthCityInput").value = _existingProfile.birthPlace || "서울";
+      if (_$("birthCity"))      _$("birthCity").value      = _existingProfile.birthPlace || "서울";
+      setCalendarType("solar"); // 내부적으로 runAll() 실행
+    } else {
+      runAll();
+    }
+    renderHomeProfileStatus();
   } catch (e) {
     console.error("앱 초기화 오류:", e);
     try { setAlert("오류 발생: " + (e?.message || e)); } catch (_) {}
