@@ -81,49 +81,51 @@ function renderResourcePanel(resourceResult) {
   const { axes, strongest, weakest, summary } = resourceResult;
 
   const roleColor = {
-    "용신": { bg:"rgba(120,255,168,.18)", border:"rgba(120,255,168,.55)", text:"#78ffa8" },
-    "희신": { bg:"rgba(158,208,255,.18)", border:"rgba(158,208,255,.55)", text:"#9ed0ff" },
-    "기신": { bg:"rgba(255,122,122,.18)", border:"rgba(255,122,122,.55)", text:"#ff7a7a" },
-    "한신": { bg:"rgba(255,211,106,.18)", border:"rgba(255,211,106,.55)", text:"#ffd36a" },
-    "중립": { bg:"rgba(255,255,255,.08)", border:"rgba(255,255,255,.20)", text:"#cbd3f0" },
+    "용신": { bg:"rgba(232,192,105,.16)", border:"rgba(232,192,105,.55)", text:"#dfba6b" },
+    "희신": { bg:"rgba(220,200,160,.14)", border:"rgba(220,200,160,.45)", text:"#e0c684" },
+    "기신": { bg:"rgba(190,90,90,.16)",   border:"rgba(190,90,90,.5)",    text:"#c98a7a" },
+    "한신": { bg:"rgba(180,140,90,.16)",  border:"rgba(180,140,90,.45)",  text:"#c8a860" },
+    "중립": { bg:"rgba(200,168,96,.06)",  border:"rgba(200,168,96,.2)",   text:"#9b8f74" },
   };
 
   const AXIS_SCORE_MIN = 25;
   const AXIS_SCORE_MAX = 210;
 
   function barColor(score) {
-    if (score >= 160) return "linear-gradient(90deg,#78ffa8,#9ed0ff)";
-    if (score >= 130) return "linear-gradient(90deg,#9ed0ff,#c084fc)";
-    if (score >= 100) return "linear-gradient(90deg,#ffd36a,#9ed0ff)";
-    if (score >=  70) return "linear-gradient(90deg,#ffb27a,#ffd36a)";
-    return "linear-gradient(90deg,#ff7a7a,#ffb27a)";
+    if (score >= 160) return "linear-gradient(90deg,#dfba6b,#f0dca0)";
+    if (score >= 130) return "linear-gradient(90deg,#c8a860,#e0c684)";
+    if (score >= 100) return "linear-gradient(90deg,#b8942a,#dfba6b)";
+    if (score >=  70) return "linear-gradient(90deg,#a86a5a,#c8a860)";
+    return "linear-gradient(90deg,#7a3a3a,#a86a5a)";
   }
 
   function statusColor(status) {
-    if (status === "매우 강함") return "#78ffa8";
-    if (status === "강한 편")   return "#9ed0ff";
-    if (status === "보통")      return "#ffd36a";
-    if (status === "약한 편")   return "#ffb27a";
-    return "#ff7a7a";
+    if (status === "매우 강함") return "#dfba6b";
+    if (status === "강한 편")   return "#c8a860";
+    if (status === "보통")      return "#9b8f74";
+    if (status === "약한 편")   return "#c98a7a";
+    return "#b3635f";
   }
 
   const icons = { 비겁:"⚡", 식상:"✨", 재성:"💎", 관성:"🏛", 인성:"📚" };
 
   const topCard = `
     <div style="
-      background:linear-gradient(135deg,rgba(18,22,42,.92),rgba(30,27,75,.88));
-      border:1px solid rgba(158,208,255,.25);border-radius:16px;
+      position:relative;overflow:hidden;
+      background:radial-gradient(120% 90% at 50% -10%, #241c4c 0%, #15103a 55%, #0b0a1e 100%);
+      border:1px solid rgba(200,168,96,.26);border-radius:16px;
+      box-shadow:0 18px 48px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
       padding:20px;margin-bottom:14px;
     ">
-      <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:10px;">사주 자원 분석</div>
-      <div style="font-size:14px;color:#e2e8f0;margin-bottom:14px;line-height:1.6;">${summary}</div>
+      <div style="font-size:12px;letter-spacing:.2em;color:#dfba6b;margin-bottom:10px;font-family:Georgia,serif;">사주 자원 분석</div>
+      <div style="font-size:14px;color:#cabfa0;margin-bottom:14px;line-height:1.7;">${summary}</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="background:rgba(120,255,168,.12);border:1px solid rgba(120,255,168,.35);
-             border-radius:10px;padding:6px 14px;font-size:12px;color:#78ffa8;">
+        <div style="background:rgba(232,192,105,.1);border:1px solid rgba(232,192,105,.35);
+             border-radius:10px;padding:6px 14px;font-size:12px;color:#dfba6b;">
           💪 강점 · ${strongest.key} ${strongest.score}점
         </div>
-        <div style="background:rgba(255,122,122,.10);border:1px solid rgba(255,122,122,.35);
-             border-radius:10px;padding:6px 14px;font-size:12px;color:#ff9999;">
+        <div style="background:rgba(190,90,90,.1);border:1px solid rgba(190,90,90,.35);
+             border-radius:10px;padding:6px 14px;font-size:12px;color:#c98a7a;">
           🔧 보완 · ${weakest.key} ${weakest.score}점
         </div>
       </div>
@@ -136,15 +138,16 @@ function renderResourcePanel(resourceResult) {
     const barW = Math.round(Math.max(0, Math.min(1, normalized)) * 100);
     return `
       <div style="
-        background:rgba(18,22,42,.78);border:1px solid rgba(255,255,255,.10);
+        background:radial-gradient(115% 80% at 50% -12%, #171232 0%, #0c0a20 55%, #07060f 100%);
+        border:1px solid rgba(200,168,96,.2);
         border-radius:14px;padding:16px;margin-bottom:10px;
       ">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <div style="display:flex;align-items:center;gap:10px;">
             <span style="font-size:20px;">${icons[axis.key]||"📊"}</span>
             <div>
-              <div style="font-size:15px;font-weight:800;color:#f5f7ff;">${axis.key}</div>
-              <div style="font-size:11px;color:#94a3b8;margin-top:2px;">${axis.desc}</div>
+              <div style="font-size:15px;font-weight:600;color:#efe8d6;font-family:Georgia,serif;">${axis.key}</div>
+              <div style="font-size:11px;color:#9b8f74;margin-top:2px;">${axis.desc}</div>
             </div>
           </div>
           <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
@@ -154,14 +157,14 @@ function renderResourcePanel(resourceResult) {
               padding:3px 10px;border-radius:20px;
             ">${axis.role}</span>
             <div style="text-align:right;">
-              <div style="font-size:26px;font-weight:900;color:${statusColor(axis.status)};line-height:1;">
+              <div style="font-size:26px;font-weight:600;color:${statusColor(axis.status)};line-height:1;font-family:Georgia,serif;">
                 ${axis.score}
               </div>
-              <div style="font-size:11px;color:#94a3b8;">${axis.status}</div>
+              <div style="font-size:11px;color:#9b8f74;">${axis.status}</div>
             </div>
           </div>
         </div>
-        <div style="background:rgba(255,255,255,.08);border-radius:6px;height:7px;overflow:hidden;">
+        <div style="background:rgba(255,255,255,.06);border-radius:6px;height:7px;overflow:hidden;border:1px solid rgba(200,168,96,.12);">
           <div style="
             background:${barColor(axis.score)};
             height:100%;width:${barW}%;border-radius:6px;
@@ -169,8 +172,8 @@ function renderResourcePanel(resourceResult) {
           "></div>
         </div>
         <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:10px;color:#475569;">25</span>
-          <span style="font-size:10px;color:#475569;">210</span>
+          <span style="font-size:10px;color:#5c5440;">25</span>
+          <span style="font-size:10px;color:#5c5440;">210</span>
         </div>
       </div>
     `;
@@ -179,16 +182,16 @@ function renderResourcePanel(resourceResult) {
   const sortedAxes = [...axes].sort((a, b) => b.score - a.score);
   const bottomCard = `
     <div style="
-      background:rgba(18,22,42,.60);border:1px solid rgba(255,255,255,.08);
+      background:rgba(200,168,96,.04);border:1px solid rgba(200,168,96,.16);
       border-radius:14px;padding:14px 16px;margin-top:4px;
     ">
-      <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-bottom:10px;letter-spacing:1px;">분포 요약</div>
+      <div style="font-size:12px;font-weight:600;color:#9b8f74;margin-bottom:10px;letter-spacing:.16em;font-family:Georgia,serif;">분포 요약</div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;">
         ${sortedAxes.map((a, i) => `
           <div style="
-            background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.10);
+            background:rgba(255,255,255,.04);border:1px solid rgba(200,168,96,.16);
             border-radius:8px;padding:5px 10px;font-size:12px;
-            color:${i === 0 ? '#78ffa8' : i === sortedAxes.length-1 ? '#ff9999' : '#cbd3f0'};
+            color:${i === 0 ? '#dfba6b' : i === sortedAxes.length-1 ? '#c98a7a' : '#cabfa0'};
           ">
             ${a.key} <strong>${a.score}</strong>
           </div>
