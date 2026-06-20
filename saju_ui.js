@@ -51,6 +51,10 @@ function renderBars(container, counts) {
 function renderHiddenList(container, fourPillars) {
   const D = window.SajuData;
   container.innerHTML = "";
+
+  // 오행 색 — 천간 한자마다 해당 오행 색을 입혀 표시
+  const WX_COLOR = { wood:'#92c4a8', fire:'#dd9b88', earth:'#d8bd80', metal:'#e8e1cf', water:'#90a8cd' };
+
   [
     { label:"년지", branch: fourPillars.year.branch  },
     { label:"월지", branch: fourPillars.month.branch },
@@ -59,12 +63,34 @@ function renderHiddenList(container, fourPillars) {
   ].forEach(p => {
     const hs = D.HIDDEN_STEMS_BRANCH[p.branch];
     if (!hs) return;
+
+    const stemsHtml = hs.map(item => {
+      const color = WX_COLOR[D.WUXING_STEM[item.stem]] || '#efe8d6';
+      const isPrimary = item.role === '정기';
+      return `
+        <span style="display:flex;align-items:baseline;gap:5px;">
+          <span style="font-size:23px;font-weight:500;line-height:1;font-family:Georgia,serif;color:${color};">${item.stem}</span>
+          <span style="font-size:10px;letter-spacing:.02em;color:${isPrimary ? '#b8ab87' : '#8d8268'};">${item.role}</span>
+        </span>
+      `;
+    }).join('');
+
     const row = document.createElement("div");
-    row.className = "hiddenrow";
-    const roleClass = r => r === "여기" ? "role-yeogi" : r === "중기" ? "role-junggi" : "role-jeonggi";
+    row.style.cssText = `
+      display:flex;align-items:center;justify-content:space-between;gap:14px;
+      padding:16px 18px;border-radius:13px;
+      background:linear-gradient(158deg, rgba(44,36,82,.42) 0%, rgba(17,13,36,.6) 100%);
+      border:1px solid rgba(200,168,96,.2);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.04);
+    `;
     row.innerHTML = `
-      <div class="k">${p.label} (${p.branch})</div>
-      <div class="v">${hs.map(item => `${item.stem}<span class="${roleClass(item.role)}">${item.role}</span>`).join(" ")}</div>
+      <div style="display:flex;align-items:baseline;gap:7px;flex-shrink:0;">
+        <span style="font-size:14px;color:#cabfa0;letter-spacing:.04em;">${p.label}</span>
+        <span style="font-size:15px;color:#d6bf85;font-family:Georgia,serif;">(${p.branch})</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;justify-content:flex-end;">
+        ${stemsHtml}
+      </div>
     `;
     container.appendChild(row);
   });
