@@ -104,129 +104,112 @@ function renderResourcePanel(resourceResult) {
   const c = _$("resourcePanel");
   if (!c) return;
 
-  const { axes, strongest, weakest, summary } = resourceResult;
+  const { axes, strongest, weakest } = resourceResult;
 
-  const roleColor = {
-    "용신": { bg:"rgba(232,192,105,.16)", border:"rgba(232,192,105,.55)", text:"#dfba6b" },
-    "희신": { bg:"rgba(220,200,160,.14)", border:"rgba(220,200,160,.45)", text:"#e0c684" },
-    "기신": { bg:"rgba(190,90,90,.16)",   border:"rgba(190,90,90,.5)",    text:"#c98a7a" },
-    "한신": { bg:"rgba(180,140,90,.16)",  border:"rgba(180,140,90,.45)",  text:"#c8a860" },
-    "중립": { bg:"rgba(200,168,96,.06)",  border:"rgba(200,168,96,.2)",   text:"#9b8f74" },
-  };
+  const COLOR = { 비겁:'#d8bd80', 식상:'#dd9b88', 재성:'#92c4a8', 관성:'#a695cf', 인성:'#90a8cd' };
+  const ORDER = ['비겁','식상','재성','관성','인성'];
+  const byKey = {};
+  axes.forEach(a => { byKey[a.key] = a; });
+  const data = ORDER.map(k => byKey[k]).filter(Boolean);
 
-  const AXIS_SCORE_MIN = 25;
-  const AXIS_SCORE_MAX = 210;
+  const total = data.reduce((a, d) => a + d.score, 0);
+  const MAX   = 210; // computeResourceScores 축 점수 상한과 동일
 
-  function barColor(score) {
-    if (score >= 160) return "linear-gradient(90deg,#dfba6b,#f0dca0)";
-    if (score >= 130) return "linear-gradient(90deg,#c8a860,#e0c684)";
-    if (score >= 100) return "linear-gradient(90deg,#b8942a,#dfba6b)";
-    if (score >=  70) return "linear-gradient(90deg,#a86a5a,#c8a860)";
-    return "linear-gradient(90deg,#7a3a3a,#a86a5a)";
-  }
+  const cx = 120, cy = 120, R = 92;
+  const A = i => (-90 + 72 * i) * Math.PI / 180;
+  const P = (i, r) => [(cx + r * Math.cos(A(i))).toFixed(2), (cy + r * Math.sin(A(i))).toFixed(2)];
+  const poly = pts => pts.map(q => q.join(',')).join(' ');
 
-  function statusColor(status) {
-    if (status === "매우 강함") return "#dfba6b";
-    if (status === "강한 편")   return "#c8a860";
-    if (status === "보통")      return "#9b8f74";
-    if (status === "약한 편")   return "#c98a7a";
-    return "#b3635f";
-  }
+  let svg = '';
+  [0.25, 0.5, 0.75, 1].forEach(k => {
+    svg += `<polygon points="${poly(data.map((d, i) => P(i, R * k)))}" fill="none" stroke="rgba(200,168,96,.16)" stroke-width="1"/>`;
+  });
+  data.forEach((d, i) => {
+    const p = P(i, R);
+    svg += `<line x1="${cx}" y1="${cy}" x2="${p[0]}" y2="${p[1]}" stroke="rgba(200,168,96,.16)" stroke-width="1"/>`;
+  });
+  const dp = data.map((d, i) => P(i, R * Math.min(d.score / MAX, 1)));
+  svg += `<polygon points="${poly(dp)}" fill="rgba(216,189,128,.16)" stroke="#dcc185" stroke-width="2" stroke-linejoin="round"/>`;
+  dp.forEach((p, i) => {
+    svg += `<circle cx="${p[0]}" cy="${p[1]}" r="3.6" fill="${COLOR[data[i].key]}" stroke="#0c0a20" stroke-width="1"/>`;
+  });
+  data.forEach((d, i) => {
+    const l = P(i, R + 22);
+    const cos = Math.cos(A(i));
+    const anc = Math.abs(cos) < 0.2 ? 'middle' : (cos > 0 ? 'start' : 'end');
+    svg += `<text x="${l[0]}" y="${l[1]}" text-anchor="${anc}" font-family="Georgia,serif" font-size="13" fill="#e6ddc8">${d.key}</text>`;
+    svg += `<text x="${l[0]}" y="${(parseFloat(l[1]) + 14).toFixed(2)}" text-anchor="${anc}" font-family="Georgia,serif" font-size="12" fill="#caa74e">${d.score}</text>`;
+  });
+  const radarSvg = `<svg viewBox="-26 -16 292 280" width="100%" role="img" aria-label="오각 균형도"><title>사주 자원 오각 균형도</title>${svg}</svg>`;
 
-  const icons = { 비겁:"⚡", 식상:"✨", 재성:"💎", 관성:"🏛", 인성:"📚" };
+  const srOnly = '사주 자원 오각 균형도. ' +
+    [...data].sort((a, b) => b.score - a.score)
+      .map(d => `${d.key} ${d.score}(${(d.score / total * 100).toFixed(1)}%)`).join(', ') + '.';
 
-  const topCard = `
-    <div style="
-      position:relative;overflow:hidden;
-      background:radial-gradient(120% 90% at 50% -10%, #241c4c 0%, #15103a 55%, #0b0a1e 100%);
-      border:1px solid rgba(200,168,96,.26);border-radius:16px;
-      box-shadow:0 18px 48px -28px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
-      padding:20px;margin-bottom:14px;
-    ">
-      <div style="font-size:12px;letter-spacing:.2em;color:#dfba6b;margin-bottom:10px;font-family:Georgia,serif;">사주 자원 분석</div>
-      <div style="font-size:14px;color:#cabfa0;margin-bottom:14px;line-height:1.7;">${summary}</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <div style="background:rgba(232,192,105,.1);border:1px solid rgba(232,192,105,.35);
-             border-radius:10px;padding:6px 14px;font-size:12px;color:#dfba6b;">
-          💪 강점 · ${strongest.key} ${strongest.score}점
-        </div>
-        <div style="background:rgba(190,90,90,.1);border:1px solid rgba(190,90,90,.35);
-             border-radius:10px;padding:6px 14px;font-size:12px;color:#c98a7a;">
-          🔧 보완 · ${weakest.key} ${weakest.score}점
-        </div>
-      </div>
-    </div>
-  `;
-
-  const axesHtml = axes.map(axis => {
-    const rc  = roleColor[axis.role] || roleColor["중립"];
-    const normalized = (axis.score - AXIS_SCORE_MIN) / (AXIS_SCORE_MAX - AXIS_SCORE_MIN);
-    const barW = Math.round(Math.max(0, Math.min(1, normalized)) * 100);
+  const legendHtml = data.map(d => {
+    const pct = (d.score / total * 100).toFixed(1);
     return `
-      <div style="
-        background:radial-gradient(115% 80% at 50% -12%, #171232 0%, #0c0a20 55%, #07060f 100%);
-        border:1px solid rgba(200,168,96,.2);
-        border-radius:14px;padding:16px;margin-bottom:10px;
-      ">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:20px;">${icons[axis.key]||"📊"}</span>
-            <div>
-              <div style="font-size:15px;font-weight:600;color:#efe8d6;font-family:Georgia,serif;">${axis.key}</div>
-              <div style="font-size:11px;color:#9b8f74;margin-top:2px;">${axis.desc}</div>
-            </div>
-          </div>
-          <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-            <span style="
-              background:${rc.bg};border:1px solid ${rc.border};
-              color:${rc.text};font-size:11px;font-weight:700;
-              padding:3px 10px;border-radius:20px;
-            ">${axis.role}</span>
-            <div style="text-align:right;">
-              <div style="font-size:26px;font-weight:600;color:${statusColor(axis.status)};line-height:1;font-family:Georgia,serif;">
-                ${axis.score}
-              </div>
-              <div style="font-size:11px;color:#9b8f74;">${axis.status}</div>
-            </div>
-          </div>
+      <div style="display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px solid rgba(200,168,96,.12);">
+        <span style="width:11px;height:11px;border-radius:3px;flex:0 0 11px;background:${COLOR[d.key]};"></span>
+        <div style="flex:1;min-width:0;">
+          <span style="font-size:15px;color:#e6ddc8;font-family:Georgia,serif;">${d.key}</span>
+          <div style="font-size:11.5px;color:#8d8268;margin-top:2px;letter-spacing:.01em;">${d.desc}</div>
         </div>
-        <div style="background:rgba(255,255,255,.06);border-radius:6px;height:7px;overflow:hidden;border:1px solid rgba(200,168,96,.12);">
-          <div style="
-            background:${barColor(axis.score)};
-            height:100%;width:${barW}%;border-radius:6px;
-            transition:width .8s cubic-bezier(.4,0,.2,1);
-          "></div>
-        </div>
-        <div style="display:flex;justify-content:space-between;margin-top:4px;">
-          <span style="font-size:10px;color:#5c5440;">25</span>
-          <span style="font-size:10px;color:#5c5440;">210</span>
+        <div style="text-align:right;flex-shrink:0;">
+          <span style="font-size:18px;font-weight:600;line-height:1;font-family:Georgia,serif;
+            background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+            -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">${d.score}</span>
+          <div style="font-size:11px;color:#8d8268;margin-top:3px;">${pct}%</div>
         </div>
       </div>
     `;
-  }).join("");
+  }).join('');
 
-  const sortedAxes = [...axes].sort((a, b) => b.score - a.score);
-  const bottomCard = `
+  c.innerHTML = `
+    <style>@keyframes _rrTw{0%,100%{opacity:.2}50%{opacity:.75}}</style>
+
+    <!-- 헤더 -->
     <div style="
-      background:rgba(200,168,96,.04);border:1px solid rgba(200,168,96,.16);
-      border-radius:14px;padding:14px 16px;margin-top:4px;
+      position:relative;overflow:hidden;border-radius:20px;
+      background:radial-gradient(120% 80% at 50% -8%, #241c4c 0%, #15103a 55%, #0b0a1e 100%);
+      border:1px solid rgba(200,168,96,.24);
+      box-shadow:0 22px 60px -30px rgba(0,0,0,.9), inset 0 1px 0 rgba(255,255,255,.05);
+      padding:24px 22px 22px;text-align:center;margin-bottom:14px;
     ">
-      <div style="font-size:12px;font-weight:600;color:#9b8f74;margin-bottom:10px;letter-spacing:.16em;font-family:Georgia,serif;">분포 요약</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;">
-        ${sortedAxes.map((a, i) => `
-          <div style="
-            background:rgba(255,255,255,.04);border:1px solid rgba(200,168,96,.16);
-            border-radius:8px;padding:5px 10px;font-size:12px;
-            color:${i === 0 ? '#dfba6b' : i === sortedAxes.length-1 ? '#c98a7a' : '#cabfa0'};
-          ">
-            ${a.key} <strong>${a.score}</strong>
-          </div>
-        `).join("")}
+      <span style="position:absolute;top:18px;right:28px;width:2px;height:2px;border-radius:50%;
+        background:#f0e3b8;box-shadow:0 0 6px 1px rgba(240,227,184,.5);animation:_rrTw 3.6s ease-in-out infinite;"></span>
+      <div style="font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;">사주 자원 분석</div>
+      <div style="margin:0 0 16px;font-size:21px;line-height:1.45;font-weight:700;font-family:Georgia,serif;
+        background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+        -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">
+        ${strongest.key} 중심 · ${weakest.key} 보완 필요
+      </div>
+      <div style="display:flex;justify-content:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;font-family:Georgia,serif;
+          color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">강점 · ${strongest.key} ${strongest.score}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;font-family:Georgia,serif;
+          color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">보완 · ${weakest.key} ${weakest.score}</span>
       </div>
     </div>
-  `;
 
-  c.innerHTML = topCard + axesHtml + bottomCard;
+    <!-- 레이더 차트 + 범례 -->
+    <div style="
+      border-radius:20px;
+      background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);
+      box-shadow:0 24px 60px -30px rgba(0,0,0,.92);
+      padding:20px 18px 16px;
+    ">
+      <h3 style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);">${srOnly}</h3>
+      <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:6px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#c8a860" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 6.5l-3.5 10.5h-11l-3.5 -10.5z"/></svg>
+        <span style="font-size:11px;letter-spacing:.2em;color:#8d8268;">오각 균형도</span>
+      </div>
+      <div style="width:100%;max-width:300px;margin:0 auto;">${radarSvg}</div>
+      <div style="height:1px;background:linear-gradient(90deg,transparent,rgba(200,168,96,.3),transparent);margin:14px 0 4px;"></div>
+      <div>${legendHtml}</div>
+    </div>
+  `;
 }
 
 /* =========================================================
