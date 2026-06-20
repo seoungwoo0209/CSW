@@ -132,8 +132,24 @@
             <input id="name" type="text" placeholder="이름" />
           </label>
           <label>
-            <span>생년월일(양력)</span>
-            <input id="birthDate" type="date" required />
+            <span>생년월일</span>
+            <div style="display:flex;gap:8px;align-items:stretch;">
+              <div style="display:inline-flex;border:1px solid rgba(200,168,96,.3);border-radius:10px;overflow:hidden;flex-shrink:0;">
+                <button type="button" id="calTypeSolarBtn" onclick="setCalendarType('solar')"
+                  style="padding:13px 14px;font-size:13px;border:none;cursor:pointer;font-family:inherit;
+                  background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;">양력</button>
+                <button type="button" id="calTypeLunarBtn" onclick="setCalendarType('lunar')"
+                  style="padding:13px 14px;font-size:13px;border:none;cursor:pointer;font-family:inherit;
+                  background:transparent;color:#9b8f74;font-weight:600;">음력</button>
+              </div>
+              <input id="birthDate" type="date" required style="flex:1;min-width:0;" />
+            </div>
+            <div id="leapMonthRow" style="display:none;align-items:center;gap:6px;margin-top:8px;">
+              <input type="checkbox" id="isLeapMonth" style="width:auto;margin:0;" />
+              <span style="font-size:12px;color:#c98a7a;letter-spacing:0;margin:0;font-family:inherit;text-transform:none;">윤달(閏月)로 입력</span>
+            </div>
+            <div id="lunarConvertNote" style="font-size:11px;color:#8d8268;margin-top:6px;"></div>
+            <input type="hidden" id="calendarType" value="solar" />
           </label>
           <label>
             <span>출생시각(필수)</span>
@@ -408,6 +424,7 @@
 
   </div>
 
+  <script src="./lunar-calendar.js?v=1"></script>
   <script src="./saju_data.js?v=3"></script>
   <script src="./saju_core.js?v=3"></script>
   <script src="./saju_engine.js?v=3"></script>

@@ -55,19 +55,70 @@ function goHome() {
 function setTabs() {}
 
 /* =========================================================
+   양력/음력 토글
+   ========================================================= */
+function setCalendarType(type) {
+  const hidden = _$("calendarType");
+  if (hidden) hidden.value = type;
+
+  const activeStyle   = "background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;";
+  const inactiveStyle = "background:transparent;color:#9b8f74;font-weight:600;";
+  const baseStyle     = "padding:13px 14px;font-size:13px;border:none;cursor:pointer;font-family:inherit;";
+
+  const solarBtn = _$("calTypeSolarBtn");
+  const lunarBtn = _$("calTypeLunarBtn");
+  if (solarBtn) solarBtn.style.cssText = baseStyle + (type === "solar" ? activeStyle : inactiveStyle);
+  if (lunarBtn) lunarBtn.style.cssText = baseStyle + (type === "lunar" ? activeStyle : inactiveStyle);
+
+  const leapRow = _$("leapMonthRow");
+  if (leapRow) leapRow.style.display = type === "lunar" ? "flex" : "none";
+  if (type === "solar") {
+    const cb = _$("isLeapMonth");
+    if (cb) cb.checked = false;
+    const noteEl = _$("lunarConvertNote");
+    if (noteEl) noteEl.textContent = "";
+  }
+
+  window.AstroResult = null;
+  window.TodayResult = null;
+  runAll();
+}
+
+/* =========================================================
    메인 사주 계산 및 렌더링
    ========================================================= */
 function runAll() {
   setAlert("");
 
-  const name      = _$("name")?.value.trim() || "";
-  const birthDate = _$("birthDate")?.value || "";
-  const birthTime = _$("birthTime")?.value || "";
-  const gender    = _$("gender")?.value || "M";
+  const name         = _$("name")?.value.trim() || "";
+  const calendarType = _$("calendarType")?.value || "solar";
+  let   birthDate    = _$("birthDate")?.value || "";
+  const birthTime    = _$("birthTime")?.value || "";
+  const gender       = _$("gender")?.value || "M";
 
   if (!birthDate || !birthTime) {
     setAlert("생년월일과 출생시각을 모두 입력해주세요.");
     return;
+  }
+
+  // ── 음력 입력 시 양력으로 변환 (이후 로직은 전부 양력 기준)
+  let lunarInput = null;
+  const noteEl = _$("lunarConvertNote");
+  if (calendarType === "lunar") {
+    const [ly, lm, ld] = birthDate.split("-").map(Number);
+    const isLeap = !!_$("isLeapMonth")?.checked;
+    try {
+      const solar = window.LunarCalendar.lunarToSolar(ly, lm, ld, isLeap);
+      lunarInput = { year: ly, month: lm, day: ld, isLeapMonth: isLeap };
+      birthDate = `${solar.year}-${String(solar.month).padStart(2, "0")}-${String(solar.day).padStart(2, "0")}`;
+      if (noteEl) noteEl.textContent = `→ 양력 ${solar.year}년 ${solar.month}월 ${solar.day}일로 변환되었습니다.`;
+    } catch (e) {
+      if (noteEl) noteEl.textContent = "";
+      setAlert("음력 날짜 변환 오류: " + (e.message || e));
+      return;
+    }
+  } else if (noteEl) {
+    noteEl.textContent = "";
   }
 
   // 결과 영역 표시
@@ -103,7 +154,7 @@ function runAll() {
     const yinyangWithHidden = getYinYangCounts(fourPillars, true);
 
     window.SajuResult = {
-      name, birthDate, birthTime, gender,
+      name, birthDate, birthTime, gender, lunarInput,
       fourPillars, birthUtc, approx,
       surface,
       yinyang,
@@ -3411,16 +3462,16 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // birthCity 포함 — 모든 입력 필드 이벤트 바인딩
-    ["name", "birthDate", "birthTime", "gender", "birthCity"].forEach(id => {
+    ["name", "birthDate", "birthTime", "gender", "birthCity", "isLeapMonth"].forEach(id => {
       const el = _$(id);
       if (!el) return;
       el.addEventListener("input",  () => {
         runAll();
-        if (["birthDate","birthTime","birthCity","gender"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
       el.addEventListener("change", () => {
         runAll();
-        if (["birthDate","birthTime","birthCity","gender"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
       });
     });
 
