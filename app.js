@@ -23,38 +23,127 @@ function setAlert(msg) {
 }
 
 /* =========================================================
-   프로필 / 화면별 현재 위치 — localStorage 영구 저장
-   - profile: 생년월일·calendarType·출생시각·timeUnknown·출생지 (1회 입력, 영구)
-   - 화면별 위치: 오늘의 운세 / 점성술 각자 따로 보관, 기본값은 출생지
+   다중 프로필 / 사람별·화면별 현재 위치 — localStorage 영구 저장
+   - profiles: { id, name, gender, birthDate, calendarType, isLeapMonth,
+                 birthTime, timeUnknown, birthPlace } 배열
+   - activeProfileId: 지금 보고 있는 프로필 id
+   - 화면별 위치: sajuCafe.location.{profileId}.{today|astro} — 사람별+화면별 분리
    ========================================================= */
-const PROFILE_STORAGE_KEY   = "sajuCafe.profile";
-const LOCATION_STORAGE_KEYS = { today: "sajuCafe.todayFortune.location", astro: "sajuCafe.astrology.location" };
+const PROFILES_KEY    = "sajuCafe.profiles";
+const ACTIVE_ID_KEY   = "sajuCafe.activeProfileId";
+const LEGACY_PROFILE_KEY = "sajuCafe.profile"; // v1/v2 단일 프로필(마이그레이션 대상)
 
-function getProfile() {
-  try {
-    const raw = localStorage.getItem(PROFILE_STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch (e) { return null; }
+function _genProfileId() {
+  return "p_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }
-function saveProfileData(profile) {
-  try { localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profile)); } catch (e) {}
+function _loadProfilesRaw() {
+  try { return JSON.parse(localStorage.getItem(PROFILES_KEY)) || []; } catch (e) { return []; }
+}
+function _saveProfilesRaw(list) {
+  try { localStorage.setItem(PROFILES_KEY, JSON.stringify(list)); } catch (e) {}
+}
+function getActiveProfileId() {
+  return localStorage.getItem(ACTIVE_ID_KEY) || null;
+}
+function setActiveProfileId(id) {
+  try { localStorage.setItem(ACTIVE_ID_KEY, id || ""); } catch (e) {}
+}
+
+// 기존 단일 프로필(v1/v2)이 있으면 1회만 목록 구조로 옮긴다. 유실 방지.
+function _migrateLegacyProfile() {
+  if (localStorage.getItem(PROFILES_KEY) != null) return; // 이미 마이그레이션됨(빈 배열 "[]" 포함)
+  const legacyRaw = localStorage.getItem(LEGACY_PROFILE_KEY);
+  if (legacyRaw) {
+    try {
+      const legacy = JSON.parse(legacyRaw);
+      if (legacy && legacy.birthDate) {
+        const id = _genProfileId();
+        _saveProfilesRaw([{ ...legacy, id }]);
+        setActiveProfileId(id);
+      } else {
+        _saveProfilesRaw([]);
+      }
+    } catch (e) {
+      _saveProfilesRaw([]);
+    }
+  } else {
+    _saveProfilesRaw([]);
+  }
+  localStorage.removeItem(LEGACY_PROFILE_KEY);
+}
+
+function getProfiles() {
+  _migrateLegacyProfile();
+  return _loadProfilesRaw();
+}
+// 활성 프로필 객체(없으면 null) — 기존 호출부와의 호환을 위해 이름 유지
+function getProfile() {
+  const list = getProfiles();
+  const activeId = getActiveProfileId();
+  return list.find(p => p.id === activeId) || list[0] || null;
 }
 function hasProfile() {
-  const p = getProfile();
-  return !!(p && p.birthDate && p.birthPlace);
+  return !!getProfile();
 }
-function getScreenLocation(screenKey) {
+function addProfile(data) {
+  const list = getProfiles();
+  const profile = { ...data, id: _genProfileId() };
+  list.push(profile);
+  _saveProfilesRaw(list);
+  setActiveProfileId(profile.id);
+  return profile;
+}
+function updateProfile(id, data) {
+  const list = getProfiles();
+  const idx = list.findIndex(p => p.id === id);
+  if (idx === -1) return null;
+  list[idx] = { ...list[idx], ...data, id };
+  _saveProfilesRaw(list);
+  return list[idx];
+}
+function deleteProfile(id) {
+  const list = getProfiles().filter(p => p.id !== id);
+  _saveProfilesRaw(list);
   try {
-    const raw = localStorage.getItem(LOCATION_STORAGE_KEYS[screenKey]);
+    localStorage.removeItem(`sajuCafe.location.${id}.today`);
+    localStorage.removeItem(`sajuCafe.location.${id}.astro`);
+  } catch (e) {}
+  if (getActiveProfileId() === id) {
+    setActiveProfileId(list.length > 0 ? list[0].id : null);
+  }
+}
+
+function getScreenLocation(screenKey) {
+  const profile = getProfile();
+  if (!profile) return null;
+  try {
+    const raw = localStorage.getItem(`sajuCafe.location.${profile.id}.${screenKey}`);
     if (raw) {
       const v = JSON.parse(raw);
       if (v && v.city) return v.city;
     }
   } catch (e) {}
-  return getProfile()?.birthPlace || null;
+  return profile.birthPlace || null;
 }
 function setScreenLocation(screenKey, city) {
-  try { localStorage.setItem(LOCATION_STORAGE_KEYS[screenKey], JSON.stringify({ city })); } catch (e) {}
+  const profile = getProfile();
+  if (!profile) return;
+  try { localStorage.setItem(`sajuCafe.location.${profile.id}.${screenKey}`, JSON.stringify({ city })); } catch (e) {}
+}
+
+// 활성 프로필이 바뀔 때마다 폼/캐시/위치 변수를 그 사람 기준으로 다시 맞춘다.
+function syncFormFromProfile(p) {
+  if (!p) return;
+  if (_$("name"))           _$("name").value           = p.name || "";
+  if (_$("gender"))         _$("gender").value          = p.gender || "M";
+  if (_$("birthDate"))      _$("birthDate").value      = p.solarBirthDate || p.birthDate || "";
+  if (_$("birthTime"))      _$("birthTime").value      = p.timeUnknown ? "12:00" : (p.birthTime || "");
+  if (_$("birthCityInput")) _$("birthCityInput").value = p.birthPlace || "서울";
+  if (_$("birthCity"))      _$("birthCity").value      = p.birthPlace || "서울";
+}
+function refreshLocationVars() {
+  _todayCity       = getScreenLocation('today');
+  _solarReturnCity = getScreenLocation('astro');
 }
 
 /* =========================================================
@@ -86,13 +175,102 @@ function enterScreen(id) {
 }
 
 /* =========================================================
-   홈 카드 탭 분기 — 프로필 있으면 화면 이동, 없으면 입력 시트
+   홈 카드 탭 분기 — 활성 프로필 있으면 화면 이동, 없으면 입력 시트
    ========================================================= */
 function onCardTap(feature) {
   if (hasProfile()) {
     enterScreen(feature);
   } else {
-    openProfileSheet(feature, false);
+    openProfileSheetForNew(feature, "home");
+  }
+}
+
+/* =========================================================
+   프로필 목록 화면 — 전환 / 추가 / 수정 / 삭제
+   ========================================================= */
+function openProfileListScreen() {
+  renderProfileListScreen();
+  enterScreen("profileList");
+}
+
+function renderProfileListScreen() {
+  const container = _$("profileListContainer");
+  if (!container) return;
+
+  const list     = getProfiles();
+  const activeId = getActiveProfileId();
+
+  const itemsHtml = list.map(p => {
+    const isActive = p.id === activeId;
+    const calLabel = p.calendarType === "lunar" ? "음력" : "양력";
+    const parts    = (p.birthDate || "").split("-");
+    const dateStr  = parts.length === 3 ? `${calLabel} ${parts[0]}. ${Number(parts[1])}. ${Number(parts[2])}` : "";
+    return `
+      <div onclick="selectActiveProfile('${p.id}')" style="
+        display:flex;align-items:center;gap:10px;padding:14px 16px;margin-bottom:10px;border-radius:14px;cursor:pointer;
+        background:${isActive ? "radial-gradient(120% 90% at 50% -10%, #241c4c 0%, #15103a 55%, #0b0a1e 100%)" : "rgba(255,255,255,.03)"};
+        border:1px solid ${isActive ? "rgba(200,168,96,.4)" : "rgba(200,168,96,.16)"};">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;color:#efe8d6;font-weight:600;">
+            ${p.name || "이름 없음"}${isActive ? ' <span style="color:#dfba6b;font-size:11px;">(선택됨)</span>' : ""}
+          </div>
+          <div style="font-size:11.5px;color:#9b8f74;margin-top:2px;">${dateStr}${p.birthPlace ? " · " + p.birthPlace : ""}</div>
+        </div>
+        <button type="button" onclick="event.stopPropagation();openProfileSheetForEdit('${p.id}','list')" aria-label="수정" style="
+          background:none;border:1px solid rgba(200,168,96,.3);border-radius:8px;width:30px;height:30px;flex-shrink:0;
+          display:flex;align-items:center;justify-content:center;cursor:pointer;color:#c8a860;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1"/>
+            <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z"/>
+          </svg>
+        </button>
+        <button type="button" onclick="event.stopPropagation();deleteProfileFromList('${p.id}')" aria-label="삭제" style="
+          background:none;border:1px solid rgba(200,100,100,.3);border-radius:8px;width:30px;height:30px;flex-shrink:0;
+          display:flex;align-items:center;justify-content:center;cursor:pointer;color:#c98a7a;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 7l16 0"/><path d="M10 11l0 6"/><path d="M14 11l0 6"/><path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12"/><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3"/>
+          </svg>
+        </button>
+      </div>
+    `;
+  }).join("");
+
+  const addHtml = `
+    <div onclick="openProfileSheetForNew(null,'list')" style="
+      display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+      padding:14px 16px;border-radius:14px;border:1px dashed rgba(200,168,96,.3);color:#c8a860;font-size:14px;font-weight:600;">
+      + 새 프로필 추가
+    </div>
+  `;
+
+  container.innerHTML = itemsHtml + addHtml;
+}
+
+function selectActiveProfile(id) {
+  if (id === getActiveProfileId()) { goHome(); return; }
+  setActiveProfileId(id);
+  window.AstroResult = null;
+  window.TodayResult = null;
+  refreshLocationVars();
+  const p = getProfile();
+  if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
+  renderHomeProfileStatus();
+  goHome();
+}
+
+function deleteProfileFromList(id) {
+  if (!confirm("정말 삭제할까요?")) return;
+  deleteProfile(id);
+  window.AstroResult = null;
+  window.TodayResult = null;
+  refreshLocationVars();
+  const p = getProfile();
+  if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
+  renderHomeProfileStatus();
+  if (!hasProfile()) {
+    goHome();
+  } else {
+    renderProfileListScreen();
   }
 }
 
@@ -146,8 +324,9 @@ const PROFILE_SHEET_COPY = {
   astro:  { title: "나의 차트를 보려면",   ctaSuffix: "나의 차트 보기" },
 };
 
-let _profileSheetEnteredFrom = null;
-let _profileSheetEditMode    = false;
+// mode: 'new' | 'edit'. editingId: 수정 대상 프로필 id. enteredFrom: 새 프로필 저장 후 이동할 feature.
+// returnTo: 'home' | 'list' — 저장/삭제 후 어디로 돌아갈지.
+let _profileSheetContext = { mode: "new", editingId: null, enteredFrom: null, returnTo: "home" };
 
 function setProfileSheetCalType(type) {
   const hidden = _$("psCalendarType");
@@ -205,47 +384,71 @@ function selectPsCity(cityName) {
   hidePsCityList();
 }
 
-function openProfileSheet(feature, editMode) {
-  _profileSheetEnteredFrom = feature || null;
-  _profileSheetEditMode    = !!editMode;
+function _resetProfileSheetFields() {
+  if (_$("psName"))   _$("psName").value   = "";
+  if (_$("psGender")) _$("psGender").value = "M";
+  setProfileSheetCalType("solar");
+  if (_$("psBirthDate"))   _$("psBirthDate").value   = "";
+  if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = false;
+  if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = false;
+  if (_$("psBirthTime")) { _$("psBirthTime").value = ""; _$("psBirthTime").disabled = false; }
+  if (_$("psCityInput")) _$("psCityInput").value = "";
+  if (_$("psCity"))      _$("psCity").value      = "";
+}
 
-  const copy    = PROFILE_SHEET_COPY[feature] || PROFILE_SHEET_COPY.saju;
-  const titleEl = _$("profileSheetTitle");
-  const ctaEl   = _$("profileSheetSubmitLabel");
-  if (titleEl) titleEl.textContent = editMode ? "내 사주 정보 수정" : copy.title;
-  if (ctaEl)   ctaEl.textContent   = editMode ? "저장하기" : ("저장하고 " + copy.ctaSuffix);
-
-  const p = getProfile();
-  if (p) {
-    if (_$("psName"))   _$("psName").value   = p.name || "";
-    if (_$("psGender")) _$("psGender").value = p.gender || "M";
-    setProfileSheetCalType(p.calendarType || "solar");
-    if (_$("psBirthDate"))   _$("psBirthDate").value   = p.birthDate || "";
-    if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = !!p.isLeapMonth;
-    if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = !!p.timeUnknown;
-    if (_$("psBirthTime")) {
-      _$("psBirthTime").value    = p.timeUnknown ? "" : (p.birthTime || "");
-      _$("psBirthTime").disabled = !!p.timeUnknown;
-    }
-    if (_$("psCityInput")) _$("psCityInput").value = p.birthPlace || "";
-    if (_$("psCity"))      _$("psCity").value      = p.birthPlace || "";
-  } else {
-    if (_$("psName"))   _$("psName").value   = "";
-    if (_$("psGender")) _$("psGender").value = "M";
-    setProfileSheetCalType("solar");
-    if (_$("psBirthDate"))   _$("psBirthDate").value   = "";
-    if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = false;
-    if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = false;
-    if (_$("psBirthTime")) { _$("psBirthTime").value = ""; _$("psBirthTime").disabled = false; }
-    if (_$("psCityInput")) _$("psCityInput").value = "";
-    if (_$("psCity"))      _$("psCity").value      = "";
+function _fillProfileSheetFields(p) {
+  if (_$("psName"))   _$("psName").value   = p.name || "";
+  if (_$("psGender")) _$("psGender").value = p.gender || "M";
+  setProfileSheetCalType(p.calendarType || "solar");
+  if (_$("psBirthDate"))   _$("psBirthDate").value   = p.birthDate || "";
+  if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = !!p.isLeapMonth;
+  if (_$("psTimeUnknown")) _$("psTimeUnknown").checked = !!p.timeUnknown;
+  if (_$("psBirthTime")) {
+    _$("psBirthTime").value    = p.timeUnknown ? "" : (p.birthTime || "");
+    _$("psBirthTime").disabled = !!p.timeUnknown;
   }
+  if (_$("psCityInput")) _$("psCityInput").value = p.birthPlace || "";
+  if (_$("psCity"))      _$("psCity").value      = p.birthPlace || "";
+}
 
+function _showProfileSheet() {
   const alertEl = _$("psAlert");
   if (alertEl) { alertEl.style.display = "none"; alertEl.textContent = ""; }
-
   const overlay = _$("profileSheetOverlay");
   if (overlay) overlay.style.display = "block";
+}
+
+// feature: 카드 탭으로 진입했을 때만 전달(시트 문구/이동 대상 결정). returnTo: 저장 후 'home' | 'list'.
+function openProfileSheetForNew(feature, returnTo) {
+  _profileSheetContext = { mode: "new", editingId: null, enteredFrom: feature || null, returnTo: returnTo || "home" };
+
+  const copy    = feature ? (PROFILE_SHEET_COPY[feature] || PROFILE_SHEET_COPY.saju) : null;
+  const titleEl = _$("profileSheetTitle");
+  const ctaEl   = _$("profileSheetSubmitLabel");
+  if (titleEl) titleEl.textContent = copy ? copy.title : "새 프로필 추가";
+  if (ctaEl)   ctaEl.textContent   = copy ? ("저장하고 " + copy.ctaSuffix) : "저장하기";
+
+  _resetProfileSheetFields();
+  const delBtn = _$("psDeleteBtn");
+  if (delBtn) delBtn.style.display = "none";
+  _showProfileSheet();
+}
+
+// id: 수정할 프로필 id. returnTo: 저장/삭제 후 'home' | 'list'.
+function openProfileSheetForEdit(id, returnTo) {
+  const p = getProfiles().find(x => x.id === id);
+  if (!p) return;
+  _profileSheetContext = { mode: "edit", editingId: id, enteredFrom: null, returnTo: returnTo || "home" };
+
+  const titleEl = _$("profileSheetTitle");
+  const ctaEl   = _$("profileSheetSubmitLabel");
+  if (titleEl) titleEl.textContent = "내 사주 정보 수정";
+  if (ctaEl)   ctaEl.textContent   = "저장하기";
+
+  _fillProfileSheetFields(p);
+  const delBtn = _$("psDeleteBtn");
+  if (delBtn) delBtn.style.display = "block";
+  _showProfileSheet();
 }
 
 function closeProfileSheet() {
@@ -260,18 +463,18 @@ function submitProfileSheet() {
   }
   if (alertEl) alertEl.style.display = "none";
 
-  const name          = (_$("psName")?.value || "").trim();
-  const gender        = _$("psGender")?.value || "M";
+  const name         = (_$("psName")?.value || "").trim();
+  const gender       = _$("psGender")?.value || "M";
   const calendarType = _$("psCalendarType")?.value || "solar";
-  const rawDate       = _$("psBirthDate")?.value || "";
-  const isLeapMonth   = !!_$("psIsLeapMonth")?.checked;
-  const timeUnknown   = !!_$("psTimeUnknown")?.checked;
-  const birthTime     = timeUnknown ? null : (_$("psBirthTime")?.value || "");
-  const birthPlace    = (_$("psCity")?.value || _$("psCityInput")?.value || "").trim();
+  const rawDate      = _$("psBirthDate")?.value || "";
+  const isLeapMonth  = !!_$("psIsLeapMonth")?.checked;
+  const timeUnknown  = !!_$("psTimeUnknown")?.checked;
+  const birthTime    = timeUnknown ? null : (_$("psBirthTime")?.value || "");
+  const birthPlace   = (_$("psCity")?.value || _$("psCityInput")?.value || "").trim();
 
-  if (!name)                 { showErr("이름을 입력해주세요."); return; }
-  if (!rawDate)              { showErr("생년월일을 입력해주세요."); return; }
-  if (!birthPlace)           { showErr("출생지를 입력해주세요."); return; }
+  if (!name)                      { showErr("이름을 입력해주세요."); return; }
+  if (!rawDate)                   { showErr("생년월일을 입력해주세요."); return; }
+  if (!birthPlace)                { showErr("출생지를 입력해주세요."); return; }
   if (!timeUnknown && !birthTime) { showErr("출생 시각을 입력하거나 '시간 모름'을 선택해주세요."); return; }
 
   // 음력 입력은 항상 양력으로 변환해 저장 (계산 엔진은 항상 양력 기준 날짜를 받음)
@@ -287,39 +490,60 @@ function submitProfileSheet() {
     }
   }
 
-  const profile = {
-    name,
-    gender,
-    birthDate: rawDate,
-    solarBirthDate,
-    calendarType,
-    isLeapMonth,
-    birthTime,
-    timeUnknown,
-    birthPlace,
-  };
-  saveProfileData(profile);
+  const data = { name, gender, birthDate: rawDate, solarBirthDate, calendarType, isLeapMonth, birthTime, timeUnknown, birthPlace };
 
-  // 기존 사주 화면 폼(숨김)에도 값을 동기화해 runAll() 등 기존 계산 로직을 그대로 재사용
-  if (_$("name"))           _$("name").value           = name;
-  if (_$("gender"))         _$("gender").value          = gender;
-  if (_$("birthDate"))      _$("birthDate").value      = solarBirthDate;
-  if (_$("birthTime"))      _$("birthTime").value      = timeUnknown ? "12:00" : birthTime;
-  if (_$("birthCityInput")) _$("birthCityInput").value = birthPlace;
-  if (_$("birthCity"))      _$("birthCity").value      = birthPlace;
+  if (_profileSheetContext.mode === "edit" && _profileSheetContext.editingId) {
+    updateProfile(_profileSheetContext.editingId, data);
+  } else {
+    addProfile(data);
+  }
 
+  closeProfileSheet();
+
+  const p = getProfile();
+  syncFormFromProfile(p);
   window.AstroResult = null;
   window.TodayResult = null;
+  refreshLocationVars();
   setCalendarType("solar"); // 폼 토글 동기화 + 내부적으로 runAll() 실행
 
   renderHomeProfileStatus();
+
+  if (_profileSheetContext.returnTo === "list") {
+    renderProfileListScreen();
+    enterScreen("profileList");
+  } else if (_profileSheetContext.mode === "new" && _profileSheetContext.enteredFrom) {
+    enterScreen(_profileSheetContext.enteredFrom);
+  }
+
+  _profileSheetContext = { mode: "new", editingId: null, enteredFrom: null, returnTo: "home" };
+}
+
+function deleteProfileFromSheet() {
+  if (!_profileSheetContext.editingId) return;
+  if (!confirm("정말 삭제할까요?")) return;
+
+  const returnTo = _profileSheetContext.returnTo;
+  deleteProfile(_profileSheetContext.editingId);
   closeProfileSheet();
 
-  if (!_profileSheetEditMode && _profileSheetEnteredFrom) {
-    enterScreen(_profileSheetEnteredFrom);
+  window.AstroResult = null;
+  window.TodayResult = null;
+  refreshLocationVars();
+  const p = getProfile();
+  if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
+  renderHomeProfileStatus();
+
+  if (!hasProfile()) {
+    goHome();
+  } else if (returnTo === "list") {
+    renderProfileListScreen();
+    enterScreen("profileList");
+  } else {
+    goHome();
   }
-  _profileSheetEnteredFrom = null;
-  _profileSheetEditMode    = false;
+
+  _profileSheetContext = { mode: "new", editingId: null, enteredFrom: null, returnTo: "home" };
 }
 
 /* =========================================================
@@ -3760,15 +3984,9 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     });
 
-    // 저장된 프로필이 있으면 사주 폼에 채워서 그대로 계산, 없으면 빈 상태로 둠
-    const _existingProfile = getProfile();
-    if (_existingProfile) {
-      if (_$("name"))           _$("name").value           = _existingProfile.name || "";
-      if (_$("gender"))         _$("gender").value          = _existingProfile.gender || "M";
-      if (_$("birthDate"))      _$("birthDate").value      = _existingProfile.solarBirthDate || _existingProfile.birthDate;
-      if (_$("birthTime"))      _$("birthTime").value      = _existingProfile.timeUnknown ? "12:00" : (_existingProfile.birthTime || "");
-      if (_$("birthCityInput")) _$("birthCityInput").value = _existingProfile.birthPlace || "서울";
-      if (_$("birthCity"))      _$("birthCity").value      = _existingProfile.birthPlace || "서울";
+    // 활성 프로필이 있으면 사주 폼에 채워서 그대로 계산, 없으면 빈 상태로 둠
+    if (hasProfile()) {
+      syncFormFromProfile(getProfile());
       setCalendarType("solar"); // 내부적으로 runAll() 실행
     } else {
       runAll();

@@ -42,7 +42,7 @@
 
     <!-- 프로필 상태 (상태1: 프로필 만들기 카드 / 상태2: 프로필 카드) -->
     <div id="homeProfileSlot" style="padding:0 16px;margin-bottom:18px;">
-      <div id="homeProfileEmpty" onclick="openProfileSheet(null, false)" style="
+      <div id="homeProfileEmpty" onclick="openProfileSheetForNew(null, 'home')" style="
         display:flex;align-items:center;gap:12px;cursor:pointer;
         border-radius:16px;padding:14px 16px;
         background:linear-gradient(158deg, rgba(40,32,76,.55) 0%, rgba(14,11,28,.7) 100%);
@@ -60,7 +60,7 @@
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c8a860" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
-      <div id="homeProfileCard" style="display:none;
+      <div id="homeProfileCard" onclick="openProfileListScreen()" style="display:none;cursor:pointer;
         border-radius:16px;
         background:radial-gradient(120% 90% at 50% -10%, #241c4c 0%, #15103a 55%, #0b0a1e 100%);
         border:1px solid rgba(200,168,96,.26);
@@ -77,7 +77,7 @@
             </span>
             <span id="homeProfileLabel" style="font-size:11px;letter-spacing:.18em;color:#9b8f74;font-family:Georgia,serif;">내 사주</span>
           </div>
-          <button type="button" onclick="openProfileSheet(null, true)" aria-label="프로필 수정" style="
+          <button type="button" onclick="event.stopPropagation();openProfileSheetForEdit(getActiveProfileId(), 'home')" aria-label="프로필 수정" style="
             background:none;border:1px solid rgba(200,168,96,.3);border-radius:8px;
             width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#c8a860;">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -435,6 +435,23 @@
   </div>
 
   <!-- ══════════════════════════════════════
+       프로필 목록 스크린 (전환·추가·수정·삭제)
+       ══════════════════════════════════════ -->
+  <div id="screen-profileList" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="screen-topbar-title">프로필 전환</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+      <div id="profileListContainer" style="padding:4px 0;"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
        점성술 스크린
        ══════════════════════════════════════ -->
   <div id="screen-astro" class="screen">
@@ -566,6 +583,10 @@
         <span class="cta-sheen"></span>
         <span id="profileSheetSubmitLabel" style="position:relative;">저장하고 보기</span>
       </button>
+
+      <button type="button" id="psDeleteBtn" onclick="deleteProfileFromSheet()" style="display:none;width:100%;margin-top:10px;
+        padding:12px;border-radius:8px;border:1px solid rgba(200,100,100,.35);background:transparent;
+        color:#c98a7a;font-size:13px;font-weight:600;cursor:pointer;">이 프로필 삭제</button>
     </div>
   </div>
 
