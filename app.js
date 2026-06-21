@@ -217,6 +217,8 @@ function openProfileSheet(feature, editMode) {
 
   const p = getProfile();
   if (p) {
+    if (_$("psName"))   _$("psName").value   = p.name || "";
+    if (_$("psGender")) _$("psGender").value = p.gender || "M";
     setProfileSheetCalType(p.calendarType || "solar");
     if (_$("psBirthDate"))   _$("psBirthDate").value   = p.birthDate || "";
     if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = !!p.isLeapMonth;
@@ -228,6 +230,8 @@ function openProfileSheet(feature, editMode) {
     if (_$("psCityInput")) _$("psCityInput").value = p.birthPlace || "";
     if (_$("psCity"))      _$("psCity").value      = p.birthPlace || "";
   } else {
+    if (_$("psName"))   _$("psName").value   = "";
+    if (_$("psGender")) _$("psGender").value = "M";
     setProfileSheetCalType("solar");
     if (_$("psBirthDate"))   _$("psBirthDate").value   = "";
     if (_$("psIsLeapMonth")) _$("psIsLeapMonth").checked = false;
@@ -256,6 +260,8 @@ function submitProfileSheet() {
   }
   if (alertEl) alertEl.style.display = "none";
 
+  const name          = (_$("psName")?.value || "").trim();
+  const gender        = _$("psGender")?.value || "M";
   const calendarType = _$("psCalendarType")?.value || "solar";
   const rawDate       = _$("psBirthDate")?.value || "";
   const isLeapMonth   = !!_$("psIsLeapMonth")?.checked;
@@ -263,6 +269,7 @@ function submitProfileSheet() {
   const birthTime     = timeUnknown ? null : (_$("psBirthTime")?.value || "");
   const birthPlace    = (_$("psCity")?.value || _$("psCityInput")?.value || "").trim();
 
+  if (!name)                 { showErr("이름을 입력해주세요."); return; }
   if (!rawDate)              { showErr("생년월일을 입력해주세요."); return; }
   if (!birthPlace)           { showErr("출생지를 입력해주세요."); return; }
   if (!timeUnknown && !birthTime) { showErr("출생 시각을 입력하거나 '시간 모름'을 선택해주세요."); return; }
@@ -281,6 +288,8 @@ function submitProfileSheet() {
   }
 
   const profile = {
+    name,
+    gender,
     birthDate: rawDate,
     solarBirthDate,
     calendarType,
@@ -291,7 +300,9 @@ function submitProfileSheet() {
   };
   saveProfileData(profile);
 
-  // 기존 사주 화면 폼에도 값을 동기화해 runAll() 등 기존 계산 로직을 그대로 재사용
+  // 기존 사주 화면 폼(숨김)에도 값을 동기화해 runAll() 등 기존 계산 로직을 그대로 재사용
+  if (_$("name"))           _$("name").value           = name;
+  if (_$("gender"))         _$("gender").value          = gender;
   if (_$("birthDate"))      _$("birthDate").value      = solarBirthDate;
   if (_$("birthTime"))      _$("birthTime").value      = timeUnknown ? "12:00" : birthTime;
   if (_$("birthCityInput")) _$("birthCityInput").value = birthPlace;
@@ -329,6 +340,9 @@ function renderHomeProfileStatus() {
 
   if (emptyEl) emptyEl.style.display = "none";
   if (cardEl)  cardEl.style.display  = "block";
+
+  const labelEl = _$("homeProfileLabel");
+  if (labelEl) labelEl.textContent = profile.name ? `${profile.name}님의 사주` : "내 사주";
 
   const dateLine = _$("homeProfileDateLine");
   if (dateLine && profile.birthDate) {
@@ -3749,6 +3763,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // 저장된 프로필이 있으면 사주 폼에 채워서 그대로 계산, 없으면 빈 상태로 둠
     const _existingProfile = getProfile();
     if (_existingProfile) {
+      if (_$("name"))           _$("name").value           = _existingProfile.name || "";
+      if (_$("gender"))         _$("gender").value          = _existingProfile.gender || "M";
       if (_$("birthDate"))      _$("birthDate").value      = _existingProfile.solarBirthDate || _existingProfile.birthDate;
       if (_$("birthTime"))      _$("birthTime").value      = _existingProfile.timeUnknown ? "12:00" : (_existingProfile.birthTime || "");
       if (_$("birthCityInput")) _$("birthCityInput").value = _existingProfile.birthPlace || "서울";
