@@ -42,9 +42,16 @@ export default async function handler(req, res) {
       );
     }
 
-    const commonEvents = events.filter(e => e.layer === 'common');
-    const majorImpacts = events.filter(e => e.layer === 'impact' && e.importance === 'major');
-    const minorImpacts = events.filter(e => e.layer === 'impact' && e.importance === 'minor');
+    const isSolarReturn = e => e.technique === 'Solar Return' || e.technique === 'Solar Return aspects to natal';
+
+    const srEvents      = events.filter(e => e.layer === 'common' && isSolarReturn(e));
+    const commonEvents  = events.filter(e => e.layer === 'common' && !isSolarReturn(e));
+    const majorImpacts  = events.filter(e => e.layer === 'impact' && e.importance === 'major');
+    const minorImpacts  = events.filter(e => e.layer === 'impact' && e.importance === 'minor');
+
+    const srText = srEvents.length > 0
+      ? srEvents.map(fmtEvent).join('\n\n')
+      : '(솔라리턴 데이터 없음)';
 
     const commonText = commonEvents.length > 0
       ? commonEvents.map(fmtEvent).join('\n\n')
@@ -58,6 +65,15 @@ export default async function handler(req, res) {
       ? minorImpacts.map((e, i) => fmtEvent(e, i)).join('\n\n')
       : '';
 
+    /* ── 출력 토큰 한도: 이벤트 수에 비례해 동적으로(끝이 잘리지 않게) ──
+       기본값(8192)은 현재 수준을 보장하고, 주요 이벤트·전체 이벤트가
+       평소보다 많은 케이스에서만 한도를 끌어올린다. */
+    const totalEventCount = commonEvents.length + majorImpacts.length + minorImpacts.length + srEvents.length;
+    const dynamicMaxTokens = Math.min(
+      16384,
+      8192 + Math.max(0, majorImpacts.length - 3) * 800 + Math.max(0, totalEventCount - 8) * 100
+    );
+
     /* ── 프롬프트 ─────────────────────────────────────────── */
     const prompt =
 `[연간 점성술 리포트 — A단계 엔진 계산 데이터]
@@ -70,6 +86,10 @@ export default async function handler(req, res) {
 연행 하우스: ${profection.house}하우스 (테마: ${profection.theme})
 연행 로드(Lord of Year): ${profection.lord}
 ※ 이 해의 핵심 주제 하우스와 지배 행성
+
+━━━ 올해 솔라리턴 ━━━
+${srText}
+※ 솔라리턴은 그 해 전체의 분위기/에너지가 집중되는 영역을 보여주는 1년 단위 회귀점. 아래 공통·임팩트 이벤트와 자연스럽게 엮어서 서술할 것.
 
 ━━━ 공통 이벤트 (연간 배경 에너지) ━━━
 ${commonText}
@@ -146,7 +166,7 @@ ${events.filter(e => e.importance === 'major').slice(0, 6).map((e, i) =>
               contents: [{ parts: [{ text: prompt }] }],
               generationConfig: {
                 temperature:      0.70,
-                maxOutputTokens:  8192,
+                maxOutputTokens:  dynamicMaxTokens,
                 thinkingConfig:   { thinkingBudget: 0 },
               },
             }),

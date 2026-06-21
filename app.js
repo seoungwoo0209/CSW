@@ -2856,8 +2856,7 @@ function closeAnnualReport() {
 }
 
 async function generateAnnualReport() {
-  if (!window.AstroResult)       { alert('차트 계산 완료 후 사용 가능합니다.'); return; }
-  if (!window.AstroEventsEngine) { alert('astro-events-engine.js가 로드되지 않았습니다.'); return; }
+  if (!window.AstroResult) { alert('차트 계산 완료 후 사용 가능합니다.'); return; }
 
   const yearEl   = document.getElementById('annualReportYear');
   const statusEl = document.getElementById('annualReportStatus');
@@ -2868,10 +2867,6 @@ async function generateAnnualReport() {
   const year      = parseInt(yearEl.value, 10);
   const astroData = window.AstroResult;
   const meta      = astroData.meta || {};
-  const input     = {
-    birthDate: meta.birthDate, birthTime: meta.birthTime,
-    lat: meta.lat, lng: meta.lng, utcOffset: meta.utcOffset,
-  };
 
   if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
   statusEl.style.display = 'none';
@@ -2879,8 +2874,20 @@ async function generateAnnualReport() {
 
   let engineData;
   try {
-    engineData = window.AstroEventsEngine.computeYearEvents(input, astroData, year);
-    if (!engineData) throw new Error('이벤트 계산 실패');
+    const engRes = await fetch('/api/annual-events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        meta:       astroData.meta,
+        natal:      astroData.natal,
+        angles:     astroData.angles,
+        nodes:      astroData.nodes,
+        houses:     astroData.houses,
+        targetYear: year,
+      }),
+    });
+    engineData = await engRes.json();
+    if (!engRes.ok || engineData.error) throw new Error(engineData.error || '이벤트 계산 실패');
   } catch (e) {
     statusEl.style.display = 'block';
     statusEl.textContent = '⚠️ 엔진 오류: ' + e.message;
