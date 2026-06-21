@@ -3196,9 +3196,12 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
     }
   }
 
-  const majorEvents = events.filter(e => e.importance === 'major').slice(0, 6);
-  const aiExtras = ['핵심 사건과 시기', '영역별 흐름', '주목할 포인트'];
-  const extBadge = ['KEY EVENTS', 'DOMAIN FLOW', 'FOCUS POINTS'];
+  // 선별(중요도, 기존 기준)과 화면 표시 순서(날짜순)를 분리한다 — gemini-events.js의
+  // "이벤트 개별 해석" E번호도 동일한 선별+정렬을 쓰므로 카드와 해석이 어긋나지 않는다.
+  const majorEvents = events.filter(e => e.importance === 'major').slice(0, 6)
+    .sort((a, b) => (a.when || '').localeCompare(b.when || ''));
+  const aiExtras = ['영역별 흐름', '주목할 포인트'];
+  const extBadge = ['DOMAIN FLOW', 'FOCUS POINTS'];
 
   /* ── 슬라이드 배열 ── */
   const slides = [];
