@@ -660,10 +660,13 @@ export default async function handler(req, res) {
       ...collectProgMoonPhase(meta, targetYear, lonAt),
     ];
 
+    // 선별(중요도/tier)은 각 collect* 함수에서 이미 끝났다. 여기서는 "표시 순서"만 정한다 —
+    // 레이어로 1차 그룹화한 뒤, 같은 그룹 안에서는 오브가 아니라 날짜(when) 오름차순으로 배열해
+    // 주요 이벤트 장이 1월→연말 시간 순으로 나오게 한다(작업지시서: 선별=중요도, 나열=시간순).
     const all = [...common, ...impacts];
     all.sort((a, b) => {
       if (a.layer !== b.layer) return a.layer === 'impact' ? -1 : 1;
-      return (a.orb ?? 99) - (b.orb ?? 99);
+      return (a.when || '').localeCompare(b.when || '');
     });
 
     return res.status(200).json({
