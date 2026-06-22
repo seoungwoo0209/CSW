@@ -17,7 +17,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '엔진 데이터가 없습니다.' });
     }
 
-    const { year, profection, events = [] } = engineData;
+    const { year, profection, events = [], background } = engineData;
     const name      = meta?.name || '';
     const birthDate = meta?.birthDate || '';
     const gender    = meta?.gender === 'M' ? '남성' : '여성';
@@ -43,9 +43,11 @@ export default async function handler(req, res) {
     }
 
     const isSolarReturn = e => e.technique === 'Solar Return' || e.technique === 'Solar Return aspects to natal';
+    const isRetrograde  = e => e.technique?.includes('retrograde');
 
     const srEvents      = events.filter(e => e.layer === 'common' && isSolarReturn(e));
-    const commonEvents  = events.filter(e => e.layer === 'common' && !isSolarReturn(e));
+    const retroEvents   = events.filter(e => e.layer === 'common' && isRetrograde(e));
+    const commonEvents  = events.filter(e => e.layer === 'common' && !isSolarReturn(e) && !isRetrograde(e));
     const majorImpacts  = events.filter(e => e.layer === 'impact' && e.importance === 'major');
     const minorImpacts  = events.filter(e => e.layer === 'impact' && e.importance === 'minor');
 
@@ -64,6 +66,17 @@ export default async function handler(req, res) {
     const minorText = minorImpacts.length > 0
       ? minorImpacts.map((e, i) => fmtEvent(e, i)).join('\n\n')
       : '';
+
+    const retroText = retroEvents.length > 0
+      ? retroEvents.map(e => `${e.retroStart} ~ ${e.retroEnd}  ${e.bodies[0]} 역행`).join('\n')
+      : '(역행 구간 데이터 없음)';
+
+    const natalHighlights = background?.natalHighlights || [];
+    const progHighlights  = background?.progHighlights  || [];
+    const backgroundText  = (natalHighlights.length || progHighlights.length)
+      ? `[타고난 결 — 나탈 차트 자체의 패턴]\n${natalHighlights.join('\n') || '(없음)'}\n\n`
+        + `[지금 진행 중인 변화 — 프로그레션이 나탈과 맺는 관계]\n${progHighlights.join('\n') || '(없음)'}`
+      : '(배경 에스펙트 데이터 없음)';
 
     // 선별(중요도, 기존 기준)과 화면 표시 순서(날짜순)를 분리한다.
     // app.js가 만드는 카드 순서와 동일한 선별+정렬을 써야 "이벤트 개별 해석"의
@@ -106,6 +119,12 @@ ${commonText}
 ${majorText}
 
 ${minorText ? `━━━ 참고 임팩트 이벤트 ━━━\n${minorText}\n` : ''}
+━━━ 역행 구간 (그 해 새 일보다 점검·재검토가 잘 맞는 시기) ━━━
+${retroText}
+
+━━━ 배경 — 이 사람 자체에 대한 늘 참인 정보 (사건이 아니라 성격·기질) ━━━
+${backgroundText}
+※ 위 배경 데이터는 "이벤트 개별 해석"이 아니라 "당신이라는 사람" 섹션 전용 재료입니다.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [리포트 작성 필수 규칙]
@@ -121,10 +140,11 @@ ${minorText ? `━━━ 참고 임팩트 이벤트 ━━━\n${minorText}\n` :
 10. 사건이 적거나 약한 해는 절대 부풀리지 말고 "안정·다지기의 해"로 정직하게 서술하세요. 없는 사건을 만들어내지 마세요. 대신 주요 이벤트가 적을수록 영역별 흐름·주목할 포인트·마무리를 더 충실하고 깊이 있게 작성해 분량을 보완하세요.
 11. 시기(특정 월)는 "이벤트 개별 해석"에서만 다룹니다. 올해의 큰 흐름·영역별 흐름·주목할 포인트·마무리에서는 특정 월("8월", "12월" 등)을 절대 다시 언급하지 마세요. 큰 흐름에서 쓰는 "상/하반기" 같은 큰 시기 덩어리는 예외로 허용합니다.
 
-[출력 양식 — 아래 4개 섹션을 순서대로 완성. 각 섹션의 "이 장의 임무/다뤄도 됨/다루면 안 됨"을 반드시 지키세요]
+[출력 양식 — 아래 5개 섹션을 순서대로 완성. 각 섹션의 "이 장의 임무/다뤄도 됨/다루면 안 됨"을 반드시 지키세요]
 
 ## 올해의 큰 흐름
-이 장의 임무: 올해를 한 챕터로 규정합니다 — "무슨 해인가(사건·주제)"와 "그 해를 사는 태도·정서(무드)"를 함께 5~6문장으로 담으세요. **솔라리턴(그 해 ASC 분위기 + 태양이 놓인 나탈 하우스 영역)을 주인공으로** 삼으세요. 연행 하우스 ${profection.house}번(테마: ${profection.theme})과 연행 로드 ${profection.lord}의 역할도 자연스럽게 엮으세요.
+이 장의 첫 줄: 점성술을 전혀 모르는 사람도 바로 이해할 본문 첫 줄에, **쉬운 말로 된 한 줄 결론**을 단독 문장으로 쓰세요. 전문용어·행성·사인 이름 없이, 올해를 한 마디로 규정하는 강렬한 문장이어야 합니다(예: "30년에 한 번, 삶의 무게중심이 옮겨가는 해입니다." 같은 톤. 이 예시 문장 자체를 그대로 쓰지 말고 그 해의 실제 데이터에 맞게 새로 쓰세요).
+이 장의 임무: 그 한 줄 결론 다음 문장부터, 올해를 한 챕터로 규정합니다 — "무슨 해인가(사건·주제)"와 "그 해를 사는 태도·정서(무드)"를 함께 4~5문장으로 담으세요. **솔라리턴(그 해 ASC 분위기 + 태양이 놓인 나탈 하우스 영역)을 주인공으로** 삼으세요. 연행 하우스 ${profection.house}번(테마: ${profection.theme})과 연행 로드 ${profection.lord}의 역할도 자연스럽게 엮으세요. 점성술 용어(프로그레션·솔라리턴·하우스 등)를 써야 한다면 본문 마지막에 "※"로 시작하는 한 줄 각주로만 따로 두세요.
 다뤄도 됨: 올해의 전체 테마, 전반적 분위기·태도, 큰 시기 덩어리(상/하반기 수준).
 다루면 안 됨: 개별 사건의 디테일, 정확한 월/날짜(뒤의 "이벤트 개별 해석"이 전담합니다).
 약한 해 처리: 솔라리턴·트랜짓이 약하면 부풀리지 말고 "안정·다지기·내실의 해"로 정직하게 해석하세요. 다른 데이터를 억지로 끌어와 채우지 마세요.
@@ -137,6 +157,13 @@ ${minorText ? `━━━ 참고 임팩트 이벤트 ━━━\n${minorText}\n` :
 이 장의 임무: 위 세 영역 각각의 한 해 전체 색깔(총평)을 3~4문장씩 쓰세요. 모든 사용자에게 항상 나오는 필수 섹션입니다. 주요 이벤트가 적은 해일수록 이 섹션을 더 충실하고 길게 작성하세요.
 시기 처리: 정확한 월/날짜 언급을 절대 금지합니다(그건 "이벤트 개별 해석"의 역할입니다). 아주 큰 덩어리(상/하반기) 수준의 표현만 예외로 허용합니다. 예: "재물은 상반기에 기회가 모이고 하반기엔 정비." 같은 표현은 되지만 "8월", "12월"처럼 특정 월을 쓰면 안 됩니다.
 다루면 안 됨: 개별 사건 나열, 특정 월 언급.
+
+## 당신이라는 사람
+이 장의 임무: 위 "배경" 데이터(나탈 차트 자체의 패턴 + 프로그레션이 나탈과 맺는 관계)만 근거로, 이 사람의 타고난 기질과 지금 진행 중인 내면의 변화를 3~4문장으로 서술하세요. "타고난 결"(나탈 패턴 — 평소 성향, 늘 가지고 있던 양면성·기질)과 "지금 진행 중인 변화"(프로그레션 패턴 — 최근 몇 년간 서서히 바뀌고 있는 동기·태도)를 구분해서 다루세요.
+역행 구간 데이터가 있다면, 마지막에 1~2문장으로 "이 구간엔 새로 시작하기보다 점검·재검토가 잘 맞는다"는 식으로 자연스럽게 풀어 쓰세요(역행이라는 단어 자체를 쓰지 말고, 무슨 시기인지 행동 관점에서 설명).
+다뤄도 됨: 타고난 기질·성향, 최근 진행 중인 내적 변화, 점검이 잘 맞는 시기에 대한 안내.
+다루면 안 됨: "배경" 데이터에 없는 내용 창작, 올해의 사건·시기 재언급(그건 다른 섹션의 역할입니다), 행성·사인·각도 숫자·기호 표기.
+배경 데이터가 빈약하면("없음"이면) 이 섹션은 짧게 한두 문장으로 갈무리하고 억지로 채우지 마세요.
 
 ## 주목할 포인트
 이 장의 임무: 행동 전략 2~3개를 제시하세요. "그래서 무엇을 잡고 무엇을 조심하라" — 기회 활용법·리스크 관리. 주요 이벤트가 적은 해일수록 이 섹션을 더 충실하게 작성하세요.

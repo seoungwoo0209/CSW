@@ -2878,12 +2878,14 @@ async function generateAnnualReport() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        meta:       astroData.meta,
-        natal:      astroData.natal,
-        angles:     astroData.angles,
-        nodes:      astroData.nodes,
-        houses:     astroData.houses,
-        targetYear: year,
+        meta:             astroData.meta,
+        natal:            astroData.natal,
+        angles:           astroData.angles,
+        nodes:            astroData.nodes,
+        houses:           astroData.houses,
+        targetYear:       year,
+        natalAspectsFull: astroData.natalAspectsFull,
+        progAspectsFull:  astroData.progression?.aspectsFull,
       }),
     });
     engineData = await engRes.json();
@@ -2911,7 +2913,7 @@ async function generateAnnualReport() {
 
     hideAnnualLoader();
     const userName = _$('name')?.value?.trim() || '';
-    resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '', userName);
+    resultEl.innerHTML = _buildAnnualHTML(engineData, data.result || '', userName, meta);
     resultEl.querySelectorAll('script').forEach(s => {
       const ns = document.createElement('script');
       ns.textContent = s.textContent;
@@ -3073,9 +3075,9 @@ function _buildTimeline(events) {
     </div>`;
 }
 
-function _buildAnnualHTML(engineData, aiText, userName = '') {
-  const { year, profection, events = [] } = engineData;
-  const did = 'adeck' + year; // 고유 덱 ID — 함수명·요소 ID 모두 이 접두사 사용
+function _buildAnnualHTML(engineData, aiText, userName = '', meta = {}) {
+  const { year, profection, events = [], background } = engineData;
+  const did = 'adeck' + year; // 고유 컨테이너 ID 접두사
 
   /* ── AI 섹션 파싱 ── */
   const sections = {};
@@ -3085,9 +3087,8 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
   }
 
   /* ── 유틸 ── */
-  const V_COL  = { supportive:'#dfba6b', challenging:'#f87171', double_edged:'#a78bfa', neutral:'#94a3b8' };
-  const V_BADG = { supportive:'OPPORTUNITY', challenging:'CHALLENGE', double_edged:'DUAL FORCE', neutral:'TRANSIT' };
-  const V_KR   = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
+  const V_KR = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
+  const V_COL = { supportive:'#dfba6b', challenging:'#e07a6b', double_edged:'#c8a860', neutral:'#9b8f74' };
 
   /* ── NASA 공개 이미지 — 로컬 /img/ 폴더 (퍼블릭 도메인, NASA Image Library 원본) ──
      같은 카테고리가 반복돼도 중복 느낌이 없도록 카테고리별 여러 변형을 두고 순환 사용 */
@@ -3122,48 +3123,19 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
                { url:'/img/galaxy2.jpg',  cap:'Andromeda Galaxy · NASA' },
                { url:'/img/galaxy3.jpg',  cap:'Spiral Galaxy · Hubble / NASA' }],
   };
-
-  // 카테고리별 사용 횟수를 세어 변형을 순환시킴(리포트 1회 생성 동안만 유지)
   const _imgUseCount = {};
   function pickImg(key) {
-    const variants = NASA_IMGS[key];
+    const variants = NASA_IMGS[key] || NASA_IMGS.cosmos;
     const i = _imgUseCount[key] || 0;
     _imgUseCount[key] = i + 1;
     return variants[i % variants.length];
   }
 
-  /* 하우스 번호 → 테마 이미지 카테고리 매핑 */
-  const HOUSE_CATS = {
-    1:'태양', 2:'galaxy', 3:'수성', 4:'달', 5:'금성', 6:'화성',
-    7:'nebula', 8:'cosmos', 9:'목성', 10:'토성', 11:'galaxy', 12:'cosmos',
-  };
-
-  function getSlideImg(s) {
-    if (s.t === 'event') {
-      const e = s.e;
-      const bodies = Array.isArray(e.bodies) ? e.bodies : [];
-      // 1순위: 행성 매칭
-      for (const b of bodies) {
-        const found = Object.keys(NASA_IMGS).find(k =>
-          k !== 'cosmos' && k !== 'nebula' && k !== 'galaxy' && b.includes(k)
-        );
-        if (found) return pickImg(found);
-      }
-      // 2순위: 하우스 기반 테마 이미지
-      if (e.house && HOUSE_CATS[e.house]) return pickImg(HOUSE_CATS[e.house]);
-      return pickImg('cosmos');
-    }
-    if (/MOOD/.test(s.badge || '')) return pickImg('nebula');
-    if (/FLOW/.test(s.badge || '')) return pickImg('galaxy');
-    return pickImg('cosmos');
-  }
-
   function fmt(t) {
     if (!t) return '';
     return t
-      .replace(/### (.+)/g, '<div style="font-size:12px;font-weight:800;color:#f1f5f9;margin:10px 0 3px;">$1</div>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f1f5f9;">$1</strong>')
-      .replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+      .replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>')
+      .split(/\n\n+/).map(p => `<p style="margin:0 0 12px;">${p.replace(/\n/g, '<br>')}</p>`).join('');
   }
 
   function sWhen(w) {
@@ -3177,14 +3149,30 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
     return w;
   }
 
-  /* ── 섹션 키 찾기 ── */
-  const flowKey  = Object.keys(sections).find(k => k === '올해의 큰 흐름') || '';
-  const moodKey  = Object.keys(sections).find(k => /무드|심리/.test(k)) || '';
-  const flowText = sections[flowKey] || '';
-  const moodText = sections[moodKey] || '';
-  const flowLines = flowText.split('\n');
-  const fni = flowLines.findIndex(l => l.trim());
-  const thesis = fni >= 0 ? flowLines[fni].replace(/\*\*(.+?)\*\*/g, '$1') : '';
+  /* ── 큰 흐름: 첫 문장(쉬운 한 줄 결론) / 나머지(설명) 분리 ── */
+  function splitTakeaway(text) {
+    const m = (text || '').match(/^([^\n]+?[.!?])\s*([\s\S]*)$/);
+    if (m) return { takeaway: m[1].trim(), body: m[2].trim() };
+    return { takeaway: (text || '').trim(), body: '' };
+  }
+
+  /* ── "### 제목" 하위섹션 파싱(영역별 흐름의 직업/재물/관계 등) ── */
+  function parseSubsections(text) {
+    const out = [];
+    if (!text) return out;
+    for (const part of text.split(/\n(?=### )/)) {
+      const m = part.match(/^### (.+)\n([\s\S]*)/);
+      if (m) out.push({ title: m[1].trim(), body: m[2].trim() });
+    }
+    return out;
+  }
+
+  const flowText = sections['올해의 큰 흐름'] || '';
+  const { takeaway, body: flowBody } = splitTakeaway(flowText);
+  const domainSections = parseSubsections(sections['영역별 흐름'] || '');
+  const depthText  = sections['당신이라는 사람'] || '';
+  const focusText  = sections['주목할 포인트'] || '';
+  const closingText = sections['마무리'] || '';
 
   /* ── 이벤트 개별 해석 파싱 (### E1, E2, ...) ── */
   const eventInterps = {};
@@ -3192,328 +3180,160 @@ function _buildAnnualHTML(engineData, aiText, userName = '') {
   if (interpSection) {
     for (const part of interpSection.split(/\n(?=### E\d)/)) {
       const m = part.match(/^### E(\d+)\n?([\s\S]*)/);
-      if (m) eventInterps[parseInt(m[1]) - 1] = m[2].trim(); // 0-indexed
+      if (m) eventInterps[parseInt(m[1]) - 1] = m[2].trim();
     }
   }
 
-  // 선별(중요도, 기존 기준)과 화면 표시 순서(날짜순)를 분리한다 — gemini-events.js의
-  // "이벤트 개별 해석" E번호도 동일한 선별+정렬을 쓰므로 카드와 해석이 어긋나지 않는다.
+  // 선별(중요도)과 화면 표시 순서(날짜순)를 분리 — gemini-events.js의 E번호와 동일한
+  // 선별+정렬을 써야 카드와 해석이 어긋나지 않는다.
   const majorEvents = events.filter(e => e.importance === 'major').slice(0, 6)
     .sort((a, b) => (a.when || '').localeCompare(b.when || ''));
-  const aiExtras = ['영역별 흐름', '주목할 포인트'];
-  const extBadge = ['DOMAIN FLOW', 'FOCUS POINTS'];
 
-  /* ── 슬라이드 배열 ── */
-  const slides = [];
+  const retroEvents = events.filter(e => e.technique?.includes('retrograde'));
 
-  // 슬라이드 1: 커버
-  slides.push({ t: 'cover' });
-  // 슬라이드 2: 큰흐름
-  if (flowText) slides.push({ t:'text', badge:'THE BIG FLOW', title:'올해의 큰 흐름', body:fmt(flowText), col:'#dfba6b' });
-  // 슬라이드 3: 무드
-  if (moodText) slides.push({ t:'text', badge:'THE MOOD', title: moodKey||'올해의 무드', body:fmt(moodText), col:'#a78bfa' });
-  // 슬라이드 4~N: 주요 이벤트 (각 1슬라이드)
-  majorEvents.forEach(e => {
-    slides.push({ t:'event', e, col: V_COL[e.valence]||'#94a3b8' });
-  });
-  // 나머지 AI 섹션
-  aiExtras.forEach((k, i) => {
-    if (sections[k]) slides.push({ t:'text', badge:extBadge[i], title:k, body:fmt(sections[k]), col:'#64748b' });
-  });
-  // 마무리
-  if (sections['마무리']) slides.push({ t:'closing', text:sections['마무리'] });
-
-  const TOTAL = slides.length;
-
-  /* ── 슬라이드 HTML 빌더 ── */
-  const BASE = 'position:absolute;top:0;left:0;width:100%;height:100%;display:none;flex-direction:column;';
-
-  function buildSlide(s, n) {
-    if (s.t === 'cover') return `
-      <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;text-align:center;padding:0 28px;gap:0;">
-        <!-- 연도 원형 -->
-        <div style="width:70px;height:70px;border-radius:50%;
-          border:1px solid rgba(223,186,107,.55);
-          display:flex;align-items:center;justify-content:center;
-          flex-shrink:0;margin-bottom:22px;">
-          <span style="font-family:Georgia,serif;font-size:19px;color:#dfba6b;font-weight:300;letter-spacing:.06em;">${year}</span>
-        </div>
-        <!-- 메인 타이틀 -->
-        <div style="flex-shrink:0;margin-bottom:12px;">
-          <h1 style="font-size:clamp(17px,5vw,24px);font-weight:900;color:#fff;
-            letter-spacing:.06em;margin:0;line-height:1.15;
-            font-family:Georgia,serif;text-transform:uppercase;white-space:nowrap;">
-            THE <span style="color:#dfba6b;">SOVEREIGN</span> CYCLE
-          </h1>
-        </div>
-        <!-- 구분선 -->
-        <div style="width:36px;height:1px;flex-shrink:0;margin-bottom:13px;
-          background:linear-gradient(90deg,transparent,rgba(223,186,107,.6),transparent);"></div>
-        <!-- 서브타이틀 -->
-        <p style="font-size:10.5px;color:#94a3b8;letter-spacing:.14em;
-          margin:0 0 10px;flex-shrink:0;font-family:Georgia,serif;">
-          ${userName ? `${userName} 님 · ` : ''}프리미엄 ${TOTAL}단계 마스터 플랜
-        </p>
-        <!-- 태그라인 -->
-        <p style="font-size:11px;color:#475569;line-height:1.7;
-          max-width:250px;margin:0 0 24px;flex-shrink:0;">
-          실제 행성의 궤도와 정밀한 각도가<br>만들어내는 당신만의 천문학적 서사.
-        </p>
-        <!-- 프로펙션 필 -->
-        <div style="display:flex;flex-direction:column;gap:7px;align-items:center;flex-shrink:0;">
-          <span style="font-size:11px;color:#fbbf24;
-            border:1px solid rgba(251,191,36,.28);background:rgba(251,191,36,.06);
-            padding:5px 14px;border-radius:999px;white-space:nowrap;">
-            만 ${profection.age}세 · ${profection.house}하우스 연도 · ${profection.theme}
-          </span>
-          <span style="font-size:11px;color:#94a3b8;
-            border:1px solid rgba(148,163,184,.16);background:rgba(148,163,184,.04);
-            padding:5px 14px;border-radius:999px;white-space:nowrap;">
-            올해의 지배성 · ${profection.lord}
-          </span>
-        </div>
-        <p style="font-size:9px;color:#1e293b;letter-spacing:.1em;margin-top:18px;flex-shrink:0;">
-          ← 좌우로 넘기세요 →
-        </p>
-      </div>`;
-
-    if (s.t === 'text') {
-      const img = getSlideImg(s);
-      return `
-      <div id="${did}_s${n}" style="${BASE}flex-direction:row;overflow:hidden;">
-        <div style="flex:1;display:flex;flex-direction:column;padding:14px 16px 12px;gap:8px;overflow:hidden;min-width:0;">
-          <div style="flex-shrink:0;">
-            <span style="display:inline-block;padding:2px 9px;border-radius:999px;
-              background:${s.col}18;border:1px solid ${s.col}38;
-              font-size:9px;font-weight:700;color:${s.col};letter-spacing:.18em;font-family:Georgia,serif;">
-              ${String(n-1).padStart(2,'0')}. ${s.badge}
-            </span>
-          </div>
-          <h2 style="flex-shrink:0;font-size:15px;font-weight:800;color:#f1f5f9;margin:0;line-height:1.2;">${s.title}</h2>
-          <div style="flex:1;overflow-y:auto;font-size:11.5px;line-height:1.85;color:#94a3b8;
-            -webkit-overflow-scrolling:touch;padding-right:3px;">
-            ${s.body}
-          </div>
-        </div>
-        <div style="width:38%;flex-shrink:0;position:relative;overflow:hidden;
-          border-left:1px solid rgba(255,255,255,.04);">
-          <img src="${img.url}" alt="${img.cap}"
-            style="width:100%;height:100%;object-fit:cover;display:block;opacity:.82;"
-            onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(160deg,rgba(20,15,50,.9),rgba(5,3,15,1))'">
-          <div style="position:absolute;bottom:0;left:0;right:0;
-            background:linear-gradient(transparent,rgba(0,0,0,.85));
-            padding:28px 7px 10px;text-align:center;">
-            <span style="font-size:8px;color:${s.col};letter-spacing:.1em;font-family:Georgia,serif;line-height:1.3;">${img.cap}</span>
-          </div>
-        </div>
-      </div>`;
-    }
-
-    if (s.t === 'event') {
-      const e = s.e; const col = s.col;
-      const img = getSlideImg(s);
-      const bodies = Array.isArray(e.bodies) ? e.bodies : [];
-      const eventIdx = majorEvents.indexOf(e);
-      const interp = eventInterps[eventIdx] || '';
-      return `
-        <div id="${did}_s${n}" style="${BASE}flex-direction:row;overflow:hidden;">
-          <div style="flex:1;display:flex;flex-direction:column;padding:14px 16px 12px;gap:7px;overflow:hidden;min-width:0;">
-            <div style="flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:6px;">
-              <span style="display:inline-block;padding:2px 9px;border-radius:999px;
-                background:${col}18;border:1px solid ${col}38;
-                font-size:9px;font-weight:700;color:${col};letter-spacing:.15em;font-family:Georgia,serif;">
-                EVENT · ${V_BADG[e.valence]||'TRANSIT'}
-              </span>
-              <span style="font-size:10px;color:#475569;flex-shrink:0;">${sWhen(e.when)}</span>
-            </div>
-            <div style="flex-shrink:0;">
-              <p style="font-size:13px;font-weight:800;color:#f1f5f9;margin:0 0 5px;line-height:1.3;">${e.fact||''}</p>
-              <div style="display:flex;flex-wrap:wrap;gap:4px;">
-                ${e.technique ? `<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${e.technique}</span>` : ''}
-                ${bodies.map(b=>`<span style="font-size:9px;padding:2px 7px;border-radius:6px;background:rgba(255,255,255,.07);color:#64748b;">${b}</span>`).join('')}
-              </div>
-            </div>
-            <div style="flex-shrink:0;height:1px;background:linear-gradient(90deg,${col}55,transparent);"></div>
-            <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-right:2px;">
-              ${interp
-                ? `<p style="font-size:11.5px;line-height:1.82;color:#cbd5e1;margin:0 0 8px;">${fmt(interp)}</p>`
-                : `<p style="font-size:11px;font-weight:700;color:${col};letter-spacing:.06em;margin:0 0 5px;">${V_KR[e.valence]||e.valence}</p>`
-              }
-              ${e.house ? `<p style="font-size:10px;color:#475569;margin:0;">${e.house}하우스 영역</p>` : ''}
-            </div>
-          </div>
-          <div style="width:37%;flex-shrink:0;position:relative;overflow:hidden;
-            border-left:1px solid rgba(255,255,255,.04);">
-            <img src="${img.url}" alt="${img.cap}"
-              style="width:100%;height:100%;object-fit:cover;display:block;opacity:.82;"
-              onerror="this.style.display='none';this.parentElement.style.background='linear-gradient(160deg,rgba(20,15,50,.9),rgba(5,3,15,1))'">
-            <div style="position:absolute;bottom:0;left:0;right:0;
-              background:linear-gradient(transparent,rgba(0,0,0,.85));
-              padding:28px 7px 10px;text-align:center;">
-              <span style="font-size:8px;color:${col};letter-spacing:.1em;font-family:Georgia,serif;">${img.cap}</span>
-            </div>
-          </div>
-        </div>`;
-    }
-
-    if (s.t === 'closing') {
-      const text = s.text || '';
-      const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-      const bulletLines  = lines.filter(l => /^✓/.test(l));
-      const quoteLines   = lines.filter(l => !/^✓/.test(l));
-      const quoteHtml    = quoteLines
-        .map(l => l.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f1f5f9;">$1</strong>'))
-        .join('<br>');
-      const bullets = bulletLines.map(l => {
-        const m = l.match(/^✓\s*\[?([^\]:：\]]+)\]?\s*[:：]\s*(.*)/);
-        return m ? { label: m[1].trim(), content: m[2].trim() }
-                 : { label: '', content: l.replace(/^✓\s*/, '') };
-      });
-      return `
-        <div id="${did}_s${n}" style="${BASE}align-items:center;justify-content:center;
-          padding:16px 24px 18px;gap:0;overflow:hidden;">
-          <div style="font-size:52px;color:rgba(223,186,107,.38);font-family:Georgia,serif;
-            line-height:1;flex-shrink:0;text-align:center;width:100%;margin-bottom:10px;">&ldquo;</div>
-          <div style="flex-shrink:0;text-align:center;width:100%;
-            ${bullets.length > 0 ? 'padding-bottom:18px;' : 'padding-bottom:0;flex:1;display:flex;align-items:center;justify-content:center;'}">
-            <p style="font-size:14px;font-style:italic;color:#e2e8f0;line-height:1.85;margin:0;">${quoteHtml}</p>
-          </div>
-          ${bullets.length > 0 ? `
-          <div style="flex-shrink:0;width:48px;height:1px;margin-bottom:16px;
-            background:linear-gradient(90deg,transparent,rgba(223,186,107,.65),transparent);"></div>
-          <div style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%;">
-            ${bullets.map(b=>`
-              <div style="display:flex;gap:8px;margin-bottom:11px;align-items:flex-start;">
-                <span style="color:#dfba6b;flex-shrink:0;font-size:12px;margin-top:1px;">✓</span>
-                <p style="font-size:12px;color:#94a3b8;line-height:1.65;margin:0;">
-                  ${b.label ? `<strong style="color:#dfba6b;">${b.label}:</strong> ` : ''}${b.content}
-                </p>
-              </div>`).join('')}
-          </div>` : ''}
-        </div>`;
-    }
-    return '';
+  /* ── 챕터 전환 디바이더(풀와이드 사진) ── */
+  function divider(key) {
+    const img = pickImg(key);
+    return `
+    <div style="position:relative;height:190px;overflow:hidden;">
+      <img src="${img.url}" alt="${img.cap}" style="width:100%;height:100%;object-fit:cover;display:block;"
+        onerror="this.style.display='none'">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,#0e0b1c 0%,transparent 22%,transparent 78%,#0e0b1c 100%);"></div>
+      <div style="position:absolute;bottom:14px;left:24px;font-size:10px;letter-spacing:.12em;color:#dfba6b;">${img.cap.toUpperCase()}</div>
+    </div>`;
   }
 
-  /* ── 도트 · 슬라이드 HTML ── */
-  const dotsHtml = slides.map((_,i)=>`
-    <div id="${did}_d${i+1}" onclick="${did}_go(${i+1})"
-      style="width:8px;height:8px;border-radius:50%;cursor:pointer;transition:all .3s ease;flex-shrink:0;
-      ${i===0?`background:#dfba6b;box-shadow:0 0 7px #dfba6b;width:18px;border-radius:4px;`:`background:rgba(255,255,255,.13);`}">
-    </div>`).join('');
+  /* ── 섹션 빌더들 ── */
+  function sectionTitle(label) {
+    return `<div style="font-size:11px;letter-spacing:.2em;color:#9b8f74;margin-bottom:22px;display:flex;align-items:center;gap:10px;">
+      <span style="width:16px;height:1px;background:#c8a860;display:inline-block;"></span>${label}
+    </div>`;
+  }
 
-  const slidesHtml = slides.map((s,i)=>buildSlide(s,i+1)).join('');
-
-  /* ── 전체 조립 ── */
-  return `
-    <style>
-      #${did} ::-webkit-scrollbar{width:3px;}
-      #${did} ::-webkit-scrollbar-track{background:transparent;}
-      #${did} ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.14);border-radius:2px;}
-      @keyframes ${did}_pulse{0%,100%{opacity:1}50%{opacity:.45}}
-    </style>
-
-    <div id="${did}" style="
-      max-width:440px;width:100%;height:660px;margin:8px auto;
-      background:rgba(8,6,20,.96);
-      border:1px solid rgba(223,186,107,.18);border-radius:30px;overflow:hidden;
-      display:flex;flex-direction:column;position:relative;
-      box-shadow:0 24px 72px rgba(0,0,0,.8),inset 0 1px 0 rgba(255,255,255,.06),0 0 44px rgba(124,58,237,.05);">
-
-      <!-- 상단 골드 라인 -->
-      <div style="position:absolute;top:0;left:0;right:0;height:2.5px;z-index:20;
-        background:linear-gradient(90deg,transparent,rgba(223,186,107,.72),transparent);"></div>
-
-      <!-- 헤더 -->
-      <header style="display:flex;justify-content:space-between;align-items:center;
-        padding:20px 22px 10px;flex-shrink:0;z-index:10;">
-        <div style="display:flex;align-items:center;gap:7px;">
-          <div style="width:7px;height:7px;border-radius:50%;background:#dfba6b;
-            box-shadow:0 0 7px #dfba6b;animation:${did}_pulse 2s ease-in-out infinite;"></div>
-          <span style="font-size:9px;font-weight:700;letter-spacing:.22em;color:#dfba6b;font-family:Georgia,serif;">ANNUAL MASTER REPORT</span>
+  const coverImg = pickImg('nebula');
+  const coverHtml = `
+    <div style="position:relative;min-height:420px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;text-align:center;padding:0 24px 40px;overflow:hidden;">
+      <img src="${coverImg.url}" alt="${coverImg.cap}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.55;" onerror="this.style.display='none'">
+      <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,11,28,.15) 0%,rgba(14,11,28,.6) 55%,rgba(14,11,28,.97) 100%);"></div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:11px;letter-spacing:.3em;color:#c8a860;margin-bottom:14px;">${year} ANNUAL REPORT</div>
+        <h1 style="font-size:clamp(19px,5.5vw,25px);font-weight:600;line-height:1.4;color:#f8f1dc;margin:0 0 12px;font-family:Georgia,serif;">
+          ${takeaway || '당신의 한 해가 펼쳐집니다'}
+        </h1>
+        <div style="font-size:12.5px;color:#beb39a;">
+          ${userName ? userName + ' · ' : ''}${meta.birthDate || ''}${profection?.age != null ? ` · 만 ${profection.age}세` : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="font-size:9px;color:#334155;letter-spacing:.12em;font-family:Georgia,serif;">
-            ${year} · <span id="${did}_idx" style="color:#dfba6b;font-weight:700;">1</span>&thinsp;/&thinsp;${TOTAL}
+      </div>
+    </div>`;
+
+  const flowHtml = flowText ? `
+    <div style="padding:48px 24px;">
+      ${sectionTitle('CHAPTER 01 · 올해의 큰 흐름')}
+      ${takeaway ? `<div style="font-size:20px;font-weight:600;color:#f6e9c1;line-height:1.55;margin-bottom:20px;">${takeaway}</div>` : ''}
+      <div style="font-size:14px;font-weight:300;color:#beb39a;line-height:1.9;border-left:2px solid rgba(200,168,96,.4);padding-left:16px;">
+        ${fmt(flowBody || flowText)}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:22px;flex-wrap:wrap;">
+        <span style="font-size:11px;padding:6px 12px;border:1px solid rgba(200,168,96,.3);border-radius:20px;color:#dfba6b;">만 ${profection.age}세 · ${profection.house}하우스 연도 · ${profection.theme}</span>
+        <span style="font-size:11px;padding:6px 12px;border:1px solid rgba(200,168,96,.3);border-radius:20px;color:#dfba6b;">올해의 지배성 · ${profection.lord}</span>
+      </div>
+    </div>` : '';
+
+  const eventsHtml = majorEvents.length ? `
+    <div style="padding:48px 24px;">
+      ${sectionTitle('CHAPTER 02 · 올해의 사건들')}
+      ${majorEvents.map((e, i) => {
+        const interp = eventInterps[i] || '';
+        return `
+        <div style="display:flex;gap:16px;padding:20px 0;border-bottom:1px solid rgba(200,168,96,.1);">
+          <div style="flex:0 0 40px;font-size:12px;color:#dfba6b;font-weight:600;padding-top:3px;">${sWhen(e.when)}</div>
+          <div style="flex:1;min-width:0;">
+            <p style="font-size:13.5px;color:#beb39a;line-height:1.85;margin:0;">${interp || e.fact || ''}</p>
+            <span style="display:inline-block;margin-top:8px;font-size:10.5px;color:${V_COL[e.valence]||'#9b8f74'};letter-spacing:.04em;">${V_KR[e.valence]||''}</span>
           </div>
-          <button onclick="closeAnnualReport()" title="닫기" style="
-            width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.12);
-            background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:12px;
-            display:flex;align-items:center;justify-content:center;flex-shrink:0;">✕</button>
-        </div>
-      </header>
+        </div>`;
+      }).join('')}
+    </div>` : '';
 
-      <!-- 슬라이드 뷰포트 -->
-      <main id="${did}_vp" style="position:relative;flex:1;overflow:hidden;">
-        ${slidesHtml}
-      </main>
+  const domainsHtml = domainSections.length ? `
+    <div style="padding:48px 24px;">
+      ${sectionTitle('CHAPTER 03 · 영역별 흐름')}
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        ${domainSections.map(d => `
+        <div style="background:rgba(200,168,96,.05);border:1px solid rgba(200,168,96,.18);border-radius:14px;padding:20px 18px;">
+          <div style="font-size:13.5px;color:#f4ecd8;letter-spacing:.05em;margin-bottom:8px;font-weight:600;">${d.title}</div>
+          <div style="font-size:13px;color:#beb39a;line-height:1.85;">${fmt(d.body)}</div>
+        </div>`).join('')}
+      </div>
+    </div>` : '';
 
-      <!-- 푸터 -->
-      <footer style="display:flex;justify-content:space-between;align-items:center;
-        padding:10px 22px 18px;flex-shrink:0;z-index:10;">
-        <button onclick="${did}_go(Math.max(1,${did}_cur-1))" style="
-          width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);
-          background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:16px;
-          display:flex;align-items:center;justify-content:center;">‹</button>
-        <div style="display:flex;gap:5px;align-items:center;overflow-x:auto;max-width:220px;
-          padding:3px 0;scrollbar-width:none;-ms-overflow-style:none;">
-          ${dotsHtml}
-        </div>
-        <button onclick="${did}_go(Math.min(${TOTAL},${did}_cur+1))" style="
-          width:34px;height:34px;border-radius:50%;border:1px solid rgba(255,255,255,.1);
-          background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:16px;
-          display:flex;align-items:center;justify-content:center;">›</button>
-      </footer>
-    </div>
+  const retroHtml = retroEvents.length ? `
+    <div style="margin-top:32px;padding:18px 18px;border-radius:12px;background:rgba(200,168,96,.05);border:1px solid rgba(200,168,96,.2);">
+      <div style="font-size:12.5px;color:#cdb98a;font-weight:600;margin-bottom:6px;">새 일보다 점검·재검토가 잘 맞는 시기</div>
+      <div style="font-size:11.5px;color:#8a7f68;line-height:1.7;margin-bottom:14px;">이 구간엔 일이 더디게 풀리거나, 이미 정한 결정을 다시 들여다보게 되는 경우가 잦습니다. 새로 시작하기보다 마무리·점검·재정비에 쓰면 더 수월합니다.</div>
+      ${retroEvents.map(e => `
+        <div style="margin-bottom:10px;font-size:12px;color:#cdb98a;">
+          <b style="color:#dfba6b;">${e.bodies[0]} 역행</b> <span style="color:#8a7f68;font-size:11.5px;">· ${sWhen(e.retroStart)} ~ ${sWhen(e.retroEnd)}</span>
+        </div>`).join('')}
+    </div>` : '';
 
-    <script>
-    (function(){
-      const D='${did}', N=${TOTAL};
-      window[D+'_cur']=1;
+  const depthHtml = depthText ? `
+    <div style="padding:48px 24px;">
+      ${sectionTitle('CHAPTER 04 · 당신이라는 사람')}
+      <div style="font-size:13.5px;color:#beb39a;line-height:1.9;">${fmt(depthText)}</div>
+      ${retroHtml}
+    </div>` : '';
 
-      window[D+'_go']=function(n){
-        n=Math.max(1,Math.min(N,n));
-        for(let i=1;i<=N;i++){
-          const el=document.getElementById(D+'_s'+i);
-          if(!el)continue;
-          if(i===n){
-            el.style.display='flex';
-            el.style.opacity='0';
-            el.style.transform='scale(0.97) translateY(10px)';
-            void el.offsetHeight;
-            el.style.transition='opacity .6s cubic-bezier(.16,1,.3,1),transform .6s cubic-bezier(.16,1,.3,1)';
-            el.style.opacity='1';
-            el.style.transform='scale(1) translateY(0)';
-          } else {
-            el.style.display='none';
-          }
-        }
-        const idx=document.getElementById(D+'_idx');
-        if(idx)idx.textContent=n;
-        for(let i=1;i<=N;i++){
-          const dot=document.getElementById(D+'_d'+i);
-          if(!dot)continue;
-          if(i===n){dot.style.cssText+='background:#dfba6b;box-shadow:0 0 7px #dfba6b;width:18px;border-radius:4px;';}
-          else{dot.style.background='rgba(255,255,255,.13)';dot.style.boxShadow='none';dot.style.width='8px';dot.style.borderRadius='50%';}
-        }
-        window[D+'_cur']=n;
-      };
+  const focusHtml = focusText ? `
+    <div style="padding:48px 24px;">
+      ${sectionTitle('CHAPTER 05 · 주목할 포인트')}
+      <div style="font-size:13.5px;color:#cabfa0;line-height:1.9;">${fmt(focusText)}</div>
+    </div>` : '';
 
-      // 터치 스와이프
-      const vp=document.getElementById(D+'_vp');
-      if(vp){
-        let tx=0;
-        vp.addEventListener('touchstart',e=>{tx=e.changedTouches[0].screenX;},{passive:true});
-        vp.addEventListener('touchend',e=>{
-          const dx=e.changedTouches[0].screenX-tx;
-          if(dx<-45)window[D+'_go'](window[D+'_cur']+1);
-          if(dx>45) window[D+'_go'](window[D+'_cur']-1);
-        },{passive:true});
-      }
+  /* ── 마무리 ── */
+  const closingImg = pickImg('cosmos');
+  let closingHtml = '';
+  if (closingText) {
+    const lines = closingText.split('\n').map(l => l.trim()).filter(Boolean);
+    const bulletLines = lines.filter(l => /^✓/.test(l));
+    const quoteLines  = lines.filter(l => !/^✓/.test(l));
+    const quoteHtml = quoteLines.map(l => l.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>')).join('<br>');
+    const bullets = bulletLines.map(l => {
+      const m = l.match(/^✓\s*\[?([^\]:：]+)\]?\s*[:：]\s*(.*)/);
+      return m ? { label: m[1].trim(), content: m[2].trim() } : { label:'', content: l.replace(/^✓\s*/, '') };
+    });
+    closingHtml = `
+    <div style="position:relative;min-height:340px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:50px 26px;overflow:hidden;">
+      <img src="${closingImg.url}" alt="${closingImg.cap}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.35;" onerror="this.style.display='none'">
+      <div style="position:absolute;inset:0;background:rgba(14,11,28,.75);"></div>
+      <div style="position:relative;z-index:1;">
+        <div style="font-size:17px;font-style:italic;color:#f4ecd8;max-width:420px;margin:0 auto 30px;line-height:1.85;">${quoteHtml}</div>
+        ${bullets.length ? `<div style="display:flex;flex-direction:column;gap:11px;align-items:flex-start;text-align:left;">
+          ${bullets.map(b => `
+          <div style="font-size:13px;color:#cabfa0;">✓ ${b.label ? `<strong style="color:#dfba6b;">${b.label}:</strong> ` : ''}${b.content}</div>`).join('')}
+        </div>` : ''}
+      </div>
+    </div>`;
+  }
 
-      window[D+'_go'](1);
-    })();
-    </script>`;
+  /* ── 전체 조립 (연속 스크롤, 슬라이드 페이징 없음) ── */
+  return `
+    <div id="${did}" style="max-width:480px;width:100%;margin:8px auto;background:#0e0b1c;border:1px solid rgba(200,168,96,.18);border-radius:20px;overflow:hidden;font-family:Georgia,serif;color:#efe8d6;line-height:1.7;box-shadow:0 24px 60px rgba(0,0,0,.6);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;">
+        <span style="font-size:9px;font-weight:700;letter-spacing:.2em;color:#dfba6b;">ANNUAL REPORT</span>
+        <button onclick="closeAnnualReport()" title="닫기" style="width:22px;height:22px;border-radius:50%;border:1px solid rgba(255,255,255,.12);background:rgba(10,7,24,.9);color:#64748b;cursor:pointer;font-size:12px;">✕</button>
+      </div>
+      ${coverHtml}
+      ${flowHtml}
+      ${eventsHtml ? divider('galaxy') : ''}
+      ${eventsHtml}
+      ${domainsHtml ? divider('토성') : ''}
+      ${domainsHtml}
+      ${depthHtml ? divider('달') : ''}
+      ${depthHtml}
+      ${focusHtml}
+      ${closingHtml}
+    </div>`;
 }
 
 /* =========================================================

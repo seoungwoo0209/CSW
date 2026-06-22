@@ -521,6 +521,69 @@ function collectProgMoonPhase(meta, targetYear, lonAt) {
   return events;
 }
 
+/* ─── 프로그레션 인격행성 사인 진입(ingress) — 1일=1년 기법, ephemeris 정밀 ───
+   대상: 태양·수성·금성·화성(인격행성). 달·외행성은 이번 단계에서 제외:
+   - 달은 진행 속도가 빨라(연 ~13°) 한 해에 여러 번 사인을 넘어 "희귀한 전환점"
+     이라는 의미가 옅음(별도 후속 검토 대상).
+   - 목성~명왕성은 진행 속도가 너무 느려(연 0.01~0.3°) 인간 생애 동안 사인을
+     거의 넘지 않음.
+   태양의 사인 진입은 평생 한두 번뿐인 약 28~30년 주기 인생 챕터 전환점이라
+   importance:'major'로 두고, 나머지(수성·금성·화성)는 'minor'로 둔다. */
+function collectProgIngress(meta, targetYear, lonAt) {
+  const [bY, bM, bD] = meta.birthDate.split('-').map(Number);
+  const [hh, mi]     = (meta.birthTime || '12:00').split(':').map(Number);
+  const utcOff       = meta.utcOffset ?? 9;
+  const birthUTC     = new Date(Date.UTC(bY, bM - 1, bD, hh, mi) - utcOff * 3600000);
+
+  function progLon(realDate, key) {
+    const elapsedDays = (realDate - birthUTC) / 86400000;
+    const progDate    = new Date(birthUTC.getTime() + elapsedDays / 365.25 * 86400000);
+    return lonAt(progDate, key);
+  }
+
+  const TARGETS = [
+    { key:'sun',     kr:'태양', importance:'major' },
+    { key:'mercury', kr:'수성', importance:'minor' },
+    { key:'venus',   kr:'금성', importance:'minor' },
+    { key:'mars',    kr:'화성', importance:'minor' },
+  ];
+
+  const yearStart = new Date(Date.UTC(targetYear, 0, 1));
+  const yearEnd   = new Date(Date.UTC(targetYear, 11, 31));
+
+  const events = [];
+  for (const t of TARGETS) {
+    const signStart = Math.floor(norm360(progLon(yearStart, t.key)) / 30);
+    const signEnd   = Math.floor(norm360(progLon(yearEnd, t.key)) / 30);
+    if (signStart === signEnd) continue; // 그 해엔 사인 진입 없음
+
+    // 연초~연말 사이를 이분법으로 정밀화해 경계를 넘는 정확한 날짜를 찾는다
+    let lo = yearStart.getTime(), hi = yearEnd.getTime();
+    for (let i = 0; i < 25; i++) {
+      const mid = (lo + hi) / 2;
+      const midSign = Math.floor(norm360(progLon(new Date(mid), t.key)) / 30);
+      if (midSign === signStart) lo = mid; else hi = mid;
+    }
+    const exact   = new Date((lo + hi) / 2);
+    const whenStr = fmtWhen(exact);
+    const fromSign = SIGNS[signStart];
+    const toSign   = SIGNS[signEnd];
+    const isSun    = t.key === 'sun';
+
+    events.push({
+      id: `prog_ingress_${t.key}_${targetYear}`,
+      when: whenStr, layer:'impact', tier: isSun ? 1 : 2, category:'general',
+      technique: `Progressed ${t.key} sign ingress`,
+      bodies: [`프로그레션 ${t.kr}`], house: null, orb: null, valence:'double_edged',
+      fact: isSun
+        ? `${whenStr} 프로그레션 태양이 ${fromSign}에서 ${toSign}로 진입. 약 28~30년에 한 번, 평생 한두 번뿐인 정체성·삶의 방향 전환점.`
+        : `${whenStr} 프로그레션 ${t.kr}이 ${fromSign}에서 ${toSign}로 진입. 내면의 동기·태도가 점진적으로 바뀌는 시점.`,
+      importance: t.importance,
+    });
+  }
+  return events;
+}
+
 /* ─── 목성·토성 연간 하우스 위치(공통 배경) — ephemeris 정밀 ─── */
 function commonPlanetEvent(year, cusps, planetName, lonAt, planetKR, baseCat) {
   const bm = [];
@@ -621,6 +684,89 @@ function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses
   return events;
 }
 
+/* ─── 행성별 연중 역행 구간(시작~종료일) — 인격행성만(수성·금성·화성) ───
+   외행성(목성~명왕성)은 해마다 4~5개월씩 거의 항상 역행 중이라 "특별한
+   시기"라는 의미가 옅고, 목성·토성은 commonPlanetEvent로 이미 연간 배경을
+   다루고 있어 이번 단계에서는 인격행성만 다룬다.
+   역행 시작/종료 = 황경 변화 속도(velocity)의 부호가 바뀌는 station 지점.
+   연도 경계를 걸치는 구간도 잡기 위해 전후 100일 여유를 두고 스캔한다
+   (화성 역행은 최장 ~80일까지 가므로 안전 마진 확보). */
+function collectRetrogradeWindows(targetYear, lonAt) {
+  const RETRO_PLANETS = [
+    { key:'mercury', kr:'수성' },
+    { key:'venus',   kr:'금성' },
+    { key:'mars',    kr:'화성' },
+  ];
+
+  function velocity(date, key) {
+    const a = lonAt(new Date(date.getTime() - 43200000), key); // -12h
+    const b = lonAt(new Date(date.getTime() + 43200000), key); // +12h
+    let d = b - a;
+    if (d > 180) d -= 360;
+    if (d < -180) d += 360;
+    return d; // >0 순행, <0 역행
+  }
+
+  const scanStart = Date.UTC(targetYear, 0, 1) - 100 * 86400000;
+  const scanEnd   = Date.UTC(targetYear, 11, 31) + 100 * 86400000;
+  const stepMs    = 4 * 86400000;
+  const yearStart = new Date(Date.UTC(targetYear, 0, 1));
+  const yearEnd   = new Date(Date.UTC(targetYear, 11, 31, 23, 59, 59));
+
+  const events = [];
+  for (const p of RETRO_PLANETS) {
+    const stations = [];
+    let prevV = velocity(new Date(scanStart), p.key);
+    for (let t = scanStart + stepMs; t <= scanEnd; t += stepMs) {
+      const v = velocity(new Date(t), p.key);
+      if ((prevV >= 0) !== (v >= 0)) {
+        let lo = t - stepMs, hi = t;
+        for (let i = 0; i < 25; i++) {
+          const mid = (lo + hi) / 2;
+          const vm = velocity(new Date(mid), p.key);
+          if ((vm >= 0) === (prevV >= 0)) lo = mid; else hi = mid;
+        }
+        stations.push({ date: new Date((lo + hi) / 2), type: prevV >= 0 ? 'retroStart' : 'retroEnd' });
+      }
+      prevV = v;
+    }
+
+    for (let i = 0; i < stations.length; i++) {
+      if (stations[i].type !== 'retroStart') continue;
+      const next = stations[i + 1];
+      if (!next || next.type !== 'retroEnd') continue;
+      const startDate = stations[i].date, endDate = next.date;
+      if (endDate < yearStart || startDate > yearEnd) continue; // 그 해와 안 겹치면 제외
+
+      const whenStr = fmtWhen(startDate);
+      events.push({
+        id: `retrograde_${p.key}_${whenStr}`,
+        when: whenStr, layer:'common', tier:2, category:'general',
+        technique: `${p.key} retrograde`,
+        bodies: [p.kr], house:null, orb:null, valence:'double_edged',
+        fact: `${fmtWhen(startDate)} ~ ${fmtWhen(endDate)} ${p.kr} 역행. 이 구간엔 일이 더디게 풀리거나 이미 정한 결정을 다시 들여다보게 되는 경우가 잦다 — 새로 시작하기보다 점검·재검토·마무리에 쓰면 수월하다.`,
+        importance: 'minor',
+        retroStart: fmtWhen(startDate),
+        retroEnd:   fmtWhen(endDate),
+      });
+    }
+  }
+  return events;
+}
+
+/* ─── 배경 팩트 — 나탈-나탈/프로그레션-나탈 에스펙트 중 가장 타이트한 것들 ───
+   "그 해의 사건"이 아니라 "이 사람 자체"에 대한 늘 참인 배경 정보라
+   이벤트 스키마(when/tier 등)에 끼워넣지 않고 별도 background 필드로 둔다.
+   natalAspectsFull/progAspectsFull은 클라이언트(astro-calc.js 결과)에서
+   온 그대로이며 이미 오브 오름차순 정렬되어 있다 — 앞에서 N개만 취하면
+   가장 타이트한(=가장 의미있는) 에스펙트가 된다. */
+function pickAspectHighlights(aspectsFull, n = 5) {
+  if (!Array.isArray(aspectsFull)) return [];
+  return aspectsFull.slice(0, n).map(a =>
+    `${a.point1} ${a.symbol}(${a.aspect}) ${a.point2} — 오브 ${a.orb}°`
+  );
+}
+
 /* ─── 메인 핸들러 ─────────────────────────────────────────── */
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -628,7 +774,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { meta, natal, angles, nodes, houses, targetYear } = req.body;
+    const { meta, natal, angles, nodes, houses, targetYear, natalAspectsFull, progAspectsFull } = req.body;
     if (!meta?.birthDate || !natal || !angles || !nodes || !houses || !targetYear) {
       return res.status(400).json({ error: 'meta/natal/angles/nodes/houses/targetYear가 필요합니다.' });
     }
@@ -652,12 +798,14 @@ export default async function handler(req, res) {
     const satEvt = commonPlanetEvent(targetYear, cusps, 'saturn',  lonAt, '토성', 'career');
     const srEvents = buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses, targetYear);
 
-    const common = [...eclipses, jupEvt, satEvt, ...srEvents];
+    const retrogrades = collectRetrogradeWindows(targetYear, lonAt);
+    const common = [...eclipses, jupEvt, satEvt, ...srEvents, ...retrogrades];
 
     const impacts = [
       ...collectImpacts(targetYear, lonAt, natal, cusps),
       ...collectLifeCycle(bY, targetYear, lonAt, natal),
       ...collectProgMoonPhase(meta, targetYear, lonAt),
+      ...collectProgIngress(meta, targetYear, lonAt),
     ];
 
     // 선별(중요도/tier)은 각 collect* 함수에서 이미 끝났다. 여기서는 "표시 순서"만 정한다 —
@@ -669,9 +817,15 @@ export default async function handler(req, res) {
       return (a.when || '').localeCompare(b.when || '');
     });
 
+    const background = {
+      natalHighlights: pickAspectHighlights(natalAspectsFull, 5),
+      progHighlights:  pickAspectHighlights(progAspectsFull, 5),
+    };
+
     return res.status(200).json({
       year: targetYear,
       profection,
+      background,
       events:      all.filter(e => e.tier <= 2),
       speculative: all.filter(e => e.tier === 3),
     });
