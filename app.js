@@ -737,7 +737,8 @@ async function revealSajuResults() {
       setTimeout(() => attemptOnce(0), 50);
     });
 
-    await fetchAndInjectSajuAI();
+    const aiOk = await fetchAndInjectSajuAI();
+    if (!aiOk) throw new Error("AI 해설을 불러오지 못했습니다.");
     succeeded = true;
 
   } catch (err) {
