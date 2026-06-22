@@ -594,10 +594,12 @@ function renderHomeProfileStatus() {
 /* =========================================================
    메인 사주 계산 및 렌더링
    ========================================================= */
-let _runAllInFlight = false;
-
-async function runAll() {
-  if (_runAllInFlight) return; // 중복 호출(동시 클릭/자동 트리거 겹침) 방지
+/* runAll(): 사주 데이터 "조용히 미리 계산"만 담당.
+   프로필 로드/입력값 변경 시마다 자동 실행되어 다른 탭(점성술·오늘의
+   운세·연간운세)이 쓸 window.SajuResult를 준비해둔다. 화면 공개나
+   AI 호출은 절대 하지 않음 — 그건 revealSajuResults()(버튼 클릭
+   전용)의 책임. */
+function runAll() {
   setAlert("");
 
   const name         = _$("name")?.value.trim() || "";
@@ -631,23 +633,8 @@ async function runAll() {
     noteEl.textContent = "";
   }
 
-  _runAllInFlight = true;
-
-  // 결과 영역은 패널+AI 해설이 전부 준비된 뒤에야 한 번에 보여준다 (그 전엔 숨김)
-  const resultArea  = _$('saju-result-area');
-  const runBtn      = _$('runAllBtn');
-  const runLoading  = _$('sajuRunLoading');
-  const introCard   = _$('sajuInputCard');
-  if (resultArea) resultArea.style.display = 'none';
-  if (runBtn)     { runBtn.disabled = true; runBtn.style.opacity = '0.5'; }
-  if (runLoading) runLoading.style.display = 'block';
-  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
-
   // 이전 사람의 AI 해설 블록이 남아있으면 제거(패널은 새로 그려지지만 형제 노드라 자동 제거되지 않음)
   document.querySelectorAll('[id^="aiBlock-"]').forEach(el => el.remove());
-
-  let _runAllSucceeded = false;
-  try {
 
   // ── 사주 계산
   const { fourPillars, birthUtc, approx } = getFourPillars({ birthDate, birthTime });
@@ -678,70 +665,88 @@ async function runAll() {
 
   if (approx) console.log("ℹ️ 절기 근사모드 사용");
 
-    // ── SajuResult 저장
-    const yinyang = getYinYangCounts(fourPillars, false);
-    const yinyangWithHidden = getYinYangCounts(fourPillars, true);
+  // ── SajuResult 저장
+  const yinyang = getYinYangCounts(fourPillars, false);
+  const yinyangWithHidden = getYinYangCounts(fourPillars, true);
 
-    // ── 대운 타임라인 + 현재 진행 중인 대운 인덱스
-    let daeunTimeline = null, currentDecadeIdx = -1;
-    if (typeof buildDaeunTimeline === "function") {
-      daeunTimeline = buildDaeunTimeline(fourPillars, birthUtc, gender);
-      const ageNowYears = (Date.now() - birthUtc.getTime()) / (365.2425 * 86400000);
-      currentDecadeIdx = daeunTimeline.decades.findIndex(
-        d => ageNowYears >= d.startAge && ageNowYears < d.startAge + 10
-      );
-      if (window.SajuUI?.renderDaeunInfo) window.SajuUI.renderDaeunInfo(daeunTimeline, currentDecadeIdx);
-    }
+  // ── 대운 타임라인 + 현재 진행 중인 대운 인덱스
+  let daeunTimeline = null, currentDecadeIdx = -1;
+  if (typeof buildDaeunTimeline === "function") {
+    daeunTimeline = buildDaeunTimeline(fourPillars, birthUtc, gender);
+    const ageNowYears = (Date.now() - birthUtc.getTime()) / (365.2425 * 86400000);
+    currentDecadeIdx = daeunTimeline.decades.findIndex(
+      d => ageNowYears >= d.startAge && ageNowYears < d.startAge + 10
+    );
+    if (window.SajuUI?.renderDaeunInfo) window.SajuUI.renderDaeunInfo(daeunTimeline, currentDecadeIdx);
+  }
 
-    window.SajuResult = {
-      name, birthDate, birthTime, gender, lunarInput,
-      fourPillars, birthUtc, approx,
-      surface,
-      yinyang,
-      yinyangWithHidden: yinyangWithHidden.withHidden,
-      natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
-      shinsal: (typeof calc12Shinsal === "function") ? calc12Shinsal(fourPillars) : null,
-      daeunTimeline, currentDecadeIdx,
-    };
+  window.SajuResult = {
+    name, birthDate, birthTime, gender, lunarInput,
+    fourPillars, birthUtc, approx,
+    surface,
+    yinyang,
+    yinyangWithHidden: yinyangWithHidden.withHidden,
+    natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
+    shinsal: (typeof calc12Shinsal === "function") ? calc12Shinsal(fourPillars) : null,
+    daeunTimeline, currentDecadeIdx,
+  };
 
-    // ── 연간 운세 탭: 로딩 상태 (정통사주 결과 공개와 무관하게 즉시 진행)
-    const _lgp = document.getElementById('lifeGraphPanel');
-    if (_lgp) _lgp.innerHTML = '<div style="color:#a5b4fc;font-size:13px;padding:30px;text-align:center;">⭐ 차트 계산 중...</div>';
+  // ── 연간 운세 탭: 로딩 상태 (정통사주 화면 공개와 무관하게 즉시 진행)
+  const _lgp = document.getElementById('lifeGraphPanel');
+  if (_lgp) _lgp.innerHTML = '<div style="color:#a5b4fc;font-size:13px;padding:30px;text-align:center;">⭐ 차트 계산 중...</div>';
 
-    // ── 점성술 차트 미리 계산 (정통사주 결과 공개와 무관하게 즉시 진행)
-    scheduleAstroCalc();
+  // ── 점성술 차트 미리 계산 (정통사주 화면 공개와 무관하게 즉시 진행)
+  scheduleAstroCalc();
+}
 
-    // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행) → 끝나면 AI 해설까지 받아서 한 번에 공개
-    function _waitForAnalysisReady(attempt) {
-      return new Promise(resolve => {
-        function attemptOnce(n) {
-          if (window.SajuEngine?.buildState && window.SajuUI?.renderFullAnalysis) {
-            window.SajuUI.renderFullAnalysis("overall");
-            resolve();
-          } else if (n < 10) {
-            setTimeout(() => attemptOnce(n + 1), 150);
-          } else {
-            console.error("❌ SajuEngine 로드 타임아웃");
-            resolve();
-          }
+/* revealSajuResults(): "✨ 정통 사주 보기" 버튼 클릭 전용.
+   여기서만 로딩 표시·AI 호출·결과 화면 공개가 일어난다. */
+let _revealInFlight = false;
+
+async function revealSajuResults() {
+  if (_revealInFlight) return; // 중복 클릭 방지
+  if (!window.SajuResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요.");
+    return;
+  }
+  _revealInFlight = true;
+
+  const resultArea = _$('saju-result-area');
+  const runLoading  = _$('sajuRunLoading');
+  const introCard   = _$('sajuInputCard');
+  if (resultArea) resultArea.style.display = 'none';
+  if (runLoading) runLoading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+  let succeeded = false;
+  try {
+    // SajuEngine 로드 확인 후 분석 탭 렌더링 (personalityCard/resourcePanel/godsPanel + window.SajuResult.geok 등)
+    await new Promise(resolve => {
+      function attemptOnce(n) {
+        if (window.SajuEngine?.buildState && window.SajuUI?.renderFullAnalysis) {
+          window.SajuUI.renderFullAnalysis("overall");
+          resolve();
+        } else if (n < 10) {
+          setTimeout(() => attemptOnce(n + 1), 150);
+        } else {
+          console.error("❌ SajuEngine 로드 타임아웃");
+          resolve();
         }
-        setTimeout(() => attemptOnce(0), 50);
-      });
-    }
+      }
+      setTimeout(() => attemptOnce(0), 50);
+    });
 
-    await _waitForAnalysisReady();
     await fetchAndInjectSajuAI();
-    _runAllSucceeded = true;
+    succeeded = true;
 
   } catch (err) {
     console.error("사주 분석 중 오류:", err);
     setAlert("사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요.");
   } finally {
-    _runAllInFlight = false;
-    if (runBtn)     { runBtn.disabled = false; runBtn.style.opacity = '1'; }
+    _revealInFlight = false;
     if (runLoading) runLoading.style.display = 'none';
     if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
-    if (_runAllSucceeded) {
+    if (succeeded) {
       if (resultArea) resultArea.style.display = 'block';
       if (introCard)  introCard.style.display = 'none';
     }
