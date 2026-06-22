@@ -233,10 +233,13 @@
           <span class="cta-sheen"></span>
           <span style="position:relative;">✨ 사주 분석 시작</span>
         </button>
-        <div id="sajuRunLoading" style="display:none;margin-top:14px;text-align:center;">
-          <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">사주를 분석하고 있습니다...</div>
-          <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 다시 눌러주세요.</div>
-        </div>
+      </div>
+
+      <!-- 실제 트리거는 프로필 시트(공용 입력)에서 자동으로 일어나므로,
+           로딩 표시는 숨겨진 form-card 밖, 항상 보이는 위치에 둔다 -->
+      <div id="sajuRunLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">사주를 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
       </div>
 
       <!-- 결과 영역 -->
