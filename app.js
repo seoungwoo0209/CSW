@@ -944,6 +944,153 @@ function _renderLoveFortuneHtml(payload, raw) {
 }
 
 /* =========================================================
+   재회운 — "✨ 재회운 보기" 버튼 클릭 전용
+   연애운과 같은 window.AstroResult 재사용 + 금성 역행 여부(서버에서
+   계산)만 추가로 받아 타이밍 신호 위주로 AI에 전달
+   ========================================================= */
+let _reunionRevealInFlight = false;
+
+async function revealReunionFortune() {
+  if (_reunionRevealInFlight) return;
+  if (!window.AstroResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요. (정통 사주 또는 점성술 탭에서 한 번 계산되면 자동으로 준비됩니다)");
+    return;
+  }
+  _reunionRevealInFlight = true;
+
+  const introCard  = _$('reunionFortuneInputCard');
+  const loading    = _$('reunionFortuneLoading');
+  const resultArea = _$('reunionFortuneResultArea');
+  if (resultArea) resultArea.style.display = 'none';
+  if (loading)    loading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+  let succeeded = false;
+  try {
+    const astroData  = window.AstroResult;
+    const house7      = _findHouseOccupants(astroData, 7);
+    const nowMonthIdx = new Date().getMonth();
+    const transitNow  = astroData.transits?.[nowMonthIdx] || null;
+
+    const house7RulerKey = _SIGN_RULER[astroData.houses?.[6]?.sign];
+    const house7Ruler = house7RulerKey ? {
+      key: house7RulerKey, label: _LOVE_PLANET_KR[house7RulerKey],
+      ...astroData.natal[house7RulerKey]
+    } : null;
+    const satVenusAspect = _findAspectBetween(astroData.natalAspectsFull, '토성', '금성');
+    const satRulerAspect = (house7Ruler && house7RulerKey !== 'saturn')
+      ? _findAspectBetween(astroData.natalAspectsFull, '토성', house7Ruler.label)
+      : null;
+
+    const payload = {
+      name:   window.SajuResult?.name || '',
+      gender: window.SajuResult?.gender || 'M',
+      venus:  astroData.natal.venus,
+      mars:   astroData.natal.mars,
+      moon:   astroData.natal.moon,
+      saturn: astroData.natal.saturn,
+      house7Sign: astroData.houses?.[6]?.sign,
+      house7Occupants: house7,
+      house7Ruler,
+      satVenusAspect,
+      satRulerAspect,
+      transitNow,
+      progMoonHouse: astroData.progression?.planets?.moon?.house,
+      progMoonSign:  astroData.progression?.planets?.moon?.sign,
+    };
+
+    const res = await fetch("/api/gemini-reunion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
+
+    if (resultArea) resultArea.innerHTML = _renderReunionFortuneHtml(payload, data.result || '', data.venusRetrograde);
+    succeeded = true;
+
+  } catch (err) {
+    console.error("재회운 분석 중 오류:", err);
+    setAlert("재회운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    _reunionRevealInFlight = false;
+    if (loading)   loading.style.display = 'none';
+    if (introCard) introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    if (succeeded) {
+      if (resultArea) resultArea.style.display = 'block';
+      if (introCard)  introCard.style.display = 'none';
+    }
+  }
+}
+
+function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
+  const markerRe = /===SECTION:(\w+)===/g;
+  const hits = [];
+  let m;
+  while ((m = markerRe.exec(raw)) !== null) {
+    hits.push({ key: m[1], contentStart: m.index + m[0].length, markerStart: m.index });
+  }
+  const sections = {};
+  hits.forEach((hit, i) => {
+    const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
+    sections[hit.key] = raw.slice(hit.contentStart, end).trim();
+  });
+
+  function toParas(text) {
+    if (!text) return '<p style="margin:0;color:#9b8f74;">해설을 불러오지 못했습니다.</p>';
+    return text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+      `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+    ).join('');
+  }
+
+  const panelStyle = `border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+    border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px 18px 16px;margin-bottom:6px;`;
+  const eyebrowStyle = `font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;`;
+  const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
+    background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
+  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+
+  const transitSaturnHouse = payload.transitNow?.planets?.saturn?.house;
+  const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
+
+  return `
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">緣 分</div>
+      <div style="${titleStyle}">재회와 관련된 나의 패턴</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">금성 · ${payload.venus.sign} ${payload.venus.house}하우스</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">토성 · ${payload.saturn.sign} ${payload.saturn.house}하우스</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">달 · ${payload.moon.sign} ${payload.moon.house}하우스</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#8d8268;">
+        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 패턴 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.pattern)}</div>
+    </div>
+
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">時 期</div>
+      <div style="${titleStyle}">지금의 재회 타이밍</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;${saturnIn78 ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">트랜짓 토성 · ${payload.transitNow?.planets?.saturn?.sign || ''} ${transitSaturnHouse ? transitSaturnHouse + '하우스' : ''}</span>
+        ${payload.progMoonSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 달 · ${payload.progMoonSign} ${payload.progMoonHouse}하우스</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 타이밍 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
+/* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
    window.AstroResult에 저장해 둠.

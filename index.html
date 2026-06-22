@@ -505,7 +505,7 @@
           <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
         </div>
 
-        <div class="home-card" onclick="alert('재회운 기능은 준비 중입니다.')" style="opacity:.55;">
+        <div class="home-card" onclick="enterScreen('reunionFortune')">
           <div class="home-card-badge">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="M9 4.55a8 8 0 0 1 6 14.9m0 -4.45v5h5"/>
@@ -515,7 +515,7 @@
           <div class="home-card-body">
             <span class="home-card-num gold-text">03</span>
             <strong class="home-card-title">재회운</strong>
-            <span class="home-card-desc">다시 만날 수 있을까? (준비 중)</span>
+            <span class="home-card-desc">다시 만날 수 있을까?</span>
           </div>
           <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
         </div>
@@ -573,6 +573,59 @@
       </div>
 
       <div id="loveFortuneResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       재회운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-reunionFortune" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('love')">←</button>
+      <span class="screen-topbar-title">재회운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="reunionFortuneInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">재회운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          금성 역행과 토성의 흐름으로 과거 인연이 다시 떠오르는 시기를 읽고,<br>지금이 재회에 유리한 시점인지 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          재회의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>다가올 흐름
+        </p>
+
+        <button onclick="revealReunionFortune()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 재회운 보기</span>
+        </button>
+      </div>
+
+      <div id="reunionFortuneLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">재회운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="reunionFortuneResultArea" style="display:none;"></div>
 
     </div>
 
@@ -740,6 +793,6 @@
   <script src="./saju_engine.js?v=3"></script>
   <script src="./astro-events-engine.js?v=1"></script>
   <script src="./saju_ui.js?v=7"></script>
-  <script src="./app.js?v=22"></script>
+  <script src="./app.js?v=23"></script>
 </body>
 </html>
