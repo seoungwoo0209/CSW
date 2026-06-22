@@ -761,14 +761,25 @@ async function revealSajuResults() {
    ========================================================= */
 let _loveRevealInFlight = false;
 
+const _LOVE_PLANET_KR = {
+  sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
+  jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
+};
+const _SIGN_RULER = {
+  '양자리':'mars', '황소자리':'venus', '쌍둥이자리':'mercury', '게자리':'moon',
+  '사자자리':'sun', '처녀자리':'mercury', '천칭자리':'venus', '전갈자리':'pluto',
+  '사수자리':'jupiter', '염소자리':'saturn', '물병자리':'uranus', '물고기자리':'neptune'
+};
+
 function _findHouseOccupants(astroData, houseNum) {
-  const PLANET_KR = {
-    sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
-    jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
-  };
-  return Object.keys(PLANET_KR)
+  return Object.keys(_LOVE_PLANET_KR)
     .filter(k => astroData.natal[k]?.house === houseNum)
-    .map(k => PLANET_KR[k]);
+    .map(k => _LOVE_PLANET_KR[k]);
+}
+
+function _findAspectBetween(aspectsFull, labelA, labelB) {
+  if (!aspectsFull) return null;
+  return aspectsFull.find(a => (a.point1 === labelA && a.point2 === labelB) || (a.point1 === labelB && a.point2 === labelA)) || null;
 }
 
 async function revealLoveFortune() {
@@ -794,16 +805,31 @@ async function revealLoveFortune() {
     const nowMonthIdx = new Date().getMonth(); // 0~11, transits 배열은 1월부터 순서대로
     const transitNow  = astroData.transits?.[nowMonthIdx] || null;
 
+    // 결혼/지속적 관계 신호 — 7하우스 지배행성 + 토성 다이내믹 (기존 natalAspectsFull 재사용, 새 계산 없음)
+    const house7RulerKey = _SIGN_RULER[astroData.houses?.[6]?.sign];
+    const house7Ruler = house7RulerKey ? {
+      key: house7RulerKey, label: _LOVE_PLANET_KR[house7RulerKey],
+      ...astroData.natal[house7RulerKey]
+    } : null;
+    const satVenusAspect = _findAspectBetween(astroData.natalAspectsFull, '토성', '금성');
+    const satRulerAspect = (house7Ruler && house7RulerKey !== 'saturn')
+      ? _findAspectBetween(astroData.natalAspectsFull, '토성', house7Ruler.label)
+      : null;
+
     const payload = {
       name:   window.SajuResult?.name || '',
       gender: window.SajuResult?.gender || 'M',
       venus:  astroData.natal.venus,
       mars:   astroData.natal.mars,
       moon:   astroData.natal.moon,
+      saturn: astroData.natal.saturn,
       house5Sign: astroData.houses?.[4]?.sign,
       house7Sign: astroData.houses?.[6]?.sign,
       house5Occupants: house5,
       house7Occupants: house7,
+      house7Ruler,
+      satVenusAspect,
+      satRulerAspect,
       transitNow,
       progMoonHouse: astroData.progression?.planets?.moon?.house,
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
@@ -880,6 +906,23 @@ function _renderLoveFortuneHtml(payload, raw) {
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 기질 해설</div>
       <div style="${aiTextStyle}">${toParas(sections.nature)}</div>
+    </div>
+
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">結 婚</div>
+      <div style="${titleStyle}">결혼·지속적 관계</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">토성 · ${payload.saturn.sign} ${payload.saturn.house}하우스</span>
+        ${payload.house7Ruler ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">7하우스 지배행성 · ${payload.house7Ruler.label} ${payload.house7Ruler.sign} ${payload.house7Ruler.house}하우스</span>` : ''}
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#8d8268;">
+        ${payload.satVenusAspect ? `토성-금성 ${payload.satVenusAspect.aspect}` : '토성-금성 어스펙트 없음'}
+        ${payload.satRulerAspect ? ` · 토성-7하우스지배행성 ${payload.satRulerAspect.aspect}` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 결혼운 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.marriage)}</div>
     </div>
 
     <div style="${panelStyle}">

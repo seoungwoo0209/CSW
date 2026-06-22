@@ -5,8 +5,9 @@ export default async function handler(req, res) {
 
   try {
     const {
-      name, gender, venus, mars, moon,
+      name, gender, venus, mars, moon, saturn,
       house5Sign, house7Sign, house5Occupants, house7Occupants,
+      house7Ruler, satVenusAspect, satRulerAspect,
       transitNow, progMoonHouse, progMoonSign
     } = req.body;
 
@@ -26,6 +27,16 @@ export default async function handler(req, res) {
     }
     const progMoonStr = progMoonSign ? `프로그레션 달: ${progMoonSign} ${progMoonHouse}하우스` : '프로그레션 정보 없음';
 
+    const house7RulerStr = house7Ruler
+      ? `7하우스(${house7Sign}) 지배행성: ${house7Ruler.label} — ${house7Ruler.sign} ${house7Ruler.house}하우스`
+      : '7하우스 지배행성 정보 없음';
+    const satVenusStr = satVenusAspect
+      ? `토성-금성: ${satVenusAspect.aspect} (orb ${satVenusAspect.orb}°)`
+      : '토성-금성 간 뚜렷한 어스펙트 없음';
+    const satRulerStr = satRulerAspect
+      ? `토성-7하우스 지배행성: ${satRulerAspect.aspect} (orb ${satRulerAspect.orb}°)`
+      : '';
+
     const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님만을 위한 연애운 리포트를 작성해.
@@ -41,6 +52,12 @@ export default async function handler(req, res) {
 5하우스(연애·설렘): ${house5Str}
 7하우스(진지한 파트너십): ${house7Str}
 
+[결혼·지속적 관계 — 토성·7하우스 지배행성]
+토성(Saturn): ${saturn.sign} ${saturn.house}하우스 — 책임감·관계를 얼마나 오래 지속시키는가
+${house7RulerStr}
+${satVenusStr}
+${satRulerStr}
+
 [올해의 흐름]
 ${transitStr}
 ${progMoonStr}
@@ -54,7 +71,7 @@ ${progMoonStr}
 4. 단정적인 길흉 예언(예: "올해 반드시 결혼한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
 5. 마크다운 헤더(#) 사용 금지 — **볼드**만 사용.
 
-[섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 3개 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:nature===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
@@ -63,6 +80,13 @@ ${progMoonStr}
 - 어떤 사람에게 끌리는지, 사랑을 표현하는 방식, 진지한 관계 vs 가벼운 만남 중 무엇을 추구하는지
 - 분량: 4~5문단, 각 문단 3~4문장
 
+===SECTION:marriage===
+(결혼·지속적 관계 — 토성과 7하우스 지배행성이 보여주는 결혼 성향)
+- 연애와 결혼은 다르다는 점을 살려서, ${displayName}님이 관계를 얼마나 오래/진지하게 지속시키는 성향인지
+- 토성-금성, 토성-7하우스지배행성 어스펙트가 있다면 그게 결혼/헌신에 어떤 의미인지 (없다면 토성과 7하우스 지배행성의 별자리·하우스만으로 해석)
+- 단정적인 결혼 시기 예언("올해 결혼한다" 등)은 금지, 결혼에 대한 태도와 패턴 위주로
+- 분량: 3~4문단
+
 ===SECTION:timing===
 (올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍)
 - 지금이 연애에 유리한 시기인지, 어떤 변화가 다가오는지
@@ -70,7 +94,7 @@ ${progMoonStr}
 - 분량: 3~4문단
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-지금 바로 nature와 timing 두 섹션을 마커와 함께 전부 작성해.
+지금 바로 nature, marriage, timing 세 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
     // ═══════════════════════════════════════
