@@ -594,7 +594,10 @@ function renderHomeProfileStatus() {
 /* =========================================================
    메인 사주 계산 및 렌더링
    ========================================================= */
+let _runAllInFlight = false;
+
 async function runAll() {
+  if (_runAllInFlight) return; // 중복 호출(동시 클릭/자동 트리거 겹침) 방지
   setAlert("");
 
   const name         = _$("name")?.value.trim() || "";
@@ -628,6 +631,8 @@ async function runAll() {
     noteEl.textContent = "";
   }
 
+  _runAllInFlight = true;
+
   // 결과 영역은 패널+AI 해설이 전부 준비된 뒤에야 한 번에 보여준다 (그 전엔 숨김)
   const resultArea  = _$('saju-result-area');
   const runBtn      = _$('runAllBtn');
@@ -640,6 +645,9 @@ async function runAll() {
 
   // 이전 사람의 AI 해설 블록이 남아있으면 제거(패널은 새로 그려지지만 형제 노드라 자동 제거되지 않음)
   document.querySelectorAll('[id^="aiBlock-"]').forEach(el => el.remove());
+
+  let _runAllSucceeded = false;
+  try {
 
   // ── 사주 계산
   const { fourPillars, birthUtc, approx } = getFourPillars({ birthDate, birthTime });
@@ -723,11 +731,21 @@ async function runAll() {
 
     await _waitForAnalysisReady();
     await fetchAndInjectSajuAI();
+    _runAllSucceeded = true;
 
-    if (resultArea) resultArea.style.display = 'block';
+  } catch (err) {
+    console.error("사주 분석 중 오류:", err);
+    setAlert("사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요.");
+  } finally {
+    _runAllInFlight = false;
     if (runBtn)     { runBtn.disabled = false; runBtn.style.opacity = '1'; }
     if (runLoading) runLoading.style.display = 'none';
-    if (introCard)  introCard.style.display = 'none';
+    if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    if (_runAllSucceeded) {
+      if (resultArea) resultArea.style.display = 'block';
+      if (introCard)  introCard.style.display = 'none';
+    }
+  }
 }
 
 /* =========================================================
