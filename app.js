@@ -3464,16 +3464,29 @@ async function requestTodayFortune() {
 
     const sectionsHtml = (geminiData.result || "")
       .split(/\n(?=## )/).filter(Boolean)
-      .map(sec => {
+      .map((sec, i) => {
         const m     = sec.match(/^## (.+?)\n([\s\S]*)$/);
         const title = m ? m[1].trim() : '';
-        const body  = (m ? m[2] : sec).trim();
+        let   body  = (m ? m[2] : sec).trim();
+
+        // 첫 섹션("오늘의 전체 에너지")의 첫 문장 = 오늘의 한 줄 결론.
+        // 별도로 떼어내 굵게 강조하고, 나머지는 본문으로 이어서 보여준다.
+        let takeawayHtml = '';
+        if (i === 0) {
+          const tm = body.match(/^([^\n]+?[.!?])\s*([\s\S]*)$/);
+          if (tm) {
+            takeawayHtml = `<div style="font-size:16px;font-weight:600;color:#f6e9c1;line-height:1.55;margin-bottom:14px;font-family:Georgia,serif;">${tm[1]}</div>`;
+            body = tm[2].trim();
+          }
+        }
+
         const bodyHtml = body.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
           `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
         ).join('');
         return `
         <div style="margin-bottom:22px;">
-          <div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#dfba6b;font-family:Georgia,serif;margin-bottom:8px;">${title}</div>
+          <div style="font-size:11px;font-weight:600;letter-spacing:.1em;color:#9b8f74;font-family:Georgia,serif;margin-bottom:10px;">— ${title}</div>
+          ${takeawayHtml}
           <div style="font-size:13.5px;color:#beb39a;line-height:1.9;font-weight:300;">${bodyHtml}</div>
         </div>`;
       }).join('');
