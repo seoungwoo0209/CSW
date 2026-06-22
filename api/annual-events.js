@@ -754,6 +754,79 @@ function collectRetrogradeWindows(targetYear, lonAt) {
   return events;
 }
 
+/* ─── 프로그레션 ASC/MC — astro-today.js와 동일 공식(Naibod 키 기법) ─── */
+function calcProgAnglesNaibod(natalJD, ageYears, lat, lng) {
+  const NAIBOD = 0.98564736629;
+  const T = (natalJD - 2451545.0) / 36525.0;
+  const GMST = norm360(
+    280.46061837 + 360.98564736629 * (natalJD - 2451545.0)
+    + 0.000387933 * T * T - (T * T * T) / 38710000.0
+  );
+  const natalRAMC = norm360(GMST + lng);
+  const progRAMC  = norm360(natalRAMC + ageYears * NAIBOD);
+  const eps  = 23.4392911 - 0.013004167 * T - 1.64e-7 * T * T + 5.04e-7 * T * T * T;
+  const epsR = rad(eps);
+  const latR = rad(lat);
+  const mc_raw = Math.atan(Math.tan(rad(progRAMC)) / Math.cos(epsR)) * 180 / Math.PI;
+  const mc     = norm360(Math.cos(rad(progRAMC)) < 0 ? mc_raw + 180 : mc_raw);
+  const asc    = norm360(Math.atan2(
+    Math.cos(rad(progRAMC)),
+    -(Math.sin(epsR) * Math.tan(latR) + Math.cos(epsR) * Math.sin(rad(progRAMC)))
+  ) * 180 / Math.PI);
+  return { asc, mc };
+}
+
+/* ─── 프로그레션 "현재 위치" — 사인 진입(그 해에 경계를 넘는지)과는 별개로,
+   그 해 기준 "지금 어디에 있는지" 늘 참인 배경 사실. "당신이라는 사람" 섹션
+   전용 재료(다른 섹션엔 쓰지 않음).
+   대상: 인격행성 5개(태양·달·수성·금성·화성) + 프로그레션 ASC/MC.
+   3년 전 같은 기준일과 사인을 비교해 "최근 진입" 여부도 같이 표시한다. ─── */
+function buildProgNowFacts(meta, targetYear, lonAt, cusps, lat, lng) {
+  const [bY, bM, bD] = meta.birthDate.split('-').map(Number);
+  const [hh, mi]     = (meta.birthTime || '12:00').split(':').map(Number);
+  const utcOff       = meta.utcOffset ?? 9;
+  const birthUTC     = new Date(Date.UTC(bY, bM - 1, bD, hh, mi) - utcOff * 3600000);
+  const natalJD      = calcJulianDay(
+    birthUTC.getUTCFullYear(), birthUTC.getUTCMonth() + 1, birthUTC.getUTCDate(),
+    birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60
+  );
+
+  function ageYearsAt(realDate) { return (realDate - birthUTC) / 86400000 / 365.25; }
+  function progDateAt(realDate) {
+    return new Date(birthUTC.getTime() + ageYearsAt(realDate) * 86400000);
+  }
+
+  const refDate     = new Date(Date.UTC(targetYear, 11, 31)); // 그 해 연말 기준 "현재"
+  const progDate    = progDateAt(refDate);
+  const pastRefDate = new Date(Date.UTC(targetYear - 3, 11, 31)); // 최근 진입 판정용(3년 전)
+  const pastProgDate = progDateAt(pastRefDate);
+
+  const PLANETS = [
+    { key:'sun', kr:'태양' }, { key:'moon', kr:'달' }, { key:'mercury', kr:'수성' },
+    { key:'venus', kr:'금성' }, { key:'mars', kr:'화성' },
+  ];
+
+  const facts = [];
+  for (const p of PLANETS) {
+    const lon  = lonAt(progDate, p.key);
+    const info = toSignInfo(lon);
+    const house = getHouseOf(lon, cusps);
+    const pastSign = toSignInfo(lonAt(pastProgDate, p.key)).sign;
+    const recent = pastSign !== info.sign;
+    facts.push(`프로그레션 ${p.kr} — ${info.sign} ${info.degree}°${info.minute}' · ${house}하우스${recent ? ' (최근 몇 년 내 사인 진입)' : ''}`);
+  }
+
+  const { asc: progAsc, mc: progMc } = calcProgAnglesNaibod(natalJD, ageYearsAt(refDate), lat, lng);
+  const { asc: pastAsc, mc: pastMc } = calcProgAnglesNaibod(natalJD, ageYearsAt(pastRefDate), lat, lng);
+  const ascInfo = toSignInfo(progAsc), mcInfo = toSignInfo(progMc);
+  const ascRecent = toSignInfo(pastAsc).sign !== ascInfo.sign;
+  const mcRecent  = toSignInfo(pastMc).sign  !== mcInfo.sign;
+  facts.push(`프로그레션 ASC — ${ascInfo.sign} ${ascInfo.degree}°${ascInfo.minute}'${ascRecent ? ' (최근 몇 년 내 사인 진입)' : ''}`);
+  facts.push(`프로그레션 MC — ${mcInfo.sign} ${mcInfo.degree}°${mcInfo.minute}'${mcRecent ? ' (최근 몇 년 내 사인 진입)' : ''}`);
+
+  return facts;
+}
+
 /* ─── 배경 팩트 — 나탈-나탈/프로그레션-나탈 에스펙트 중 가장 타이트한 것들 ───
    "그 해의 사건"이 아니라 "이 사람 자체"에 대한 늘 참인 배경 정보라
    이벤트 스키마(when/tier 등)에 끼워넣지 않고 별도 background 필드로 둔다.
@@ -820,6 +893,7 @@ export default async function handler(req, res) {
     const background = {
       natalHighlights: pickAspectHighlights(natalAspectsFull, 5),
       progHighlights:  pickAspectHighlights(progAspectsFull, 5),
+      progNow:         buildProgNowFacts(meta, targetYear, lonAt, cusps, lat, lng),
     };
 
     return res.status(200).json({

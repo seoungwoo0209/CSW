@@ -3217,11 +3217,11 @@ function _buildAnnualHTML(engineData, aiText, userName = '', meta = {}) {
       <div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(14,11,28,.15) 0%,rgba(14,11,28,.6) 55%,rgba(14,11,28,.97) 100%);"></div>
       <div style="position:relative;z-index:1;">
         <div style="font-size:11px;letter-spacing:.3em;color:#c8a860;margin-bottom:14px;">${year} ANNUAL REPORT</div>
-        <h1 style="font-size:clamp(19px,5.5vw,25px);font-weight:600;line-height:1.4;color:#f8f1dc;margin:0 0 12px;font-family:Georgia,serif;">
-          ${takeaway || '당신의 한 해가 펼쳐집니다'}
+        <h1 style="font-size:clamp(20px,6vw,27px);font-weight:600;line-height:1.4;color:#f8f1dc;margin:0 0 14px;font-family:Georgia,serif;">
+          ${userName ? userName + ' 님의' : '당신의'} ${year}년
         </h1>
         <div style="font-size:12.5px;color:#beb39a;">
-          ${userName ? userName + ' · ' : ''}${meta.birthDate || ''}${profection?.age != null ? ` · 만 ${profection.age}세` : ''}
+          ${meta.birthDate || ''}${profection?.age != null ? ` · 만 ${profection.age}세` : ''}
         </div>
       </div>
     </div>`;
