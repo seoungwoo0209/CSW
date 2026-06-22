@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>정통사주 — 패널↔AI해설 인터리빙 목업 (미리보기 전용, 실제 미적용)</title>
+<style>
+  * { box-sizing:border-box; margin:0; padding:0; }
+  html, body { background:#050409; }
+  body { font-family: Georgia, serif; color:#efe8d6; line-height:1.7; }
+  .note {
+    position:fixed; top:0; left:0; right:0; z-index:999;
+    background:#1a1530; color:#dfba6b; font-family:sans-serif;
+    font-size:12px; padding:8px 16px; text-align:center;
+    border-bottom:1px solid rgba(200,168,96,.3);
+  }
+  .phone-frame {
+    width:402px; max-width:100vw; margin:50px auto 40px; background:#08060f;
+    border:8px solid #1a1530; border-radius:36px; overflow:hidden;
+    box-shadow:0 40px 80px rgba(0,0,0,.6);
+  }
+  @media(max-width:430px){ .phone-frame{ margin:50px auto 0; border:none; border-radius:0; } }
+  .page { padding:22px 16px 50px; }
+
+  .top-title { text-align:center; padding:10px 0 18px; }
+  .top-title .eyebrow { font-size:11px; letter-spacing:.26em; color:#9f93c0; margin-bottom:8px; }
+  .top-title .name { font-size:20px; font-weight:700;
+    background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent; }
+
+  .panel { border-radius:20px;
+    background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+    border:1px solid rgba(200,168,96,.2);
+    box-shadow:0 24px 60px -30px rgba(0,0,0,.92);
+    padding:20px 18px 16px; margin-bottom:6px; }
+  .panel-eyebrow { font-size:11px; letter-spacing:.26em; color:#9f93c0; margin-bottom:10px; }
+  .panel-title { font-size:18px; font-weight:700; margin-bottom:14px;
+    background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent; }
+
+  .pillars-row { display:flex; gap:6px; }
+  .pillar-cell { flex:1; text-align:center; padding:10px 4px; border:1px solid rgba(200,168,96,.18); border-radius:10px; }
+  .pillar-cell .lbl { font-size:10px; color:#8d8268; margin-bottom:6px; }
+  .pillar-cell .gj  { font-size:17px; color:#e6ddc8; margin-bottom:4px; }
+  .pillar-cell .ss  { font-size:10px; color:#9f93c0; }
+
+  .shinsal-row { display:flex; border:1px solid rgba(200,168,96,.16); border-radius:12px; overflow:hidden; }
+  .shinsal-cell { flex:1; text-align:center; padding:10px 4px; border-right:1px solid rgba(200,168,96,.12); }
+  .shinsal-cell:last-child { border-right:none; }
+  .shinsal-cell .b { font-size:16px; color:#e6ddc8; margin:4px 0 6px; }
+  .shinsal-cell .tag { font-size:10.5px; color:#e6ddc8; background:rgba(200,168,96,.1);
+    border:1px solid rgba(200,168,96,.3); border-radius:999px; padding:2px 7px; display:inline-block; }
+
+  .god-row { display:flex; gap:13px; align-items:flex-start; padding:11px 2px; border-bottom:1px solid rgba(200,168,96,.12); }
+  .god-row:last-child { border-bottom:none; }
+  .god-label { flex:0 0 60px; font-size:14px; color:#e6ddc8; }
+  .god-tag { font-size:12px; padding:4px 10px; border-radius:999px; border:1px solid rgba(120,210,180,.4);
+    background:rgba(60,180,140,.1); color:#bdeede; display:inline-block; margin-right:5px; }
+
+  .daeun-row { display:flex; gap:8px; }
+  .daeun-cell { flex:1; text-align:center; padding:12px 6px; border-radius:12px; }
+  .daeun-cell.cur { background:rgba(200,168,96,.14); border:1px solid rgba(200,168,96,.4); }
+  .daeun-cell:not(.cur) { border:1px solid rgba(200,168,96,.12); opacity:.6; }
+  .daeun-cell .age { font-size:10.5px; color:#8d8268; margin-bottom:6px; }
+  .daeun-cell .gj  { font-size:16px; color:#e6ddc8; }
+  .daeun-cell .now-badge { font-size:9px; color:#caa74e; margin-top:4px; }
+
+  /* AI 해설 블록 */
+  .ai-block { padding:16px 10px 26px; position:relative; }
+  .ai-block::before { content:''; position:absolute; left:24px; top:0; bottom:14px; width:1px;
+    background:linear-gradient(180deg, rgba(200,168,96,.45), rgba(200,168,96,.08)); }
+  .ai-eyebrow { font-size:10.5px; letter-spacing:.18em; color:#9b8f74; margin:0 0 8px 38px; }
+  .ai-text { font-size:13px; color:#beb39a; line-height:1.85; font-weight:300; margin-left:38px; }
+  .ai-text strong { color:#f4ecd8; font-weight:600; }
+
+  .section-gap { height:14px; }
+</style>
+</head>
+<body>
+<div class="note">⚠ 미리보기 목업입니다 — 실제 사이트에는 적용되지 않았습니다. 본문은 예시 텍스트입니다.</div>
+
+<div class="phone-frame">
+  <div class="page">
+
+    <div class="top-title">
+      <div class="eyebrow">풍님의 사주 원본 분석</div>
+      <div class="name">정인 용신 · 정관격</div>
+    </div>
+
+    <!-- 패널 1: 4주표 -->
+    <div class="panel">
+      <div class="panel-eyebrow">命 局</div>
+      <div class="panel-title">4주(연/월/일/시)</div>
+      <div class="pillars-row">
+        <div class="pillar-cell"><div class="lbl">년주</div><div class="gj">乙丑</div><div class="ss">정인</div></div>
+        <div class="pillar-cell"><div class="lbl">월주</div><div class="gj">戊寅</div><div class="ss">비견</div></div>
+        <div class="pillar-cell"><div class="lbl">일주</div><div class="gj">己卯</div><div class="ss">★일간</div></div>
+        <div class="pillar-cell"><div class="lbl">시주</div><div class="gj">乙丑</div><div class="ss">정인</div></div>
+      </div>
+    </div>
+
+    <!-- AI 해설 1 -->
+    <div class="ai-block">
+      <div class="ai-eyebrow">— 일주 해설 (AI)</div>
+      <div class="ai-text">
+        논밭의 흙처럼 묵묵히 만물을 길러내는 <strong>기토(己土)</strong>의 기운을 타고난 풍님.
+        명리학에서 기토는 화려하게 드러나진 않지만 모든 생명을 받아내는 토양을 상징합니다 —
+        <strong>겉으로는 차분하지만, 안으로는 끊임없이 무언가를 키워내는 사람</strong>이라는 뜻이죠.
+      </div>
+    </div>
+
+    <!-- 패널 2: 12신살 -->
+    <div class="panel">
+      <div class="panel-eyebrow">十 二 神 殺</div>
+      <div class="panel-title">12신살</div>
+      <div class="shinsal-row">
+        <div class="shinsal-cell"><div class="lbl" style="font-size:10px;color:#8d8268;">년주</div><div class="b">丑</div><span class="tag">월살</span></div>
+        <div class="shinsal-cell"><div class="lbl" style="font-size:10px;color:#8d8268;">월주</div><div class="b">寅</div><span class="tag">망신살</span></div>
+        <div class="shinsal-cell"><div class="lbl" style="font-size:10px;color:#8d8268;">일주</div><div class="b">卯</div><span class="tag">장성살</span></div>
+        <div class="shinsal-cell"><div class="lbl" style="font-size:10px;color:#8d8268;">시주</div><div class="b">丑</div><span class="tag">월살</span></div>
+      </div>
+    </div>
+
+    <!-- AI 해설 2 -->
+    <div class="ai-block">
+      <div class="ai-eyebrow">— 신살 해설 (AI)</div>
+      <div class="ai-text">
+        일주에 자리한 <strong>장성살(將星殺)</strong>은 무리 속에서도 자연스럽게 중심이 되는 힘을 뜻합니다.
+        리더 자리를 일부러 탐내지 않아도, 사람들이 어느새 풍님의 판단을 기다리게 되는 구조예요.
+      </div>
+    </div>
+
+    <!-- 패널 3: 유형 카드 -->
+    <div class="panel">
+      <div class="panel-eyebrow">사주 자원 분석</div>
+      <div class="panel-title">신뢰로 쌓아 올리는 사람</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">강점 · 관성 144</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">보완 · 식상 67</span>
+      </div>
+    </div>
+
+    <!-- AI 해설 3 -->
+    <div class="ai-block">
+      <div class="ai-eyebrow">— 재능 해설 (AI)</div>
+      <div class="ai-text">
+        관성이 도드라진 구조는 "원칙과 책임"이 곧 자산이 되는 사람을 만듭니다.
+        이런 구조를 가진 사람은 두 가지 유형 중 하나입니다. 대부분은 규칙을 따르는 데서 그치지만,
+        <strong>풍님은 그 규칙을 스스로 다시 세우는 쪽</strong>입니다.
+      </div>
+    </div>
+
+    <!-- 패널 4: 용신희신기신한신 -->
+    <div class="panel">
+      <div class="panel-eyebrow">사주 자원 분석</div>
+      <div class="panel-title">용신 · 희신 · 기신 · 한신</div>
+      <div class="god-row"><div class="god-label">용신</div><div><span class="god-tag">정인(正印)</span><div style="font-size:11px;color:#8d8268;margin-top:4px;">가장 필요한 핵심 기운 · 화</div></div></div>
+      <div class="god-row"><div class="god-label">희신</div><div><span class="god-tag" style="color:#bcd9ee;border-color:rgba(120,180,210,.4);background:rgba(60,140,180,.1);">편인(偏印)</span><span class="god-tag" style="color:#bcd9ee;border-color:rgba(120,180,210,.4);background:rgba(60,140,180,.1);">겁재(劫財)</span></div></div>
+    </div>
+
+    <!-- AI 해설 4 -->
+    <div class="ai-block">
+      <div class="ai-eyebrow">— 용신 해설 (AI)</div>
+      <div class="ai-text">
+        풍님의 용신은 <strong>정인(正印)</strong> — 스스로를 다그치기보다, 누군가의 신뢰와 인정 속에서
+        진짜 힘이 차오르는 구조입니다. 사람들은 풍님을 독립적인 사람으로 보지만,
+        실제로는 믿어주는 한 사람의 존재가 결단을 더 단단하게 만듭니다.
+      </div>
+    </div>
+
+    <!-- 패널 5: 대운 (신규) -->
+    <div class="panel">
+      <div class="panel-eyebrow">大 運 流 轉</div>
+      <div class="panel-title">나의 대운 흐름</div>
+      <div class="daeun-row">
+        <div class="daeun-cell"><div class="age">22~31세</div><div class="gj">乙亥</div></div>
+        <div class="daeun-cell cur"><div class="age">32~41세</div><div class="gj">甲戌</div><div class="now-badge">● 현재</div></div>
+        <div class="daeun-cell"><div class="age">42~51세</div><div class="gj">癸酉</div></div>
+      </div>
+    </div>
+
+    <!-- AI 해설 5 -->
+    <div class="ai-block">
+      <div class="ai-eyebrow">— 대운 해설 (AI)</div>
+      <div class="ai-text">
+        지금 풍님은 <strong>32세부터 41세까지, 갑술(甲戌) 대운</strong>을 지나는 중입니다.
+        원국의 정인과 만나 "쌓아온 신뢰가 실제 성과로 전환되는" 결을 타는 시기예요.
+        다음 대운(癸酉)으로 넘어가면 관계의 무게추가 한 번 더 바뀌게 됩니다.
+      </div>
+    </div>
+
+    <div class="section-gap"></div>
+
+  </div>
+</div>
+
+</body>
+</html>

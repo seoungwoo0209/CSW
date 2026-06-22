@@ -632,6 +632,9 @@ function runAll() {
   const resultArea = _$('saju-result-area');
   if (resultArea) resultArea.style.display = 'block';
 
+  // 이전 사람의 AI 해설 블록이 남아있으면 제거(패널은 새로 그려지지만 형제 노드라 자동 제거되지 않음)
+  document.querySelectorAll('[id^="aiBlock-"]').forEach(el => el.remove());
+
   // ── 사주 계산
   const { fourPillars, birthUtc, approx } = getFourPillars({ birthDate, birthTime });
 
@@ -673,6 +676,7 @@ function runAll() {
       currentDecadeIdx = daeunTimeline.decades.findIndex(
         d => ageNowYears >= d.startAge && ageNowYears < d.startAge + 10
       );
+      if (window.SajuUI?.renderDaeunInfo) window.SajuUI.renderDaeunInfo(daeunTimeline, currentDecadeIdx);
     }
 
     window.SajuResult = {
@@ -3579,6 +3583,13 @@ async function requestGeminiFortune() {
   resultEl.style.display = "none";
   errorEl.style.display  = "none";
 
+  // 이전 해설 블록 제거 (재생성 대비)
+  const SECTION_KEYS = ["essence", "talent", "resource", "yongsin", "daeun"];
+  SECTION_KEYS.forEach(key => {
+    const old = _$("aiBlock-" + key);
+    if (old) old.remove();
+  });
+
   try {
     const {
       name, gender, fourPillars,
@@ -3601,14 +3612,65 @@ async function requestGeminiFortune() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
-    const formatted = (data.result || "")
-      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-      .replace(/\n/g, "<br>");
+    // ── AI 응답을 ===SECTION:key=== 마커로 분리
+    const raw = data.result || "";
+    const markerRe = /===SECTION:(\w+)===/g;
+    const hits = [];
+    let m;
+    while ((m = markerRe.exec(raw)) !== null) {
+      hits.push({ key: m[1], contentStart: m.index + m[0].length, markerStart: m.index });
+    }
+    const sections = {};
+    hits.forEach((hit, i) => {
+      const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
+      sections[hit.key] = raw.slice(hit.contentStart, end).trim();
+    });
 
-    resultEl.innerHTML = `
-      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">${formatted}</div>
-    `;
+    // ── 패널 바로 뒤에 해당 해설을 끼워넣기
+    const ANCHOR_ID = {
+      essence:  "shinsalPanel",
+      talent:   "personalityCard",
+      resource: "resourcePanel",
+      yongsin:  "godsPanel",
+      daeun:    "daeunPanel",
+    };
+    const EYEBROW = {
+      essence:  "본질 해설",
+      talent:   "재능 해설",
+      resource: "재물 · 일 · 관계 해설",
+      yongsin:  "용신 해설",
+      daeun:    "대운 해설",
+    };
+
+    let insertedAny = false;
+    SECTION_KEYS.forEach(key => {
+      const text   = sections[key];
+      const anchor = _$(ANCHOR_ID[key]);
+      if (!text || !anchor) return;
+
+      const bodyHtml = text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+        `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+      ).join('');
+
+      const html = `
+        <div id="aiBlock-${key}" style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+          <div style="position:absolute;left:10px;top:0;bottom:12px;width:1px;
+            background:linear-gradient(180deg, rgba(200,168,96,.45), rgba(200,168,96,.08));"></div>
+          <div style="font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 28px;">— ${EYEBROW[key]} (AI)</div>
+          <div style="font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;margin-left:28px;">${bodyHtml}</div>
+        </div>
+      `;
+      anchor.insertAdjacentHTML("afterend", html);
+      insertedAny = true;
+    });
+
+    if (!insertedAny) throw new Error("AI 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
+
+    resultEl.innerHTML = `<div style="font-size:12.5px;color:#caa74e;text-align:center;">✓ 위 패널들에 해설이 추가되었습니다. 위로 스크롤해서 확인해보세요.</div>`;
     resultEl.style.display = "block";
+
+    const firstBlock = _$("aiBlock-essence") || document.querySelector('[id^="aiBlock-"]');
+    if (firstBlock) firstBlock.scrollIntoView({ behavior: "smooth", block: "start" });
 
   } catch (err) {
     errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");

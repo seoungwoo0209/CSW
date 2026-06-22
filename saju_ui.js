@@ -331,6 +331,46 @@ function renderShinsalInfo(shinsal) {
 }
 
 /* =========================================================
+   PART 3.4: 대운 흐름 렌더링 (이전·현재·다음 3구간)
+   ========================================================= */
+function renderDaeunInfo(daeunTimeline, currentDecadeIdx) {
+  const c = _$("daeunPanel");
+  if (!c || !daeunTimeline) return;
+
+  const idx  = (typeof currentDecadeIdx === "number") ? currentDecadeIdx : -1;
+  const cur  = idx >= 0 ? daeunTimeline.decades[idx] : null;
+  const prev = idx > 0 ? daeunTimeline.decades[idx - 1] : null;
+  const next = idx >= 0 && idx + 1 < daeunTimeline.decades.length ? daeunTimeline.decades[idx + 1] : null;
+
+  const cellHtml = (d, isCur) => {
+    if (!d) return `<div style="flex:1;min-width:0;"></div>`;
+    return `
+      <div style="flex:1;min-width:0;text-align:center;padding:14px 6px;border-radius:14px;
+        ${isCur
+          ? 'background:rgba(200,168,96,.14);border:1px solid rgba(200,168,96,.4);'
+          : 'border:1px solid rgba(200,168,96,.12);opacity:.65;'}">
+        <div style="font-size:10.5px;color:#8d8268;margin-bottom:6px;">${d.startAge}~${d.endAge}세</div>
+        <div style="font-size:16px;color:#e6ddc8;font-family:Georgia,serif;">${d.ganji}</div>
+        ${isCur ? '<div style="font-size:9px;color:#caa74e;margin-top:5px;letter-spacing:.05em;">● 현재</div>' : ''}
+      </div>
+    `;
+  };
+
+  c.innerHTML = `
+    <div class="result-card">
+      <div class="card-title">나의 대운 흐름</div>
+      <div class="tiny">${daeunTimeline.direction} · 첫 대운 시작 만 ${daeunTimeline.daeunStart.age}세</div>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        ${cellHtml(prev, false)}
+        ${cellHtml(cur, true)}
+        ${cellHtml(next, false)}
+      </div>
+      ${!cur ? `<div style="font-size:11.5px;color:#8d8268;margin-top:10px;text-align:center;">아직 첫 대운(만 ${daeunTimeline.daeunStart.age}세) 시작 전입니다</div>` : ''}
+    </div>
+  `;
+}
+
+/* =========================================================
    PART 3.5: 용신·희신·기신·한신 렌더링
    ========================================================= */
 function renderGodsInfo(gods) {
@@ -433,6 +473,7 @@ window.SajuUI = {
   renderStrengthInfo,
   renderGodsInfo,
   renderShinsalInfo,
+  renderDaeunInfo,
   renderBaseScore,
   renderResourcePanel,
   renderPersonalityCard,
