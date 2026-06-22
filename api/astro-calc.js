@@ -21,41 +21,16 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { birthDate, birthTime, lat, lng, name, gender, utcOffset } = req.body;
+    const { birthDate, birthTime, lat, lng, name, gender, utcOffset, partner } = req.body;
 
     if (!birthDate || !birthTime || lat == null || lng == null) {
       return res.status(400).json({ error: '생년월일, 출생시각, 출생지(위도/경도)가 필요합니다.' });
     }
 
-    const [yyyy, mm, dd] = birthDate.split('-').map(Number);
-    const [hh, mi]       = birthTime.split(':').map(Number);
-
-    // ── UTC 변환
-    const offsetHours      = (utcOffset != null) ? utcOffset : (lng / 15);
-    const localDecimalHour = hh + mi / 60;
-    const utcDecimalHour   = localDecimalHour - offsetHours;
-
-    // Date.UTC는 utcH/utcM이 범위를 벗어나도 날짜를 자동 조정함
-    const utcH = Math.floor(utcDecimalHour);
-    const utcM = Math.round((utcDecimalHour - utcH) * 60);
-    const birthUTC = new Date(Date.UTC(yyyy, mm - 1, dd, utcH, utcM, 0));
-
-    // [FIX 1] birthUTC에서 실제 UTC 날짜/시각을 역산 → JD 계산에 사용
-    // (날짜 경계를 넘는 경우에도 ephemeris와 동일한 시각 기준 보장)
-    const bY  = birthUTC.getUTCFullYear();
-    const bM  = birthUTC.getUTCMonth() + 1;
-    const bD  = birthUTC.getUTCDate();
-    const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60
-                + birthUTC.getUTCSeconds() / 3600;
-
-    // 나탈 행성 계산
-    const natalRaw = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
-    const planets  = extractPlanets(natalRaw.observed);
-
-    // 하우스 계산 (Placidus) — birthUTC 기준 JD 사용
-    const jd = calcJulianDay(bY, bM, bD, bHr);
-    const { asc, mc, houses } = calcHousesPlacidus(jd, lat, lng);
-    const planetsWithHouse = assignHouses(planets, houses);
+    const {
+      birthUTC, jd, planets, planetsWithHouse, asc, mc, houses,
+      offsetHours
+    } = computeNatalChart(birthDate, birthTime, lat, lng, utcOffset);
 
     // ── 세컨더리 프로그레션 (태양 실제 이동 기반 정밀 공식)
     // 1일 = 1년. 현재 나이(년) = 출생일로부터 경과한 일수
@@ -136,6 +111,56 @@ export default async function handler(req, res) {
     const transitsYear = todayKST.getUTCFullYear();
     const transits = calcTransitsByYear(houses, transitsYear);
 
+    // ── 궁합(시너지) — partner 정보가 같이 온 경우에만 계산 (없으면 기존 응답과 완전히 동일)
+    let synastry = null;
+    if (partner && partner.birthDate && partner.lat != null && partner.lng != null) {
+      const pBirthTime = partner.timeUnknown ? '12:00' : (partner.birthTime || '12:00');
+      const pChart = computeNatalChart(partner.birthDate, pBirthTime, partner.lat, partner.lng, partner.utcOffset);
+
+      const myPoints      = buildAspectPoints(planets, asc, mc, northLon, southLon);
+      const partnerPoints = buildAspectPoints(pChart.planets, pChart.asc, pChart.mc, pChart.northLon, pChart.southLon);
+      const synastryAspects = calcAllAspects(myPoints, partnerPoints, { labelPrefixA: '나 ', labelPrefixB: '상대 ' });
+
+      // 하우스 오버레이 (양방향)
+      const partnerPlanetsInMyHouses = assignHouses(pChart.planets, houses);
+      const myPlanetsInPartnerHouses = assignHouses(planets, pChart.houses);
+
+      // 컴포지트 차트 (중간점, 짧은 호 기준)
+      function circMid(a, b) {
+        const aN = norm360(a), bN = norm360(b);
+        let diff = bN - aN;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        return norm360(aN + diff / 2);
+      }
+      const compositePlanets = {};
+      PLANET_KEYS.forEach(k => {
+        compositePlanets[k] = toSignInfo(circMid(planets[k].lon, pChart.planets[k].lon));
+      });
+
+      const partnerNatalResult = {};
+      PLANET_KEYS.forEach(k => {
+        partnerNatalResult[k] = { ...toSignInfo(pChart.planetsWithHouse[k].lon), house: pChart.planetsWithHouse[k].house };
+      });
+
+      synastry = {
+        partnerNatal: {
+          planets: partnerNatalResult,
+          angles:  { asc: toSignInfo(pChart.asc), mc: toSignInfo(pChart.mc) },
+          meta:    { name: partner.name || '', gender: partner.gender || 'M', timeUnknown: !!partner.timeUnknown }
+        },
+        synastryAspects,
+        houseOverlay: {
+          partnerPlanetsInMyHouses: PLANET_KEYS.reduce((acc, k) => { acc[k] = partnerPlanetsInMyHouses[k].house; return acc; }, {}),
+          myPlanetsInPartnerHouses: PLANET_KEYS.reduce((acc, k) => { acc[k] = myPlanetsInPartnerHouses[k].house; return acc; }, {}),
+        },
+        composite: {
+          planets: compositePlanets,
+          angles: { asc: toSignInfo(circMid(asc, pChart.asc)), mc: toSignInfo(circMid(mc, pChart.mc)) }
+        }
+      };
+    }
+
     return res.status(200).json({
       natal:       natalResult,
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
@@ -171,7 +196,8 @@ export default async function handler(req, res) {
         lng,
         utcOffset:   offsetHours,
         houseSystem: 'Placidus'
-      }
+      },
+      synastry
     });
 
   } catch (error) {
@@ -191,6 +217,45 @@ function extractPlanets(observed) {
     result[k] = { lon: ((lon % 360) + 360) % 360 };
   });
   return result;
+}
+
+/* =========================================================
+   나탈 차트 계산 (UTC 변환 → 행성 → 하우스 → 노드) — 본인/상대방 공용
+   기존 handler 본문 그대로 추출한 것이라 동작 변화 없음
+   ========================================================= */
+function computeNatalChart(birthDate, birthTime, lat, lng, utcOffset) {
+  const [yyyy, mm, dd] = birthDate.split('-').map(Number);
+  const [hh, mi]       = birthTime.split(':').map(Number);
+
+  // ── UTC 변환
+  const offsetHours      = (utcOffset != null) ? utcOffset : (lng / 15);
+  const localDecimalHour = hh + mi / 60;
+  const utcDecimalHour   = localDecimalHour - offsetHours;
+
+  // Date.UTC는 utcH/utcM이 범위를 벗어나도 날짜를 자동 조정함
+  const utcH = Math.floor(utcDecimalHour);
+  const utcM = Math.round((utcDecimalHour - utcH) * 60);
+  const birthUTC = new Date(Date.UTC(yyyy, mm - 1, dd, utcH, utcM, 0));
+
+  // birthUTC에서 실제 UTC 날짜/시각을 역산 → JD 계산에 사용
+  const bY  = birthUTC.getUTCFullYear();
+  const bM  = birthUTC.getUTCMonth() + 1;
+  const bD  = birthUTC.getUTCDate();
+  const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60
+              + birthUTC.getUTCSeconds() / 3600;
+
+  // 나탈 행성 계산
+  const natalRaw = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
+  const planets  = extractPlanets(natalRaw.observed);
+
+  // 하우스 계산 (Placidus) — birthUTC 기준 JD 사용
+  const jd = calcJulianDay(bY, bM, bD, bHr);
+  const { asc, mc, houses } = calcHousesPlacidus(jd, lat, lng);
+  const planetsWithHouse = assignHouses(planets, houses);
+
+  const { northLon, southLon } = calcLunarNodes(jd);
+
+  return { birthUTC, jd, planets, planetsWithHouse, asc, mc, houses, northLon, southLon, offsetHours };
 }
 
 /* =========================================================
