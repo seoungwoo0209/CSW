@@ -738,7 +738,7 @@ async function revealSajuResults() {
     });
 
     const aiOk = await fetchAndInjectSajuAI();
-    if (!aiOk) throw new Error("AI 해설을 불러오지 못했습니다.");
+    if (!aiOk) throw new Error("사주 AI 해설 호출 실패");
     succeeded = true;
 
   } catch (err) {
