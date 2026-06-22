@@ -289,8 +289,64 @@ function renderPersonalityCard(cardData) {
    ========================================================= */
 function renderGeokInfo()     {}
 function renderStrengthInfo() {}
-function renderGodsInfo()     {}
 function renderBaseScore()    {}
+
+/* =========================================================
+   PART 3.5: 용신·희신·기신·한신 렌더링
+   ========================================================= */
+function renderGodsInfo(gods) {
+  const c = _$("godsPanel");
+  if (!c || !gods) return;
+  const D = window.SajuData;
+
+  const ROWS = [
+    { key:"yong", label:"용신", hanja:"用神", desc:"가장 필요한 핵심 기운", color:"#bdeede", border:"rgba(120,210,180,.4)", bg:"rgba(60,180,140,.1)" },
+    { key:"hee",  label:"희신", hanja:"喜神", desc:"용신을 돕는 보조 기운", color:"#bcd9ee", border:"rgba(120,180,210,.4)", bg:"rgba(60,140,180,.1)" },
+    { key:"gi",   label:"기신", hanja:"忌神", desc:"피하면 좋은 기운",     color:"#e8b9ad", border:"rgba(221,155,136,.4)", bg:"rgba(221,155,136,.1)" },
+    { key:"han",  label:"한신", hanja:"閑神", desc:"중립적인 기운",        color:"#cbc4ad", border:"rgba(180,170,140,.4)", bg:"rgba(140,130,100,.1)" },
+  ];
+
+  const rowsHtml = ROWS.map(r => {
+    const grp = gods[r.key];
+    if (!grp || !grp.tenGods || !grp.tenGods.length) return "";
+    const pills = grp.tenGods.map(tg => {
+      const disp = (typeof getShishenDisplay === "function") ? getShishenDisplay(tg) : tg;
+      return `<span style="font-size:12.5px;padding:4px 11px;border-radius:999px;font-family:Georgia,serif;
+        color:${r.color};border:1px solid ${r.border};background:${r.bg};">${disp}</span>`;
+    }).join('');
+    const elKr = (grp.elements || []).map(e => D.WUXING_LABEL[e] || e).join('·');
+    return `
+      <div style="display:flex;align-items:flex-start;gap:13px;padding:13px 2px;border-bottom:1px solid rgba(200,168,96,.12);">
+        <div style="flex:0 0 64px;">
+          <div style="font-size:15px;color:#e6ddc8;font-family:Georgia,serif;">${r.label}</div>
+          <div style="font-size:10.5px;color:#8d8268;margin-top:1px;">${r.hanja}</div>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:5px;">${pills}</div>
+          <div style="font-size:11.5px;color:#8d8268;">${r.desc}${elKr ? ` · ${elKr}` : ''}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  c.innerHTML = `
+    <div style="
+      border-radius:20px;
+      background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);
+      box-shadow:0 24px 60px -30px rgba(0,0,0,.92);
+      padding:20px 18px 8px;margin-bottom:14px;
+    ">
+      <div style="font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;">사주 자원 분석</div>
+      <div style="margin:0 0 14px;font-size:18px;font-weight:700;font-family:Georgia,serif;
+        background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+        -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">
+        용신 · 희신 · 기신 · 한신
+      </div>
+      <div>${rowsHtml}</div>
+    </div>
+  `;
+}
 
 /* =========================================================
    PART 4: 전체 분석 렌더링
@@ -301,6 +357,9 @@ function renderFullAnalysis() {
   if (!window.SajuEngine?.buildState) return;
 
   const baseState = window.SajuEngine.buildState(window.SajuResult.fourPillars);
+
+  renderGodsInfo(baseState.gods);
+  if (window.SajuResult) window.SajuResult.gods = baseState.gods;
 
   if (window.SajuEngine.computeResourceScores) {
     const resourceResult = window.SajuEngine.computeResourceScores(baseState);
