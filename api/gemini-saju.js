@@ -306,7 +306,7 @@ ${daeunStr}
       const errData = await response.json().catch(() => ({}));
       const message = errData?.error?.message || `Gemini API 오류 (status: ${response.status})`;
       console.error('Gemini API error:', message);
-      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
+      return res.status(502).json({ error: '[DEBUG] status=' + response.status + ' msg=' + message });
     }
 
     const data  = await response.json();
