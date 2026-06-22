@@ -3087,7 +3087,7 @@ function _buildAnnualHTML(engineData, aiText, userName = '', meta = {}) {
   }
 
   /* ── 유틸 ── */
-  const V_KR = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'양면 에너지', neutral:'중립' };
+  const V_KR = { supportive:'기회·상승', challenging:'도전·긴장', double_edged:'기회·전환', neutral:'안정기' };
   const V_COL = { supportive:'#dfba6b', challenging:'#e07a6b', double_edged:'#c8a860', neutral:'#9b8f74' };
 
   /* ── NASA 공개 이미지 — 로컬 /img/ 폴더 (퍼블릭 도메인, NASA Image Library 원본) ──
