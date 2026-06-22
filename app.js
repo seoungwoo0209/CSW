@@ -3688,10 +3688,8 @@ async function fetchAndInjectSajuAI() {
 
       const html = `
         <div id="aiBlock-${key}" style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
-          <div style="position:absolute;left:10px;top:0;bottom:12px;width:1px;
-            background:linear-gradient(180deg, rgba(200,168,96,.45), rgba(200,168,96,.08));"></div>
-          <div style="font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 28px;">— ${EYEBROW[key]} (AI)</div>
-          <div style="font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;margin-left:28px;">${bodyHtml}</div>
+          <div style="font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;">— ${EYEBROW[key]}</div>
+          <div style="font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;">${bodyHtml}</div>
         </div>
       `;
       anchor.insertAdjacentHTML("afterend", html);
