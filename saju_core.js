@@ -76,27 +76,50 @@ function hashString(str) {
 const JIEQI       = ["LICHUN","JINGZHE","QINGMING","LIXIA","MANGZHONG","XIAOSHU",
                      "LIQIU","BAILU","HANLU","LIDONG","DAXUE","XIAOHAN"];
 const JIEQI_BRANCH = ["寅","卯","辰","巳","午","未","申","酉","戌","亥","子","丑"];
-const JIEQI_BASE_DAY = [35,64,95,126,157,188,220,251,281,311,341,5];
-const JIEQI_BASE_MIN = [120,330,615,890,1100,1305,210,440,680,910,1130,200];
+const JIEQI_BASE_DAY = [35,64,95,126,157,188,220,251,281,311,341,5]; // 초기 추정값(반복 계산의 시작점)
+const JIEQI_TARGET_LON = [315,345,15,45,75,105,135,165,195,225,255,285]; // 태양 황경 목표값(도)
 
-const JIEQI_SAMPLE = (() => {
-  const baseYear = 2020, years = 11;
-  const make = amp => Array.from({ length: years }, (_, i) => Math.round(Math.sin((i + 1) * 0.9) * amp));
-  const deltas = {};
-  for (const k of JIEQI) deltas[k] = make(6);
-  return { baseYear, years, deltas };
-})();
+// 태양 겉보기 황경(도) — Meeus, Astronomical Algorithms ch.25 저정밀 공식(오차 ~0.01°)
+function _sunApparentLongitudeDeg(jd) {
+  const T  = (jd - 2451545.0) / 36525;
+  const norm360 = x => ((x % 360) + 360) % 360;
+  const L0 = norm360(280.46646 + 36000.76983*T + 0.0003032*T*T);
+  const M  = norm360(357.52911 + 35999.05029*T - 0.0001537*T*T);
+  const Mr = M * Math.PI / 180;
+  const C  = (1.914602 - 0.004817*T - 0.000014*T*T) * Math.sin(Mr)
+           + (0.019993 - 0.000101*T) * Math.sin(2*Mr)
+           + 0.000289 * Math.sin(3*Mr);
+  const trueLong = L0 + C;
+  const omega = 125.04 - 1934.136*T;
+  const apparent = trueLong - 0.00569 - 0.00478 * Math.sin(omega * Math.PI / 180);
+  return norm360(apparent);
+}
+
+function _dateToJD(date) {
+  return date.getTime() / 86400000 + 2440587.5;
+}
+
+// 태양 황경이 targetLon(도)에 도달하는 정확한 시각(UTC) — 반복(뉴턴식 선형보정)으로 수렴
+function _findJieqiCrossingUTC(year, dayGuess, targetLon) {
+  let guess = new Date(Date.UTC(year, 0, dayGuess));
+  for (let i = 0; i < 8; i++) {
+    const jd  = _dateToJD(guess);
+    const lon = _sunApparentLongitudeDeg(jd);
+    let delta = targetLon - lon;
+    if (delta > 180) delta -= 360;
+    if (delta < -180) delta += 360;
+    if (Math.abs(delta) < 1e-7) break;
+    const daysAdjust = delta / 0.98564736; // 태양의 평균 일일 운동(도/일)
+    guess = new Date(guess.getTime() + daysAdjust * 86400000);
+  }
+  return guess;
+}
 
 function getJieqiDateTimeKST(year, jieqiName) {
   const idx = JIEQI.indexOf(jieqiName);
   if (idx < 0) return { dt: null, approx: true };
-  let baseMin = JIEQI_BASE_MIN[idx];
-  const offset = year - JIEQI_SAMPLE.baseYear;
-  const inRange = offset >= 0 && offset < JIEQI_SAMPLE.years;
-  if (inRange) baseMin += JIEQI_SAMPLE.deltas[jieqiName][offset];
-  const jan1 = new Date(Date.UTC(year, 0, 1));
-  const dt = new Date(jan1.getTime() + (JIEQI_BASE_DAY[idx] - 1) * 86400000 + baseMin * 60000);
-  return { dt, approx: !inRange };
+  const dt = _findJieqiCrossingUTC(year, JIEQI_BASE_DAY[idx], JIEQI_TARGET_LON[idx]);
+  return { dt, approx: false };
 }
 
 /* =========================================================
