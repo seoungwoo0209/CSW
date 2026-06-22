@@ -1152,6 +1152,64 @@ function selectPartnerCity(cityName) {
 }
 
 let _compatRevealInFlight = false;
+let _compatMode = 'compatibility'; // 'compatibility' | 'reunion'
+
+// 재회운 화면의 "알아요/몰라요" 토글
+function setReunionKnowPartner(knows) {
+  const activeStyle   = "background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;";
+  const inactiveStyle = "background:transparent;color:#9b8f74;font-weight:600;";
+  const baseStyle     = "padding:11px 18px;font-size:13px;border:none;cursor:pointer;font-family:inherit;";
+
+  const noBtn  = _$('reunionKnowNoBtn');
+  const yesBtn = _$('reunionKnowYesBtn');
+  if (noBtn)  noBtn.style.cssText  = baseStyle + (!knows ? activeStyle : inactiveStyle);
+  if (yesBtn) yesBtn.style.cssText = baseStyle + (knows ? activeStyle : inactiveStyle);
+
+  const unknownCard = _$('reunionFortuneInputCard');
+  const knownCard   = _$('reunionKnowPartnerCard');
+  if (unknownCard) unknownCard.style.display = knows ? 'none' : 'block';
+  if (knownCard)    knownCard.style.display  = knows ? 'block' : 'none';
+}
+
+// 재회운(알 때) → 궁합 화면을 "재회운 모드"로 열기 (새 화면/폼 없이 그대로 재사용)
+function goToReunionPartnerForm() {
+  _compatMode = 'reunion';
+  const titleEl    = _$('compatibilityScreenTitle');
+  const eyebrowEl  = _$('compatibilityEyebrowLabel');
+  const headlineEl = _$('compatibilityHeadline');
+  const tagsEl     = _$('compatibilityTags');
+  const ctaEl      = _$('compatibilityCtaLabel');
+  if (titleEl)    titleEl.textContent   = '재회운';
+  if (eyebrowEl)  eyebrowEl.textContent = '재회운';
+  if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 시너지를 보고,<br>금성 역행·토성 흐름까지 더해 재회 타이밍을 짚어드립니다.';
+  if (tagsEl)     tagsEl.innerHTML      = '관계의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>재회 가능성';
+  if (ctaEl)      ctaEl.textContent     = '✨ 재회운 보기';
+  enterScreen('compatibility');
+}
+
+// 궁합 카드를 직접 탭했을 때는 항상 기본(궁합) 모드로 초기화
+function enterCompatibilityFresh() {
+  _compatMode = 'compatibility';
+  const titleEl    = _$('compatibilityScreenTitle');
+  const eyebrowEl  = _$('compatibilityEyebrowLabel');
+  const headlineEl = _$('compatibilityHeadline');
+  const tagsEl     = _$('compatibilityTags');
+  const ctaEl      = _$('compatibilityCtaLabel');
+  if (titleEl)    titleEl.textContent   = '궁합';
+  if (eyebrowEl)  eyebrowEl.textContent = '궁합';
+  if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 끌림과 어긋남의 지점을 찾고,<br>이 관계가 어떤 결을 가지고 있는지 풀어드립니다.';
+  if (tagsEl)     tagsEl.innerHTML      = '끌림과 케미<span class="dot">·</span>관계의 결<span class="dot">·</span>오래 갈 수 있는지';
+  if (ctaEl)      ctaEl.textContent     = '✨ 궁합 보기';
+  enterScreen('compatibility');
+}
+
+function goBackFromCompatibility() {
+  if (_compatMode === 'reunion') {
+    enterScreen('reunionFortune');
+  } else {
+    enterScreen('love');
+  }
+}
 
 async function revealCompatibility() {
   if (_compatRevealInFlight) return;
@@ -1239,9 +1297,10 @@ async function revealCompatibility() {
 
     const synastry = calcData.synastry;
     const topAspects = (synastry.synastryAspects || []).slice(0, 10);
+    const isReunionMode = _compatMode === 'reunion';
 
     const aiPayload = {
-      type: 'compatibility',
+      type: isReunionMode ? 'reunion-known' : 'compatibility',
       myName: myMeta.name || '',
       myGender: myMeta.gender || 'M',
       partnerName: partnerName || '',
@@ -1263,6 +1322,12 @@ async function revealCompatibility() {
       }
     };
 
+    if (isReunionMode) {
+      const nowMonthIdx = new Date().getMonth();
+      const myTransitNow = window.AstroResult?.transits?.[nowMonthIdx] || null;
+      aiPayload.transitSaturnHouse = myTransitNow?.planets?.saturn?.house ?? null;
+    }
+
     const aiRes = await fetch("/api/gemini-love", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -1271,7 +1336,7 @@ async function revealCompatibility() {
     const aiData = await aiRes.json();
     if (!aiRes.ok || aiData.error) throw new Error(aiData.error || "서버 오류가 발생했습니다.");
 
-    if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '');
+    if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '', aiData.venusRetrograde);
     succeeded = true;
 
   } catch (err) {
@@ -1288,7 +1353,7 @@ async function revealCompatibility() {
   }
 }
 
-function _renderCompatibilityHtml(payload, raw) {
+function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
   const markerRe = /===SECTION:(\w+)===/g;
   const hits = [];
   let m;
@@ -1319,6 +1384,42 @@ function _renderCompatibilityHtml(payload, raw) {
 
   const myLabel = payload.myName || '나';
   const partnerLabel = payload.partnerName || '상대방';
+  const isReunion = payload.type === 'reunion-known';
+
+  if (isReunion) {
+    const saturnIn78 = payload.transitSaturnHouse === 7 || payload.transitSaturnHouse === 8;
+    return `
+      <div style="${panelStyle}">
+        <div style="${eyebrowStyle}">緣 의 比 較</div>
+        <div style="${titleStyle}">${myLabel} · ${partnerLabel}의 차트</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">나의 금성 · ${payload.myPlanets.venus.sign}</span>
+          <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">상대 금성 · ${payload.partnerPlanets.venus.sign}</span>
+        </div>
+        <div style="font-size:12px;color:#8d8268;">
+          주요 어스펙트 ${payload.topAspects.length}개 발견${payload.partnerTimeUnknown ? ' · 상대방 출생시각 미상으로 상승점·하우스 정보는 제외됨' : ''}
+        </div>
+      </div>
+      <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+        <div style="${aiEyebrowStyle}">— 관계 패턴 해설</div>
+        <div style="${aiTextStyle}">${toParas(sections.bond)}</div>
+      </div>
+
+      <div style="${panelStyle}">
+        <div style="${eyebrowStyle}">時 期</div>
+        <div style="${titleStyle}">지금의 재회 타이밍</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
+          <span style="font-size:12px;padding:5px 13px;border-radius:999px;${saturnIn78 ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">나의 트랜짓 토성 · ${payload.transitSaturnHouse ? payload.transitSaturnHouse + '하우스' : '정보 없음'}</span>
+          <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">컴포지트 ASC · ${payload.composite.asc.sign}</span>
+        </div>
+      </div>
+      <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+        <div style="${aiEyebrowStyle}">— 재회 타이밍 해설</div>
+        <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
+      </div>
+    `;
+  }
 
   return `
     <div style="${panelStyle}">

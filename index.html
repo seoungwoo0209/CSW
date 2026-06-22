@@ -491,7 +491,7 @@
           <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
         </div>
 
-        <div class="home-card" onclick="enterScreen('compatibility')">
+        <div class="home-card" onclick="enterCompatibilityFresh()">
           <div class="home-card-badge">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>
@@ -591,6 +591,18 @@
 
     <div class="screen-body">
 
+      <div style="text-align:center;margin-bottom:18px;">
+        <div style="font-size:13px;color:#9b8f74;margin-bottom:10px;">그 사람의 생년월일시를 아시나요?</div>
+        <div style="display:inline-flex;border:1px solid rgba(200,168,96,.3);border-radius:10px;overflow:hidden;">
+          <button type="button" id="reunionKnowNoBtn" onclick="setReunionKnowPartner(false)"
+            style="padding:11px 18px;font-size:13px;border:none;cursor:pointer;font-family:inherit;
+            background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;">몰라요</button>
+          <button type="button" id="reunionKnowYesBtn" onclick="setReunionKnowPartner(true)"
+            style="padding:11px 18px;font-size:13px;border:none;cursor:pointer;font-family:inherit;
+            background:transparent;color:#9b8f74;font-weight:600;">알아요</button>
+        </div>
+      </div>
+
       <div id="reunionFortuneInputCard" class="intro-card">
         <div class="intro-card-frame"></div>
         <span class="intro-card-corner tl"></span>
@@ -620,6 +632,33 @@
         </button>
       </div>
 
+      <div id="reunionKnowPartnerCard" class="intro-card" style="display:none;">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">재회운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          두 사람의 차트를 겹쳐 시너지를 보고,<br>금성 역행·토성 흐름까지 더해 재회 타이밍을 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          관계의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>재회 가능성
+        </p>
+
+        <button onclick="goToReunionPartnerForm()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">상대방 정보 입력하기</span>
+        </button>
+      </div>
+
       <div id="reunionFortuneLoading" style="display:none;margin:20px 0;text-align:center;">
         <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">재회운을 분석하고 있습니다...</div>
         <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
@@ -637,8 +676,8 @@
   <div id="screen-compatibility" class="screen">
 
     <div class="screen-topbar">
-      <button class="back-btn" onclick="enterScreen('love')">←</button>
-      <span class="screen-topbar-title">궁합</span>
+      <button class="back-btn" onclick="goBackFromCompatibility()">←</button>
+      <span class="screen-topbar-title" id="compatibilityScreenTitle">궁합</span>
       <div style="width:36px;"></div>
     </div>
 
@@ -655,15 +694,15 @@
 
         <div class="intro-card-eyebrow">
           <span class="line"></span>
-          <span class="label">궁합</span>
+          <span class="label" id="compatibilityEyebrowLabel">궁합</span>
           <span class="line r"></span>
         </div>
 
-        <p class="intro-card-headline">
+        <p class="intro-card-headline" id="compatibilityHeadline">
           두 사람의 차트를 겹쳐 끌림과 어긋남의 지점을 찾고,<br>이 관계가 어떤 결을 가지고 있는지 풀어드립니다.
         </p>
 
-        <p class="intro-card-tags">
+        <p class="intro-card-tags" id="compatibilityTags">
           끌림과 케미<span class="dot">·</span>관계의 결<span class="dot">·</span>오래 갈 수 있는지
         </p>
 
@@ -730,7 +769,7 @@
 
         <button onclick="revealCompatibility()" class="intro-card-cta" style="margin-top:16px;">
           <span class="cta-sheen"></span>
-          <span class="intro-card-cta-label">✨ 궁합 보기</span>
+          <span class="intro-card-cta-label" id="compatibilityCtaLabel">✨ 궁합 보기</span>
         </button>
       </div>
 
@@ -907,6 +946,6 @@
   <script src="./saju_engine.js?v=3"></script>
   <script src="./astro-events-engine.js?v=1"></script>
   <script src="./saju_ui.js?v=7"></script>
-  <script src="./app.js?v=25"></script>
+  <script src="./app.js?v=26"></script>
 </body>
 </html>

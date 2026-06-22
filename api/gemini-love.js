@@ -263,6 +263,85 @@ ${overlayStr}${timeNote}
 `.trim();
 }
 
+function buildReunionKnownPrompt(body) {
+  const {
+    myName, myGender, partnerName, partnerGender,
+    myPlanets, partnerPlanets, partnerTimeUnknown,
+    topAspects, houseOverlay, composite,
+    transitSaturnHouse, venusRetro
+  } = body;
+
+  const myLabel      = myName?.trim() || '나';
+  const partnerLabel = partnerName?.trim() || '상대방';
+  const myGenderKr      = myGender === 'M' ? '남성' : '여성';
+  const partnerGenderKr = partnerGender === 'M' ? '남성' : '여성';
+
+  const aspectsStr = (topAspects || []).length
+    ? topAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
+    : '뚜렷한 어스펙트 없음';
+
+  const overlayStr = houseOverlay
+    ? `${partnerLabel}의 태양이 ${myLabel}의 ${houseOverlay.partnerPlanetsInMyHouses.sun}하우스, 금성이 ${houseOverlay.partnerPlanetsInMyHouses.venus}하우스에 위치\n`
+      + `${myLabel}의 태양이 ${partnerLabel}의 ${houseOverlay.myPlanetsInPartnerHouses.sun}하우스, 금성이 ${houseOverlay.myPlanetsInPartnerHouses.venus}하우스에 위치`
+    : '하우스 오버레이 정보 없음';
+
+  const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함)` : '';
+  const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
+
+  return `
+너는 20년 경력의 서양 점성술 전문가야.
+아래 두 사람의 차트 데이터를 바탕으로 ${myLabel}님과 ${partnerLabel}님의 재회운 리포트를 작성해.
+("재회운"은 과거 연인과 다시 만날 가능성/타이밍을 보는 것으로, 단순 궁합과는 다르게 "재회"라는 맥락에 초점을 맞춰야 해.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[기본 정보]
+${myLabel}: ${myGenderKr} / ${partnerLabel}: ${partnerGenderKr}
+
+[각자의 핵심 행성]
+${myLabel} — 태양: ${myPlanets.sun.sign}, 달: ${myPlanets.moon.sign}, 금성: ${myPlanets.venus.sign}, 화성: ${myPlanets.mars.sign}
+${partnerLabel} — 태양: ${partnerPlanets.sun.sign}, 달: ${partnerPlanets.moon.sign}, 금성: ${partnerPlanets.venus.sign}, 화성: ${partnerPlanets.mars.sign}
+
+[시너지 어스펙트 — 두 사람 차트 간 가장 강한 연결]
+${aspectsStr}
+
+[하우스 오버레이]
+${overlayStr}${timeNote}
+
+[컴포지트 차트 — 관계 자체의 성격]
+컴포지트 태양: ${composite.sun.sign} / 컴포지트 달: ${composite.moon.sign} / 컴포지트 ASC: ${composite.asc.sign}
+
+[지금 시점의 재회 타이밍 신호]
+금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
+${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${transitSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[글쓰기 스타일 — 반드시 따를 것]
+1. 점성술 용어를 그냥 나열하지 말고 반드시 관계의 실제 느낌으로 번역해라.
+2. ${myLabel}님과 ${partnerLabel}님 두 사람 모두의 관점에서 구체적으로 써라. 일반적인 상투어 금지.
+3. "~할 수 있습니다" 같은 모호한 표현 대신 단정적이고 생생한 문장을 써라.
+4. 단정적인 예언(예: "반드시 재회한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
+5. 마크다운 헤더(#) 사용 금지 — **볼드**만 사용.
+
+[섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
+각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:bond===
+마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
+
+===SECTION:bond===
+(관계 패턴 — 시너지 어스펙트와 컴포지트 차트가 보여주는 두 사람의 관계 자체의 성격, 재회와 관련된 맥락에서)
+- 두 사람이 왜 끌렸는지, 헤어졌다면 어떤 마찰 지점이 있었을지, 관계의 본질적 성격
+- 분량: 4~5문단, 각 문단 3~4문장
+
+===SECTION:timing===
+(지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓이 보여주는 타이밍)
+- 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
+- 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
+- 분량: 3~4문단
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+지금 바로 bond와 timing 두 섹션을 마커와 함께 전부 작성해.
+`.trim();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
@@ -272,8 +351,9 @@ export default async function handler(req, res) {
     const { type, venus, mars, moon, saturn, myPlanets, partnerPlanets } = req.body;
     const isReunion       = type === 'reunion';
     const isCompatibility = type === 'compatibility';
+    const isReunionKnown  = type === 'reunion-known';
 
-    if (isCompatibility) {
+    if (isCompatibility || isReunionKnown) {
       if (!myPlanets || !partnerPlanets) {
         return res.status(400).json({ error: '필수 파라미터(myPlanets, partnerPlanets)가 누락되었습니다.' });
       }
@@ -282,15 +362,17 @@ export default async function handler(req, res) {
     }
 
     let venusRetro = false;
-    if (isReunion) {
+    if (isReunion || isReunionKnown) {
       try { venusRetro = isVenusRetrogradeNow(); } catch (e) { console.warn('금성 역행 계산 실패:', e.message); }
     }
 
-    const prompt = isCompatibility
-      ? buildCompatibilityPrompt(req.body)
-      : isReunion
-        ? buildReunionPrompt({ ...req.body, venusRetro })
-        : buildLovePrompt(req.body);
+    const prompt = isReunionKnown
+      ? buildReunionKnownPrompt({ ...req.body, venusRetro })
+      : isCompatibility
+        ? buildCompatibilityPrompt(req.body)
+        : isReunion
+          ? buildReunionPrompt({ ...req.body, venusRetro })
+          : buildLovePrompt(req.body);
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (최대 3회 재시도)
@@ -336,7 +418,7 @@ export default async function handler(req, res) {
     }
 
     const responseBody = { result: reply };
-    if (isReunion) responseBody.venusRetrograde = venusRetro;
+    if (isReunion || isReunionKnown) responseBody.venusRetrograde = venusRetro;
     return res.status(200).json(responseBody);
 
   } catch (error) {
