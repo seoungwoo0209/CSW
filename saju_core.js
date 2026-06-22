@@ -406,4 +406,41 @@ function calcBranchEvents(natalBranches, periodBranch) {
   return ev;
 }
 
+/* =========================================================
+   10) 12신살 (年支/日支 기준)
+   ========================================================= */
+const SHINSAL_BRANCH_ORDER = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+const SHINSAL_ORDER = ["겁살","재살","천살","지살","년살","월살","망신살","장성살","반안살","역마살","육해살","화개살"];
+// 각 삼합국의 겁살이 시작되는 지지(=묘库 바로 다음 글자)
+const SHINSAL_SAMHAP_START = [
+  { branches: ["申","子","辰"], start: "巳" },
+  { branches: ["亥","卯","未"], start: "申" },
+  { branches: ["寅","午","戌"], start: "亥" },
+  { branches: ["巳","酉","丑"], start: "寅" },
+];
+
+function get12ShinsalMap(refBranch) {
+  const grp = SHINSAL_SAMHAP_START.find(g => g.branches.includes(refBranch));
+  if (!grp) return {};
+  const startIdx = SHINSAL_BRANCH_ORDER.indexOf(grp.start);
+  const map = {};
+  for (let i = 0; i < 12; i++) {
+    const b = SHINSAL_BRANCH_ORDER[(startIdx + i) % 12];
+    map[b] = SHINSAL_ORDER[i];
+  }
+  return map;
+}
+
+function calc12Shinsal(fourPillars) {
+  const byYear = get12ShinsalMap(fourPillars.year.branch);
+  const byDay  = get12ShinsalMap(fourPillars.day.branch);
+  const POS = [["year","년주"],["month","월주"],["day","일주"],["hour","시주"]];
+  const result = {};
+  for (const [key, label] of POS) {
+    const branch = fourPillars[key].branch;
+    result[key] = { label, branch, byYear: byYear[branch] || null, byDay: byDay[branch] || null };
+  }
+  return result;
+}
+
 console.log("✅ saju_core.js 로드 완료 (getShishen 공용 등록)");

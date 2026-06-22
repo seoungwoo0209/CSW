@@ -650,6 +650,11 @@ function runAll() {
   const hiddenEl = _$("hiddenList");
   if (hiddenEl) window.SajuUI.renderHiddenList(hiddenEl, fourPillars);
 
+  // ── 12신살
+  if (typeof calc12Shinsal === "function") {
+    window.SajuUI.renderShinsalInfo(calc12Shinsal(fourPillars));
+  }
+
   const hw = getWuxingCounts(fourPillars, true);
   const barsHidden = _$("barsHidden");
   if (barsHidden && hw?.withHidden) window.SajuUI.renderBars(barsHidden, hw.withHidden);
@@ -667,6 +672,7 @@ function runAll() {
       yinyang,
       yinyangWithHidden: yinyangWithHidden.withHidden,
       natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
+      shinsal: (typeof calc12Shinsal === "function") ? calc12Shinsal(fourPillars) : null,
     };
 
     // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행)

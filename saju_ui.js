@@ -292,6 +292,45 @@ function renderStrengthInfo() {}
 function renderBaseScore()    {}
 
 /* =========================================================
+   PART 3.2: 12신살 렌더링 (년지/일지 기준 둘 다 표시)
+   ========================================================= */
+function renderShinsalInfo(shinsal) {
+  const c = _$("shinsalPanel");
+  if (!c || !shinsal) return;
+
+  const POS_ORDER = ["year","month","day","hour"];
+  const cellsHtml = POS_ORDER.map((key, i) => {
+    const s = shinsal[key];
+    if (!s) return "";
+    const tagHtml = (tag, srcLabel) => tag
+      ? `<span style="font-size:11px;padding:3px 9px;border-radius:999px;font-family:Georgia,serif;
+           color:#e6ddc8;border:1px solid rgba(200,168,96,.35);background:rgba(200,168,96,.1);">${tag}<span style="color:#8d8268;font-size:9.5px;"> ${srcLabel}</span></span>`
+      : `<span style="font-size:11px;color:#5c5644;">-</span>`;
+    const borderRight = i < POS_ORDER.length - 1 ? "border-right:1px solid rgba(200,168,96,.12);" : "";
+    return `
+      <div style="flex:1;min-width:0;text-align:center;padding:10px 4px;${borderRight}">
+        <div style="font-size:11px;color:#8d8268;margin-bottom:4px;">${s.label}</div>
+        <div style="font-size:17px;color:#e6ddc8;font-family:Georgia,serif;margin-bottom:8px;">${s.branch}</div>
+        <div style="display:flex;flex-direction:column;gap:5px;align-items:center;">
+          ${tagHtml(s.byYear, "년")}
+          ${tagHtml(s.byDay, "일")}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  c.innerHTML = `
+    <div class="result-card">
+      <div class="card-title">12신살</div>
+      <div class="tiny">년지 기준 · 일지 기준 두 가지로 표시</div>
+      <div style="display:flex;margin-top:10px;border:1px solid rgba(200,168,96,.16);border-radius:12px;overflow:hidden;">
+        ${cellsHtml}
+      </div>
+    </div>
+  `;
+}
+
+/* =========================================================
    PART 3.5: 용신·희신·기신·한신 렌더링
    ========================================================= */
 function renderGodsInfo(gods) {
@@ -387,6 +426,7 @@ window.SajuUI = {
   renderGeokInfo,
   renderStrengthInfo,
   renderGodsInfo,
+  renderShinsalInfo,
   renderBaseScore,
   renderResourcePanel,
   renderPersonalityCard,
