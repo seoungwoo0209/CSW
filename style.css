@@ -292,6 +292,63 @@ body{
   animation: cta-sheen-move 4.5s ease-in-out infinite;
 }
 
+/* 액자형 인트로 카드(코너 브래킷 + 트윙클) — 연간 운세에서 시작, 여러 화면에서 재사용 */
+@keyframes intro-card-twinkle { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+.intro-card {
+  position: relative; overflow: hidden; text-align: center;
+  background: radial-gradient(115% 80% at 50% -12%, #171232 0%, #0c0a20 48%, #07060f 100%);
+  border: 1px solid rgba(200,168,96,.22); border-radius: 20px; padding: 34px 26px 30px;
+  box-shadow: 0 24px 60px -28px rgba(0,0,0,.95), inset 0 1px 0 rgba(255,255,255,.04);
+}
+.intro-card-frame {
+  position: absolute; inset: 12px; border: 1px solid rgba(200,168,96,.28); border-radius: 13px; pointer-events: none;
+}
+.intro-card-corner { position: absolute; width: 13px; height: 13px; }
+.intro-card-corner.tl { top: 8px; left: 8px; border-top: 1px solid rgba(200,168,96,.7); border-left: 1px solid rgba(200,168,96,.7); }
+.intro-card-corner.tr { top: 8px; right: 8px; border-top: 1px solid rgba(200,168,96,.7); border-right: 1px solid rgba(200,168,96,.7); }
+.intro-card-corner.bl { bottom: 8px; left: 8px; border-bottom: 1px solid rgba(200,168,96,.7); border-left: 1px solid rgba(200,168,96,.7); }
+.intro-card-corner.br { bottom: 8px; right: 8px; border-bottom: 1px solid rgba(200,168,96,.7); border-right: 1px solid rgba(200,168,96,.7); }
+.intro-card-twinkle {
+  position: absolute; width: 2px; height: 2px; border-radius: 50%;
+  background: #f0e3b8; box-shadow: 0 0 6px 1px rgba(240,227,184,.5);
+  animation: intro-card-twinkle 3.6s ease-in-out infinite;
+}
+.intro-card-eyebrow { position: relative; display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
+.intro-card-eyebrow .line { flex: 0 0 26px; height: 1px; background: linear-gradient(90deg, transparent, rgba(200,168,96,.7)); }
+.intro-card-eyebrow .line.r { background: linear-gradient(90deg, rgba(200,168,96,.7), transparent); }
+.intro-card-eyebrow .label {
+  font-size: 12px; font-weight: 500; letter-spacing: .34em; font-family: Georgia, serif;
+  background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
+}
+.intro-card-headline {
+  position: relative; margin: 0 0 22px; font-size: 16.5px; line-height: 1.85;
+  color: #efe8d6; font-weight: 400; letter-spacing: .01em; font-family: Georgia, serif;
+}
+.intro-card-tags {
+  position: relative; margin: 0 0 26px; font-size: 11.5px; letter-spacing: .14em;
+  color: #9b8f74; font-weight: 300; font-family: Georgia, serif;
+}
+.intro-card-tags .dot { color: #c8a860; margin: 0 8px; }
+.intro-card-section-label { position: relative; display: block; font-size: 10px; letter-spacing: .28em; color: #7d7257; margin-bottom: 10px; }
+.intro-card-section {
+  position: relative; text-align: center;
+  border-top: 1px solid rgba(200,168,96,.2); border-bottom: 1px solid rgba(200,168,96,.2); padding: 13px 0;
+}
+.intro-card-cta {
+  position: relative; overflow: hidden; width: 100%; box-sizing: border-box; margin-top: 28px;
+  border: none; border-radius: 8px; padding: 16px; cursor: pointer;
+  background: linear-gradient(165deg, #f8edc6 0%, #e8cd86 38%, #caa44f 72%, #e4cd92 100%);
+  box-shadow: 0 14px 34px -12px rgba(200,160,70,.7), 0 0 0 1px rgba(120,90,30,.25),
+    inset 0 1px 0 rgba(255,255,255,.75), inset 0 -2px 6px rgba(150,110,40,.35);
+  transition: transform .15s ease;
+}
+.intro-card-cta:active { transform: scale(.97); }
+.intro-card-cta-label {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 15px; font-weight: 600; letter-spacing: .2em; color: #3a2b07; font-family: Georgia, serif;
+}
+
 /* 기존 .app 클래스 (하위 호환) */
 .app { max-width: 480px; margin: 0 auto; padding: 12px; }
 

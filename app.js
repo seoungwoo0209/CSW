@@ -2615,51 +2615,35 @@ function renderAnnualEventsPanel(astroData) {
 
   container.innerHTML = `
     <style>
-      @keyframes _aicTw{0%,100%{opacity:.25}50%{opacity:.85}}
-      @keyframes _aicSheen{0%{background-position:-130% 0}100%{background-position:230% 0}}
       #annualInputCard select#annualReportYear{appearance:none;-webkit-appearance:none;-moz-appearance:none;outline:none;}
       #annualInputCard select#annualReportYear::-ms-expand{display:none;}
-      #annualReportBtn{transition:transform .15s ease;}
-      #annualReportBtn:active{transform:scale(.97);}
-      #annualReportBtn .aic-sheen{
-        position:absolute;inset:0;pointer-events:none;
-        background:linear-gradient(105deg,transparent 40%,rgba(255,255,255,.65) 50%,transparent 60%);
-        background-size:250% 100%;animation:_aicSheen 4.5s ease-in-out infinite;
-      }
     </style>
     <div style="padding:4px 0 16px;">
-      <div id="annualInputCard" style="
-        position:relative;overflow:hidden;text-align:center;
-        background:radial-gradient(115% 80% at 50% -12%,#171232 0%,#0c0a20 48%,#07060f 100%);
-        border:1px solid rgba(200,168,96,.22);border-radius:20px;padding:34px 26px 30px;
-        box-shadow:0 24px 60px -28px rgba(0,0,0,.95),inset 0 1px 0 rgba(255,255,255,.04);
-      ">
-        <div style="position:absolute;inset:12px;border:1px solid rgba(200,168,96,.28);border-radius:13px;pointer-events:none;"></div>
-        <span style="position:absolute;top:8px;left:8px;width:13px;height:13px;border-top:1px solid rgba(200,168,96,.7);border-left:1px solid rgba(200,168,96,.7);"></span>
-        <span style="position:absolute;top:8px;right:8px;width:13px;height:13px;border-top:1px solid rgba(200,168,96,.7);border-right:1px solid rgba(200,168,96,.7);"></span>
-        <span style="position:absolute;bottom:8px;left:8px;width:13px;height:13px;border-bottom:1px solid rgba(200,168,96,.7);border-left:1px solid rgba(200,168,96,.7);"></span>
-        <span style="position:absolute;bottom:8px;right:8px;width:13px;height:13px;border-bottom:1px solid rgba(200,168,96,.7);border-right:1px solid rgba(200,168,96,.7);"></span>
-        <span style="position:absolute;top:36px;right:38px;width:2px;height:2px;border-radius:50%;background:#f0e3b8;box-shadow:0 0 6px 1px rgba(240,227,184,.5);animation:_aicTw 3.6s ease-in-out infinite;"></span>
-        <span style="position:absolute;top:86px;left:32px;width:2px;height:2px;border-radius:50%;background:#cdbef0;animation:_aicTw 4.2s ease-in-out infinite 1s;"></span>
+      <div id="annualInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
 
-        <div style="position:relative;display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:24px;">
-          <span style="flex:0 0 26px;height:1px;background:linear-gradient(90deg,transparent,rgba(200,168,96,.7));"></span>
-          <span style="font-size:12px;font-weight:500;letter-spacing:.34em;font-family:Georgia,serif;
-            background:linear-gradient(100deg,#f4e6bd 0%,#d8bd80 50%,#c2a25a 100%);
-            -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">연간 점성술 운세</span>
-          <span style="flex:0 0 26px;height:1px;background:linear-gradient(90deg,rgba(200,168,96,.7),transparent);"></span>
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">연간 점성술 운세</span>
+          <span class="line r"></span>
         </div>
 
-        <p style="position:relative;margin:0 0 22px;font-size:16.5px;line-height:1.85;color:#efe8d6;font-weight:400;letter-spacing:.01em;font-family:Georgia,serif;">
+        <p class="intro-card-headline">
           한 해 동안 별이 그려낼 흐름을 읽어,<br>당신의 삶에 닿는 언어로 들려드립니다.
         </p>
 
-        <p style="position:relative;margin:0 0 26px;font-size:11.5px;letter-spacing:.14em;color:#9b8f74;font-weight:300;font-family:Georgia,serif;">
-          한 해의 흐름 <span style="color:#c8a860;margin:0 8px;">·</span>인생의 전환점 <span style="color:#c8a860;margin:0 8px;">·</span>삶의 주기
+        <p class="intro-card-tags">
+          한 해의 흐름<span class="dot">·</span>인생의 전환점<span class="dot">·</span>삶의 주기
         </p>
 
-        <span style="position:relative;display:block;font-size:10px;letter-spacing:.28em;color:#7d7257;margin-bottom:10px;">기준 연도</span>
-        <div style="position:relative;text-align:center;border-top:1px solid rgba(200,168,96,.2);border-bottom:1px solid rgba(200,168,96,.2);padding:13px 0;">
+        <span class="intro-card-section-label">기준 연도</span>
+        <div class="intro-card-section">
           <select id="annualReportYear" style="
             background:transparent;border:none;cursor:pointer;
             font-family:Georgia,serif;font-size:22px;font-weight:500;letter-spacing:.04em;
@@ -2669,16 +2653,9 @@ function renderAnnualEventsPanel(astroData) {
           ">${opts.join('')}</select>
         </div>
 
-        <button onclick="generateAnnualReport()" id="annualReportBtn" style="
-          position:relative;overflow:hidden;width:100%;box-sizing:border-box;margin-top:28px;
-          border:none;border-radius:8px;padding:16px;cursor:pointer;
-          background:linear-gradient(165deg,#f8edc6 0%,#e8cd86 38%,#caa44f 72%,#e4cd92 100%);
-          box-shadow:0 14px 34px -12px rgba(200,160,70,.7),0 0 0 1px rgba(120,90,30,.25),
-            inset 0 1px 0 rgba(255,255,255,.75),inset 0 -2px 6px rgba(150,110,40,.35);
-        ">
-          <span class="aic-sheen"></span>
-          <span style="position:relative;display:flex;align-items:center;justify-content:center;gap:10px;
-            font-size:15px;font-weight:600;letter-spacing:.2em;color:#3a2b07;font-family:Georgia,serif;">
+        <button onclick="generateAnnualReport()" id="annualReportBtn" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">
             <img src="/img/loader-icon-star.png" width="18" height="18" style="object-fit:contain;display:block;">리포트 생성
           </span>
         </button>
