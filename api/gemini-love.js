@@ -191,16 +191,93 @@ ${progMoonStr}
 `.trim();
 }
 
+function buildCompatibilityPrompt(body) {
+  const {
+    myName, myGender, partnerName, partnerGender,
+    myPlanets, partnerPlanets, partnerTimeUnknown,
+    topAspects, houseOverlay, composite
+  } = body;
+
+  const myLabel      = myName?.trim() || '나';
+  const partnerLabel = partnerName?.trim() || '상대방';
+  const myGenderKr      = myGender === 'M' ? '남성' : '여성';
+  const partnerGenderKr = partnerGender === 'M' ? '남성' : '여성';
+
+  const aspectsStr = (topAspects || []).length
+    ? topAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
+    : '뚜렷한 어스펙트 없음';
+
+  const overlayStr = houseOverlay
+    ? `${partnerLabel}의 태양이 ${myLabel}의 ${houseOverlay.partnerPlanetsInMyHouses.sun}하우스, 달이 ${houseOverlay.partnerPlanetsInMyHouses.moon}하우스, 금성이 ${houseOverlay.partnerPlanetsInMyHouses.venus}하우스에 위치\n`
+      + `${myLabel}의 태양이 ${partnerLabel}의 ${houseOverlay.myPlanetsInPartnerHouses.sun}하우스, 달이 ${houseOverlay.myPlanetsInPartnerHouses.moon}하우스, 금성이 ${houseOverlay.myPlanetsInPartnerHouses.venus}하우스에 위치`
+    : '하우스 오버레이 정보 없음';
+
+  const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함 — 하우스 오버레이는 참고용일 뿐 정밀하지 않음)` : '';
+
+  return `
+너는 20년 경력의 서양 점성술 전문가야.
+아래 두 사람의 차트 데이터를 바탕으로 ${myLabel}님과 ${partnerLabel}님의 궁합(시너지) 리포트를 작성해.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[기본 정보]
+${myLabel}: ${myGenderKr} / ${partnerLabel}: ${partnerGenderKr}
+
+[각자의 핵심 행성]
+${myLabel} — 태양: ${myPlanets.sun.sign}, 달: ${myPlanets.moon.sign}, 금성: ${myPlanets.venus.sign}, 화성: ${myPlanets.mars.sign}
+${partnerLabel} — 태양: ${partnerPlanets.sun.sign}, 달: ${partnerPlanets.moon.sign}, 금성: ${partnerPlanets.venus.sign}, 화성: ${partnerPlanets.mars.sign}
+
+[시너지 어스펙트 — 두 사람 차트 간 가장 강한 연결 (orb 작을수록 강함)]
+${aspectsStr}
+
+[하우스 오버레이]
+${overlayStr}${timeNote}
+
+[컴포지트 차트 — 관계 자체의 성격]
+컴포지트 태양: ${composite.sun.sign} / 컴포지트 달: ${composite.moon.sign} / 컴포지트 ASC: ${composite.asc.sign}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[글쓰기 스타일 — 반드시 따를 것]
+1. 점성술 용어를 그냥 나열하지 말고 반드시 관계의 실제 느낌으로 번역해라.
+   예) "금성-화성 트라인" → "서로의 끌림이 자연스럽게 맞아떨어지는 케미"
+2. ${myLabel}님과 ${partnerLabel}님 두 사람 모두의 관점에서 구체적으로 써라. 일반적인 궁합 상투어("운명적인 만남" 등) 금지.
+3. "~할 수 있습니다" 같은 모호한 표현 대신 단정적이고 생생한 문장을 써라.
+4. 좋은 점만 나열하지 말고, 마찰이 생길 수 있는 지점도 솔직하게 짚어라.
+5. 마크다운 헤더(#) 사용 금지 — **볼드**만 사용.
+
+[섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
+각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:chemistry===
+마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
+
+===SECTION:chemistry===
+(끌림과 케미 — 두 사람의 핵심 행성과 시너지 어스펙트가 보여주는 매력의 지점)
+- 서로 어디에 끌리는지, 어떤 마찰 지점이 있을 수 있는지
+- 분량: 4~5문단, 각 문단 3~4문장
+
+===SECTION:dynamics===
+(관계의 결 — 컴포지트 차트가 보여주는 이 관계 자체의 성격)
+- 이 관계가 어떤 목적/성격을 가지는지, 오래 갈 수 있는 구조인지
+- 분량: 3~4문단
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+지금 바로 chemistry와 dynamics 두 섹션을 마커와 함께 전부 작성해.
+`.trim();
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
 
   try {
-    const { type, venus, mars, moon, saturn } = req.body;
-    const isReunion = type === 'reunion';
+    const { type, venus, mars, moon, saturn, myPlanets, partnerPlanets } = req.body;
+    const isReunion       = type === 'reunion';
+    const isCompatibility = type === 'compatibility';
 
-    if (!venus || !mars || !moon || (isReunion && !saturn)) {
+    if (isCompatibility) {
+      if (!myPlanets || !partnerPlanets) {
+        return res.status(400).json({ error: '필수 파라미터(myPlanets, partnerPlanets)가 누락되었습니다.' });
+      }
+    } else if (!venus || !mars || !moon || (isReunion && !saturn)) {
       return res.status(400).json({ error: '필수 파라미터(venus, mars, moon)가 누락되었습니다.' });
     }
 
@@ -209,9 +286,11 @@ export default async function handler(req, res) {
       try { venusRetro = isVenusRetrogradeNow(); } catch (e) { console.warn('금성 역행 계산 실패:', e.message); }
     }
 
-    const prompt = isReunion
-      ? buildReunionPrompt({ ...req.body, venusRetro })
-      : buildLovePrompt(req.body);
+    const prompt = isCompatibility
+      ? buildCompatibilityPrompt(req.body)
+      : isReunion
+        ? buildReunionPrompt({ ...req.body, venusRetro })
+        : buildLovePrompt(req.body);
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (최대 3회 재시도)

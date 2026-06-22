@@ -1093,6 +1093,267 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
 }
 
 /* =========================================================
+   궁합 — 상대방 정보 입력 + "✨ 궁합 보기" 버튼 클릭 전용
+   ========================================================= */
+function setPartnerCalType(type) {
+  const hidden = _$("partnerCalendarType");
+  if (hidden) hidden.value = type;
+
+  const activeStyle   = "background:linear-gradient(135deg,#c8a860,#e0c684);color:#1a1530;font-weight:700;";
+  const inactiveStyle = "background:transparent;color:#9b8f74;font-weight:600;";
+  const baseStyle     = "padding:13px 14px;font-size:13px;border:none;cursor:pointer;font-family:inherit;";
+
+  const solarBtn = _$("partnerCalSolarBtn");
+  const lunarBtn = _$("partnerCalLunarBtn");
+  if (solarBtn) solarBtn.style.cssText = baseStyle + (type === "solar" ? activeStyle : inactiveStyle);
+  if (lunarBtn) lunarBtn.style.cssText = baseStyle + (type === "lunar" ? activeStyle : inactiveStyle);
+
+  const leapRow = _$("partnerLeapMonthRow");
+  if (leapRow) leapRow.style.display = type === "lunar" ? "flex" : "none";
+  if (type === "solar") {
+    const cb = _$("partnerIsLeapMonth");
+    if (cb) cb.checked = false;
+  }
+}
+
+function togglePartnerTimeUnknown() {
+  const cb        = _$("partnerTimeUnknown");
+  const timeInput = _$("partnerBirthTime");
+  if (!cb || !timeInput) return;
+  timeInput.disabled = cb.checked;
+  if (cb.checked) timeInput.value = "";
+}
+
+function filterPartnerCityList(val) {
+  const dropdown = _$('partnerCityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectPartnerCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showPartnerCityList() {
+  const input = _$('partnerCityInput');
+  if (input) filterPartnerCityList(input.value);
+}
+function hidePartnerCityList() {
+  const d = _$('partnerCityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectPartnerCity(cityName) {
+  const input  = _$('partnerCityInput');
+  const hidden = _$('partnerCity');
+  if (input)  input.value  = cityName;
+  if (hidden) hidden.value = cityName;
+  hidePartnerCityList();
+}
+
+let _compatRevealInFlight = false;
+
+async function revealCompatibility() {
+  if (_compatRevealInFlight) return;
+
+  function showCompatErr(msg) {
+    const el = _$("compatibilityAlert");
+    if (el) { el.textContent = msg; el.classList.remove("hidden"); }
+  }
+  const alertEl = _$("compatibilityAlert");
+  if (alertEl) alertEl.classList.add("hidden");
+
+  if (!window.AstroResult?.meta) {
+    showCompatErr("내 정보가 아직 준비되지 않았습니다. 잠시 후 다시 시도해주세요.");
+    return;
+  }
+
+  const partnerName        = (_$("partnerName")?.value || "").trim();
+  const partnerCalType     = _$("partnerCalendarType")?.value || "solar";
+  const partnerRawDate     = _$("partnerBirthDate")?.value || "";
+  const partnerIsLeap      = !!_$("partnerIsLeapMonth")?.checked;
+  const partnerTimeUnknown = !!_$("partnerTimeUnknown")?.checked;
+  const partnerBirthTime   = partnerTimeUnknown ? "12:00" : (_$("partnerBirthTime")?.value || "");
+  const partnerCity        = (_$("partnerCity")?.value || _$("partnerCityInput")?.value || "").trim();
+  const partnerGender      = _$("partnerGender")?.value || "M";
+  const saveAsProfile      = !!_$("partnerSaveAsProfile")?.checked;
+
+  if (!partnerRawDate)                       { showCompatErr("상대방 생년월일을 입력해주세요."); return; }
+  if (!partnerCity)                          { showCompatErr("상대방 출생도시를 입력해주세요."); return; }
+  if (!partnerTimeUnknown && !partnerBirthTime) { showCompatErr("상대방 출생시각을 입력하거나 '출생시각 모름'을 선택해주세요."); return; }
+
+  let partnerSolarDate = partnerRawDate;
+  if (partnerCalType === "lunar") {
+    const [ly, lm, ld] = partnerRawDate.split("-").map(Number);
+    try {
+      const solar = window.LunarCalendar.lunarToSolar(ly, lm, ld, partnerIsLeap);
+      partnerSolarDate = `${solar.year}-${String(solar.month).padStart(2, "0")}-${String(solar.day).padStart(2, "0")}`;
+    } catch (e) {
+      showCompatErr("상대방 음력 날짜 변환 오류: " + (e.message || e));
+      return;
+    }
+  }
+
+  _compatRevealInFlight = true;
+  const introCard  = _$('compatibilityInputCard');
+  const loading    = _$('compatibilityLoading');
+  const resultArea = _$('compatibilityResultArea');
+  if (resultArea) resultArea.style.display = 'none';
+  if (loading)    loading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+  let succeeded = false;
+  try {
+    const { lat: pLat, lng: pLng, utcOffset: pUtcOffset } = getCityCoords(partnerCity);
+
+    if (saveAsProfile) {
+      const originalActiveId = getActiveProfileId();
+      addProfile({
+        name: partnerName, gender: partnerGender,
+        birthDate: partnerRawDate, solarBirthDate: partnerSolarDate,
+        calendarType: partnerCalType, isLeapMonth: partnerIsLeap,
+        birthTime: partnerTimeUnknown ? null : partnerBirthTime, timeUnknown: partnerTimeUnknown,
+        birthPlace: partnerCity
+      });
+      setActiveProfileId(originalActiveId); // 상대방 저장이 내 활성 프로필을 바꾸지 않도록 즉시 복원
+    }
+
+    const myMeta = window.AstroResult.meta;
+    const calcRes = await fetch("/api/astro-calc", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        birthDate: myMeta.birthDate, birthTime: myMeta.birthTime,
+        lat: myMeta.lat, lng: myMeta.lng, utcOffset: myMeta.utcOffset,
+        name: myMeta.name, gender: myMeta.gender,
+        partner: {
+          birthDate: partnerSolarDate, birthTime: partnerBirthTime,
+          lat: pLat, lng: pLng, utcOffset: pUtcOffset,
+          name: partnerName, gender: partnerGender, timeUnknown: partnerTimeUnknown
+        }
+      })
+    });
+    const calcData = await calcRes.json();
+    if (!calcRes.ok || calcData.error) throw new Error(calcData.error || "궁합 계산 중 오류가 발생했습니다.");
+    if (!calcData.synastry) throw new Error("궁합 데이터를 계산하지 못했습니다.");
+
+    const synastry = calcData.synastry;
+    const topAspects = (synastry.synastryAspects || []).slice(0, 10);
+
+    const aiPayload = {
+      type: 'compatibility',
+      myName: myMeta.name || '',
+      myGender: myMeta.gender || 'M',
+      partnerName: partnerName || '',
+      partnerGender,
+      myPlanets: {
+        sun: calcData.natal.sun, moon: calcData.natal.moon,
+        venus: calcData.natal.venus, mars: calcData.natal.mars
+      },
+      partnerPlanets: {
+        sun: synastry.partnerNatal.planets.sun, moon: synastry.partnerNatal.planets.moon,
+        venus: synastry.partnerNatal.planets.venus, mars: synastry.partnerNatal.planets.mars
+      },
+      partnerTimeUnknown: synastry.partnerNatal.meta.timeUnknown,
+      topAspects,
+      houseOverlay: synastry.houseOverlay,
+      composite: {
+        sun: synastry.composite.planets.sun, moon: synastry.composite.planets.moon,
+        asc: synastry.composite.angles.asc
+      }
+    };
+
+    const aiRes = await fetch("/api/gemini-love", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(aiPayload)
+    });
+    const aiData = await aiRes.json();
+    if (!aiRes.ok || aiData.error) throw new Error(aiData.error || "서버 오류가 발생했습니다.");
+
+    if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '');
+    succeeded = true;
+
+  } catch (err) {
+    console.error("궁합 분석 중 오류:", err);
+    showCompatErr(err.message || "궁합 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    _compatRevealInFlight = false;
+    if (loading)   loading.style.display = 'none';
+    if (introCard) introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    if (succeeded) {
+      if (resultArea) resultArea.style.display = 'block';
+      if (introCard)  introCard.style.display = 'none';
+    }
+  }
+}
+
+function _renderCompatibilityHtml(payload, raw) {
+  const markerRe = /===SECTION:(\w+)===/g;
+  const hits = [];
+  let m;
+  while ((m = markerRe.exec(raw)) !== null) {
+    hits.push({ key: m[1], contentStart: m.index + m[0].length, markerStart: m.index });
+  }
+  const sections = {};
+  hits.forEach((hit, i) => {
+    const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
+    sections[hit.key] = raw.slice(hit.contentStart, end).trim();
+  });
+
+  function toParas(text) {
+    if (!text) return '<p style="margin:0;color:#9b8f74;">해설을 불러오지 못했습니다.</p>';
+    return text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+      `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+    ).join('');
+  }
+
+  const panelStyle = `border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+    border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px 18px 16px;margin-bottom:6px;`;
+  const eyebrowStyle = `font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;`;
+  const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
+    background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
+  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+
+  const myLabel = payload.myName || '나';
+  const partnerLabel = payload.partnerName || '상대방';
+
+  return `
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">緣 의 比 較</div>
+      <div style="${titleStyle}">${myLabel} · ${partnerLabel}의 차트</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">나의 금성 · ${payload.myPlanets.venus.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">상대 금성 · ${payload.partnerPlanets.venus.sign}</span>
+      </div>
+      <div style="font-size:12px;color:#8d8268;">
+        주요 어스펙트 ${payload.topAspects.length}개 발견${payload.partnerTimeUnknown ? ' · 상대방 출생시각 미상으로 상승점·하우스 정보는 제외됨' : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 끌림과 케미 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.chemistry)}</div>
+    </div>
+
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">複 合 盤</div>
+      <div style="${titleStyle}">관계의 결 — 컴포지트</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">컴포지트 태양 · ${payload.composite.sun.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">컴포지트 달 · ${payload.composite.moon.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">컴포지트 ASC · ${payload.composite.asc.sign}</span>
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 관계의 결 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.dynamics)}</div>
+    </div>
+  `;
+}
+
+/* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
    window.AstroResult에 저장해 둠.
