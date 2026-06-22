@@ -817,6 +817,7 @@ async function revealLoveFortune() {
       : null;
 
     const payload = {
+      type:   'love',
       name:   window.SajuResult?.name || '',
       gender: window.SajuResult?.gender || 'M',
       venus:  astroData.natal.venus,
@@ -983,6 +984,7 @@ async function revealReunionFortune() {
       : null;
 
     const payload = {
+      type:   'reunion',
       name:   window.SajuResult?.name || '',
       gender: window.SajuResult?.gender || 'M',
       venus:  astroData.natal.venus,
@@ -999,7 +1001,7 @@ async function revealReunionFortune() {
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
     };
 
-    const res = await fetch("/api/gemini-reunion", {
+    const res = await fetch("/api/gemini-love", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
