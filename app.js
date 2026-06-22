@@ -2950,10 +2950,11 @@ async function renderSolarReturnPanel(astroData) {
 
   const rowsEl = panel.querySelector('#astroSolarReturnRows');
   try {
-    const res = await fetch("/api/astro-solar-return", {
+    const res = await fetch("/api/astro-extras", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        type: 'solar-return',
         birthDate: meta.birthDate,
         birthTime: meta.birthTime,
         lat: meta.lat,
@@ -3027,10 +3028,11 @@ async function renderLunarReturnPanel(astroData) {
 
   const rowsEl = panel.querySelector('#astroLunarReturnRows');
   try {
-    const res = await fetch("/api/astro-lunar-return", {
+    const res = await fetch("/api/astro-extras", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        type: 'lunar-return',
         birthDate: meta.birthDate,
         birthTime: meta.birthTime,
         lat: meta.lat,
@@ -3143,10 +3145,11 @@ async function renderMoonPhasesPanel(astroData) {
 
   const rowsEl = panel.querySelector('#astroMoonPhasesRows');
   try {
-    const res = await fetch("/api/astro-moon-phases", {
+    const res = await fetch("/api/astro-extras", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        type: 'moon-phases',
         natal: astroData.natal,
         angles: astroData.angles,
         nodes: astroData.nodes,
@@ -3332,10 +3335,11 @@ async function calcTransitChart() {
   if (rowsEl) rowsEl.innerHTML = '⏳ 트랜짓 계산 중...';
 
   try {
-    const res = await fetch('/api/astro-transit', {
+    const res = await fetch('/api/astro-extras', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        type: 'transit',
         transitDate,
         transitTime,
         appLat, appLng, appUtcOffset,
