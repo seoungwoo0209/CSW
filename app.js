@@ -594,7 +594,7 @@ function renderHomeProfileStatus() {
 /* =========================================================
    메인 사주 계산 및 렌더링
    ========================================================= */
-function runAll() {
+async function runAll() {
   setAlert("");
 
   const name         = _$("name")?.value.trim() || "";
@@ -628,9 +628,13 @@ function runAll() {
     noteEl.textContent = "";
   }
 
-  // 결과 영역 표시
-  const resultArea = _$('saju-result-area');
-  if (resultArea) resultArea.style.display = 'block';
+  // 결과 영역은 패널+AI 해설이 전부 준비된 뒤에야 한 번에 보여준다 (그 전엔 숨김)
+  const resultArea  = _$('saju-result-area');
+  const runBtn      = _$('runAllBtn');
+  const runLoading  = _$('sajuRunLoading');
+  if (resultArea) resultArea.style.display = 'none';
+  if (runBtn)     { runBtn.disabled = true; runBtn.style.opacity = '0.5'; }
+  if (runLoading) runLoading.style.display = 'block';
 
   // 이전 사람의 AI 해설 블록이 남아있으면 제거(패널은 새로 그려지지만 형제 노드라 자동 제거되지 않음)
   document.querySelectorAll('[id^="aiBlock-"]').forEach(el => el.remove());
@@ -690,24 +694,37 @@ function runAll() {
       daeunTimeline, currentDecadeIdx,
     };
 
-    // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행)
-    function _tryRenderAnalysis(attempt) {
-      if (window.SajuEngine?.buildState && window.SajuUI?.renderFullAnalysis) {
-        window.SajuUI.renderFullAnalysis("overall");
-      } else if (attempt < 10) {
-        setTimeout(() => _tryRenderAnalysis(attempt + 1), 150);
-      } else {
-        console.error("❌ SajuEngine 로드 타임아웃");
-      }
-    }
-    setTimeout(() => _tryRenderAnalysis(0), 50);
-
-    // ── 연간 운세 탭: 로딩 상태
+    // ── 연간 운세 탭: 로딩 상태 (정통사주 결과 공개와 무관하게 즉시 진행)
     const _lgp = document.getElementById('lifeGraphPanel');
     if (_lgp) _lgp.innerHTML = '<div style="color:#a5b4fc;font-size:13px;padding:30px;text-align:center;">⭐ 차트 계산 중...</div>';
 
-    // ── 점성술 차트 미리 계산
+    // ── 점성술 차트 미리 계산 (정통사주 결과 공개와 무관하게 즉시 진행)
     scheduleAstroCalc();
+
+    // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행) → 끝나면 AI 해설까지 받아서 한 번에 공개
+    function _waitForAnalysisReady(attempt) {
+      return new Promise(resolve => {
+        function attemptOnce(n) {
+          if (window.SajuEngine?.buildState && window.SajuUI?.renderFullAnalysis) {
+            window.SajuUI.renderFullAnalysis("overall");
+            resolve();
+          } else if (n < 10) {
+            setTimeout(() => attemptOnce(n + 1), 150);
+          } else {
+            console.error("❌ SajuEngine 로드 타임아웃");
+            resolve();
+          }
+        }
+        setTimeout(() => attemptOnce(0), 50);
+      });
+    }
+
+    await _waitForAnalysisReady();
+    await fetchAndInjectSajuAI();
+
+    if (resultArea) resultArea.style.display = 'block';
+    if (runBtn)     { runBtn.disabled = false; runBtn.style.opacity = '1'; }
+    if (runLoading) runLoading.style.display = 'none';
 }
 
 /* =========================================================
@@ -3566,22 +3583,13 @@ async function requestTodayFortune() {
 /* =========================================================
    Gemini AI 운세 호출 (사주)
    ========================================================= */
-async function requestGeminiFortune() {
-  if (!window.SajuResult) {
-    alert("생년월일과 출생시각을 먼저 입력해주세요.");
-    return;
-  }
+async function fetchAndInjectSajuAI() {
+  if (!window.SajuResult) return false;
 
-  const btn      = _$("geminiBtn");
-  const loading  = _$("geminiLoading");
-  const resultEl = _$("geminiResult");
-  const errorEl  = _$("geminiError");
-
-  btn.disabled           = true;
-  btn.style.opacity      = "0.5";
-  loading.style.display  = "block";
-  resultEl.style.display = "none";
-  errorEl.style.display  = "none";
+  const errorEl = _$("geminiError");
+  const errorBox = _$("geminiSection");
+  if (errorEl) errorEl.style.display = "none";
+  if (errorBox) errorBox.style.display = "none";
 
   // 이전 해설 블록 제거 (재생성 대비)
   const SECTION_KEYS = ["essence", "talent", "resource", "yongsin", "daeun"];
@@ -3666,19 +3674,15 @@ async function requestGeminiFortune() {
 
     if (!insertedAny) throw new Error("AI 응답을 해석하지 못했습니다. 다시 시도해 주세요.");
 
-    resultEl.innerHTML = `<div style="font-size:12.5px;color:#caa74e;text-align:center;">✓ 위 패널들에 해설이 추가되었습니다. 위로 스크롤해서 확인해보세요.</div>`;
-    resultEl.style.display = "block";
-
-    const firstBlock = _$("aiBlock-essence") || document.querySelector('[id^="aiBlock-"]');
-    if (firstBlock) firstBlock.scrollIntoView({ behavior: "smooth", block: "start" });
+    return true;
 
   } catch (err) {
-    errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");
-    errorEl.style.display = "block";
-  } finally {
-    btn.disabled           = false;
-    btn.style.opacity      = "1";
-    loading.style.display  = "none";
+    if (errorBox) errorBox.style.display = "block";
+    if (errorEl) {
+      errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");
+      errorEl.style.display = "block";
+    }
+    return false;
   }
 }
 
