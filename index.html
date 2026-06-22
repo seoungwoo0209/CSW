@@ -141,6 +141,20 @@
         <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
+      <div class="home-card" onclick="onCardTap('love')">
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/>
+          </svg>
+        </div>
+        <div class="home-card-body">
+          <span class="home-card-num gold-text">04</span>
+          <strong class="home-card-title">연애</strong>
+          <span class="home-card-desc">별이 말하는 인연의 흐름</span>
+        </div>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+      </div>
+
       <div class="home-card" onclick="onCardTap('astro')">
         <div class="home-card-badge">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -149,7 +163,7 @@
           </svg>
         </div>
         <div class="home-card-body">
-          <span class="home-card-num gold-text">04</span>
+          <span class="home-card-num gold-text">05</span>
           <strong class="home-card-title">점성술</strong>
           <span class="home-card-desc">행성이 그리는 나의 차트</span>
         </div>
@@ -450,6 +464,121 @@
   </div>
 
   <!-- ══════════════════════════════════════
+       연애 스크린 — 연애운/궁합/재회운 선택
+       ══════════════════════════════════════ -->
+  <div id="screen-love" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="screen-topbar-title">연애</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+      <div class="home-cards">
+
+        <div class="home-card" onclick="enterScreen('loveFortune')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">01</span>
+            <strong class="home-card-title">연애운</strong>
+            <span class="home-card-desc">올해 내 연애 흐름은?</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+        <div class="home-card" onclick="alert('궁합 기능은 준비 중입니다.')" style="opacity:.55;">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">02</span>
+            <strong class="home-card-title">궁합</strong>
+            <span class="home-card-desc">그 사람과 나, 잘 맞을까? (준비 중)</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+        <div class="home-card" onclick="alert('재회운 기능은 준비 중입니다.')" style="opacity:.55;">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 4.55a8 8 0 0 1 6 14.9m0 -4.45v5h5"/>
+              <path d="M5.63 7.16l0 .01"/><path d="M4.06 11l0 .01"/><path d="M4.63 15.1l0 .01"/><path d="M7.16 18.37l0 .01"/><path d="M11 19.94l0 .01"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">03</span>
+            <strong class="home-card-title">재회운</strong>
+            <span class="home-card-desc">다시 만날 수 있을까? (준비 중)</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       연애운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-loveFortune" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('love')">←</button>
+      <span class="screen-topbar-title">연애운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="loveFortuneInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">연애운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          금성과 화성, 5·7하우스로 타고난 연애 기질을 읽고,<br>올해의 트랜짓·프로그레션으로 흐름을 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          끌림의 코드<span class="dot">·</span>올해의 흐름<span class="dot">·</span>다가올 시기
+        </p>
+
+        <button onclick="revealLoveFortune()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 연애운 보기</span>
+        </button>
+      </div>
+
+      <div id="loveFortuneLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">연애운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="loveFortuneResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
        프로필 목록 스크린 (전환·추가·수정·삭제)
        ══════════════════════════════════════ -->
   <div id="screen-profileList" class="screen">
@@ -611,6 +740,6 @@
   <script src="./saju_engine.js?v=3"></script>
   <script src="./astro-events-engine.js?v=1"></script>
   <script src="./saju_ui.js?v=7"></script>
-  <script src="./app.js?v=20"></script>
+  <script src="./app.js?v=21"></script>
 </body>
 </html>

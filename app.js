@@ -322,6 +322,7 @@ const PROFILE_SHEET_COPY = {
   today:  { title: "오늘의 운세를 보려면", ctaSuffix: "오늘의 운세 보기" },
   annual: { title: "연간 리포트를 보려면", ctaSuffix: "연간 리포트 보기" },
   astro:  { title: "나의 차트를 보려면",   ctaSuffix: "나의 차트 보기" },
+  love:   { title: "연애운을 보려면",     ctaSuffix: "연애 보기" },
 };
 
 // mode: 'new' | 'edit'. editingId: 수정 대상 프로필 id. enteredFrom: 새 프로필 저장 후 이동할 feature.
@@ -754,6 +755,151 @@ async function revealSajuResults() {
 }
 
 /* =========================================================
+   연애운 — "✨ 연애운 보기" 버튼 클릭 전용
+   window.AstroResult(나탈+트랜짓+프로그레션, 이미 백그라운드에서
+   계산되어 있음)에서 연애 관련 포인트만 골라 AI에 전달
+   ========================================================= */
+let _loveRevealInFlight = false;
+
+function _findHouseOccupants(astroData, houseNum) {
+  const PLANET_KR = {
+    sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
+    jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
+  };
+  return Object.keys(PLANET_KR)
+    .filter(k => astroData.natal[k]?.house === houseNum)
+    .map(k => PLANET_KR[k]);
+}
+
+async function revealLoveFortune() {
+  if (_loveRevealInFlight) return;
+  if (!window.AstroResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요. (정통 사주 또는 점성술 탭에서 한 번 계산되면 자동으로 준비됩니다)");
+    return;
+  }
+  _loveRevealInFlight = true;
+
+  const introCard  = _$('loveFortuneInputCard');
+  const loading    = _$('loveFortuneLoading');
+  const resultArea = _$('loveFortuneResultArea');
+  if (resultArea) resultArea.style.display = 'none';
+  if (loading)    loading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+  let succeeded = false;
+  try {
+    const astroData  = window.AstroResult;
+    const house5      = _findHouseOccupants(astroData, 5);
+    const house7      = _findHouseOccupants(astroData, 7);
+    const nowMonthIdx = new Date().getMonth(); // 0~11, transits 배열은 1월부터 순서대로
+    const transitNow  = astroData.transits?.[nowMonthIdx] || null;
+
+    const payload = {
+      name:   window.SajuResult?.name || '',
+      gender: window.SajuResult?.gender || 'M',
+      venus:  astroData.natal.venus,
+      mars:   astroData.natal.mars,
+      moon:   astroData.natal.moon,
+      house5Sign: astroData.houses?.[4]?.sign,
+      house7Sign: astroData.houses?.[6]?.sign,
+      house5Occupants: house5,
+      house7Occupants: house7,
+      transitNow,
+      progMoonHouse: astroData.progression?.planets?.moon?.house,
+      progMoonSign:  astroData.progression?.planets?.moon?.sign,
+    };
+
+    const res = await fetch("/api/gemini-love", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
+
+    if (resultArea) resultArea.innerHTML = _renderLoveFortuneHtml(payload, data.result || '');
+    succeeded = true;
+
+  } catch (err) {
+    console.error("연애운 분석 중 오류:", err);
+    setAlert("연애운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    _loveRevealInFlight = false;
+    if (loading)   loading.style.display = 'none';
+    if (introCard) introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    if (succeeded) {
+      if (resultArea) resultArea.style.display = 'block';
+      if (introCard)  introCard.style.display = 'none';
+    }
+  }
+}
+
+function _renderLoveFortuneHtml(payload, raw) {
+  const markerRe = /===SECTION:(\w+)===/g;
+  const hits = [];
+  let m;
+  while ((m = markerRe.exec(raw)) !== null) {
+    hits.push({ key: m[1], contentStart: m.index + m[0].length, markerStart: m.index });
+  }
+  const sections = {};
+  hits.forEach((hit, i) => {
+    const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
+    sections[hit.key] = raw.slice(hit.contentStart, end).trim();
+  });
+
+  function toParas(text) {
+    if (!text) return '<p style="margin:0;color:#9b8f74;">해설을 불러오지 못했습니다.</p>';
+    return text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+      `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+    ).join('');
+  }
+
+  const panelStyle = `border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+    border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px 18px 16px;margin-bottom:6px;`;
+  const eyebrowStyle = `font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;`;
+  const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
+    background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
+  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+
+  return `
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">命 盤</div>
+      <div style="${titleStyle}">타고난 연애 기질</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">금성 · ${payload.venus.sign} ${payload.venus.house}하우스</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">화성 · ${payload.mars.sign} ${payload.mars.house}하우스</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">달 · ${payload.moon.sign} ${payload.moon.house}하우스</span>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:#8d8268;">
+        5하우스(${payload.house5Sign}) ${payload.house5Occupants.length ? '· ' + payload.house5Occupants.join(', ') : ''} ·
+        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 기질 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.nature)}</div>
+    </div>
+
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">今 年</div>
+      <div style="${titleStyle}">올해의 연애 흐름</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${payload.transitNow ? `
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">트랜짓 금성 · ${payload.transitNow.planets.venus.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">트랜짓 화성 · ${payload.transitNow.planets.mars.sign}</span>
+        ` : ''}
+        ${payload.progMoonSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 달 · ${payload.progMoonSign} ${payload.progMoonHouse}하우스</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 올해 흐름 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
 /* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
