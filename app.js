@@ -632,9 +632,11 @@ async function runAll() {
   const resultArea  = _$('saju-result-area');
   const runBtn      = _$('runAllBtn');
   const runLoading  = _$('sajuRunLoading');
+  const introCard   = _$('sajuInputCard');
   if (resultArea) resultArea.style.display = 'none';
   if (runBtn)     { runBtn.disabled = true; runBtn.style.opacity = '0.5'; }
   if (runLoading) runLoading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
 
   // 이전 사람의 AI 해설 블록이 남아있으면 제거(패널은 새로 그려지지만 형제 노드라 자동 제거되지 않음)
   document.querySelectorAll('[id^="aiBlock-"]').forEach(el => el.remove());
@@ -725,6 +727,7 @@ async function runAll() {
     if (resultArea) resultArea.style.display = 'block';
     if (runBtn)     { runBtn.disabled = false; runBtn.style.opacity = '1'; }
     if (runLoading) runLoading.style.display = 'none';
+    if (introCard)  introCard.style.display = 'none';
 }
 
 /* =========================================================
