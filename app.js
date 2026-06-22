@@ -665,6 +665,16 @@ function runAll() {
     const yinyang = getYinYangCounts(fourPillars, false);
     const yinyangWithHidden = getYinYangCounts(fourPillars, true);
 
+    // ── 대운 타임라인 + 현재 진행 중인 대운 인덱스
+    let daeunTimeline = null, currentDecadeIdx = -1;
+    if (typeof buildDaeunTimeline === "function") {
+      daeunTimeline = buildDaeunTimeline(fourPillars, birthUtc, gender);
+      const ageNowYears = (Date.now() - birthUtc.getTime()) / (365.2425 * 86400000);
+      currentDecadeIdx = daeunTimeline.decades.findIndex(
+        d => ageNowYears >= d.startAge && ageNowYears < d.startAge + 10
+      );
+    }
+
     window.SajuResult = {
       name, birthDate, birthTime, gender, lunarInput,
       fourPillars, birthUtc, approx,
@@ -673,6 +683,7 @@ function runAll() {
       yinyangWithHidden: yinyangWithHidden.withHidden,
       natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
       shinsal: (typeof calc12Shinsal === "function") ? calc12Shinsal(fourPillars) : null,
+      daeunTimeline, currentDecadeIdx,
     };
 
     // ── 분석 탭 렌더링 (SajuEngine 로드 확인 후 실행)
@@ -3569,12 +3580,22 @@ async function requestGeminiFortune() {
   errorEl.style.display  = "none";
 
   try {
-    const { name, gender, fourPillars } = window.SajuResult;
+    const {
+      name, gender, fourPillars,
+      geok, strength, gods, interactions,
+      resourceResult, personalityCard, shinsal,
+      daeunTimeline, currentDecadeIdx
+    } = window.SajuResult;
 
     const res = await fetch("/api/gemini-saju", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, gender, fourPillars })
+      body: JSON.stringify({
+        name, gender, fourPillars,
+        geok, strength, gods, interactions,
+        resourceResult, personalityCard, shinsal,
+        daeunTimeline, currentDecadeIdx
+      })
     });
 
     const data = await res.json();

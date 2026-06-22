@@ -398,11 +398,17 @@ function renderFullAnalysis() {
   const baseState = window.SajuEngine.buildState(window.SajuResult.fourPillars);
 
   renderGodsInfo(baseState.gods);
-  if (window.SajuResult) window.SajuResult.gods = baseState.gods;
+  if (window.SajuResult) {
+    window.SajuResult.gods         = baseState.gods;
+    window.SajuResult.geok         = baseState.geok;
+    window.SajuResult.strength     = baseState.strength;
+    window.SajuResult.interactions = baseState.interactions;
+  }
 
   if (window.SajuEngine.computeResourceScores) {
     const resourceResult = window.SajuEngine.computeResourceScores(baseState);
     renderResourcePanel(resourceResult);
+    if (window.SajuResult) window.SajuResult.resourceResult = resourceResult;
 
     // 유형 카드 + 점수
     if (window.SajuEngine.computePersonalityCard) {

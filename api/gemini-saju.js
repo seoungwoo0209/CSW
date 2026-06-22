@@ -4,7 +4,12 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { name, gender, fourPillars } = req.body;
+    const {
+      name, gender, fourPillars,
+      geok, strength, gods, interactions,
+      resourceResult, personalityCard, shinsal,
+      daeunTimeline, currentDecadeIdx
+    } = req.body;
 
     if (!gender || !fourPillars) {
       return res.status(400).json({ error: '필수 파라미터(gender, fourPillars)가 누락되었습니다.' });
@@ -23,9 +28,8 @@ export default async function handler(req, res) {
     const dayBranch = day.branch;
 
     // ═══════════════════════════════════════
-    // 사주 분석 데이터 계산
+    // 표시용 상수 (메타포 도입부 등에 필요한 최소한만 유지)
     // ═══════════════════════════════════════
-
     const WUXING_STEM = {
       '甲':'목','乙':'목','丙':'화','丁':'화','戊':'토',
       '己':'토','庚':'금','辛':'금','壬':'수','癸':'수'
@@ -34,15 +38,9 @@ export default async function handler(req, res) {
       '子':'수','丑':'토','寅':'목','卯':'목','辰':'토',
       '巳':'화','午':'화','未':'토','申':'금','酉':'금','戌':'토','亥':'수'
     };
-    const YINYANG_STEM = {
-      '甲':'양','乙':'음','丙':'양','丁':'음','戊':'양',
-      '己':'음','庚':'양','辛':'음','壬':'양','癸':'음'
-    };
-    const WUXING_GENERATES = { 목:'화', 화:'토', 토:'금', 금:'수', 수:'목' };
-    const WUXING_CONTROLS  = { 목:'토', 화:'금', 토:'수', 금:'목', 수:'화' };
-
-    const WUXING_NAME = { 목:'나무(木)', 화:'불(火)', 토:'흙(土)', 금:'쇠(金)', 수:'물(水)' };
-    const STEM_NAME   = {
+    const WUXING_NAME = { 목:'나무(木)', 화:'불(火)', 토:'흙(土)', 금:'쇠(金)', 수:'물(水)',
+      wood:'나무(木)', fire:'불(火)', earth:'흙(土)', metal:'쇠(金)', water:'물(水)' };
+    const STEM_NAME = {
       '甲':'갑목(큰 나무)','乙':'을목(풀·덩굴)','丙':'병화(태양)','丁':'정화(촛불·등불)',
       '戊':'무토(큰 산)','己':'기토(논밭의 흙)','庚':'경금(원석·도끼)','辛':'신금(보석·칼날)',
       '壬':'임수(큰 강·바다)','癸':'계수(빗물·샘물)'
@@ -51,20 +49,13 @@ export default async function handler(req, res) {
       '子':'쥐','丑':'소','寅':'호랑이','卯':'토끼','辰':'용','巳':'뱀',
       '午':'말','未':'양','申':'원숭이','酉':'닭','戌':'개','亥':'돼지'
     };
+    const TEN_GODS_KR = {
+      '比肩':'비견','劫財':'겁재','食神':'식신','傷官':'상관',
+      '偏財':'편재','正財':'정재','偏官':'편관','正官':'정관','偏印':'편인','正印':'정인'
+    };
+    const tgDisp = tg => tg ? `${tg}(${TEN_GODS_KR[tg] || ''})` : '';
 
-    function getShishen(ds, ts) {
-      const de = WUXING_STEM[ds], te = WUXING_STEM[ts];
-      if (!de || !te) return null;
-      const same = (YINYANG_STEM[ds] === YINYANG_STEM[ts]);
-      if (de === te)                            return same ? '비견' : '겁재';
-      if (WUXING_GENERATES[de] === te)         return same ? '식신' : '상관';
-      if (WUXING_CONTROLS[de]  === te)         return same ? '편재' : '정재';
-      if (WUXING_CONTROLS[te]  === de)         return same ? '편관' : '정관';
-      if (WUXING_GENERATES[te] === de)         return same ? '편인' : '정인';
-      return null;
-    }
-
-    // 오행 카운트 (표면 8글자)
+    // 오행 카운트 (표면 8글자) — 메타포 도입부·강약 보조 설명용
     const elCount = { 목:0, 화:0, 토:0, 금:0, 수:0 };
     for (const p of [year, month, day, hour]) {
       if (WUXING_STEM[p.stem])     elCount[WUXING_STEM[p.stem]]++;
@@ -72,70 +63,92 @@ export default async function handler(req, res) {
     }
     const elTotal  = Object.values(elCount).reduce((a,b) => a+b, 0) || 1;
     const elSorted = Object.entries(elCount).sort((a,b) => b[1]-a[1]);
-    const topEl    = elSorted[0];
     const excessEl = elSorted.filter(([,v]) => v/elTotal > 0.35).map(([k]) => k);
     const lackEl   = elSorted.filter(([,v]) => v/elTotal < 0.06).map(([k]) => k);
+    const excessDesc = excessEl.length ? excessEl.map(e => WUXING_NAME[e]).join('·') + ' 과다' : '오행 편중 없음';
+    const lackDesc   = lackEl.length   ? lackEl.map(e => WUXING_NAME[e]).join('·') + ' 결핍'   : '결핍 없음';
 
-    // 지장간 정기
-    const HIDDEN_MAIN = {
-      '子':'癸','丑':'己','寅':'甲','卯':'乙','辰':'戊',
-      '巳':'丙','午':'丁','未':'己','申':'庚','酉':'辛','戌':'戊','亥':'壬'
-    };
+    const ilju     = dayStem + dayBranch;
+    const stemDesc = STEM_NAME[dayStem] || dayStem;
 
-    // 십신 카운트 (천간 3개 + 지지 정기 4개)
-    const ssCount = {
-      비견:0, 겁재:0, 식신:0, 상관:0,
-      편재:0, 정재:0, 편관:0, 정관:0, 편인:0, 정인:0
-    };
-    for (const p of [year, month, hour]) {
-      const ss = getShishen(dayStem, p.stem);
-      if (ss) ssCount[ss]++;
-    }
-    for (const p of [year, month, day, hour]) {
-      const hs = HIDDEN_MAIN[p.branch];
-      if (hs) { const ss = getShishen(dayStem, hs); if (ss) ssCount[ss]++; }
-    }
+    // ═══════════════════════════════════════
+    // 실제 엔진 결과 포맷팅 (격국·강약·용희기한·합충형파해·자원점수·12신살·대운)
+    // ═══════════════════════════════════════
 
-    const bigeop    = ssCount['비견'] + ssCount['겁재'];
-    const siksang   = ssCount['식신'] + ssCount['상관'];
-    const jaeseong  = ssCount['편재'] + ssCount['정재'];
-    const gwanseong = ssCount['편관'] + ssCount['정관'];
-    const inseong   = ssCount['편인'] + ssCount['정인'];
+    // 격국
+    const geokName  = geok?.main || '혼합격';
+    const geokNote  = geok?.broken ? '단, 월지가 충을 맞아 파격된 상태'
+                     : geok?.recovery ? '월지가 충을 맞았으나 합으로 다시 회복된 구조'
+                     : '';
+    const geokPurityPct = geok?.purity != null ? Math.round(geok.purity * 100) : null;
 
     // 신강/신약
-    const selfPow  = bigeop + inseong;
-    const otherPow = gwanseong + jaeseong + siksang;
-    const strengthLabel = selfPow > otherPow + 1 ? '신강'
-                        : otherPow > selfPow + 1 ? '신약' : '중화';
+    const strengthLabel = strength?.label || '중화';
+    const strengthScore = strength?.score != null ? Math.round(strength.score) : 50;
 
-    // 格
-    const monthMainStem = HIDDEN_MAIN[month.branch];
-    const monthMainSS   = monthMainStem ? getShishen(dayStem, monthMainStem) : null;
-    const geokName      = monthMainSS ? monthMainSS + '격' : '혼합격';
+    // 용신·희신·기신·한신
+    function formatGodGroup(g) {
+      if (!g || !g.tenGods?.length) return '미상';
+      const els = (g.elements || []).map(e => WUXING_NAME[e] || e).join('·');
+      return `${g.tenGods.map(tgDisp).join(', ')}${els ? ` (오행: ${els})` : ''}`;
+    }
+    const yongStr = formatGodGroup(gods?.yong);
+    const heeStr  = formatGodGroup(gods?.hee);
+    const giStr   = formatGodGroup(gods?.gi);
+    const hanStr  = formatGodGroup(gods?.han);
 
-    // 일주 설명
-    const ilju      = dayStem + dayBranch;
-    const dayElName = WUXING_NAME[WUXING_STEM[dayStem]] || '';
-    const stemDesc  = STEM_NAME[dayStem] || dayStem;
+    // 합충형파해
+    function formatInteractions(inter) {
+      if (!inter) return '뚜렷한 합충형파해 없음';
+      const parts = [];
+      (inter.합 || []).forEach(h => {
+        if (h.stems)    parts.push(`천간합 ${h.stems.join('-')}`);
+        else if (h.branches) parts.push(`${h.type} ${h.branches.join('-')}${h.element ? `(${WUXING_NAME[h.element] || h.element}국)` : ''}`);
+      });
+      (inter.충 || []).forEach(c => parts.push(`충 ${c.branches.join('-')}${c.critical ? ' [월/일지 핵심]' : ''}`));
+      (inter.형 || []).forEach(h => parts.push(`형 ${h.branches.join('-')}${h.critical ? ' [월/일지 핵심]' : ''}`));
+      (inter.파 || []).forEach(p => parts.push(`파 ${p.branches.join('-')}${p.critical ? ' [월/일지 핵심]' : ''}`));
+      (inter.해 || []).forEach(h => parts.push(`해 ${h.branches.join('-')}${h.critical ? ' [월/일지 핵심]' : ''}`));
+      return parts.length ? parts.join(', ') : '뚜렷한 합충형파해 없음';
+    }
+    const interStr = formatInteractions(interactions);
 
-    // 일지 십신 (배우자궁)
-    const dayBranchSS = HIDDEN_MAIN[dayBranch]
-      ? getShishen(dayStem, HIDDEN_MAIN[dayBranch]) : null;
+    // 5축 자원 점수 + 유형 카드
+    let resourceStr = '';
+    if (resourceResult?.axes?.length) {
+      resourceStr = resourceResult.axes.map(a => `${a.key} ${a.score}`).join(', ')
+        + ` → 강점 ${resourceResult.strongest?.key}(${resourceResult.strongest?.score}), 보완 필요 ${resourceResult.weakest?.key}(${resourceResult.weakest?.score})`;
+    }
+    const typeName = personalityCard?.typeName || '';
+    const typeDesc = personalityCard?.typeDesc || '';
 
-    // 가장 강한 십신 2개
-    const ssRanked = Object.entries(ssCount)
-      .sort((a,b) => b[1]-a[1])
-      .filter(([,v]) => v > 0)
-      .slice(0,2)
-      .map(([k,v]) => `${k}(${v}개)`);
+    // 12신살 (일지 기준만 — 정보 과잉 방지)
+    let shinsalStr = '미상';
+    if (shinsal) {
+      const order = ['year','month','day','hour'];
+      shinsalStr = order
+        .map(k => shinsal[k]?.byDay ? `${shinsal[k].label}(${shinsal[k].branch}) ${shinsal[k].byDay}` : null)
+        .filter(Boolean).join(', ') || '뚜렷한 신살 없음';
+    }
 
-    // 오행 과·결핍 문장
-    const excessDesc = excessEl.length
-      ? excessEl.map(e => WUXING_NAME[e]).join('·') + ' 과다'
-      : '오행 편중 없음';
-    const lackDesc = lackEl.length
-      ? lackEl.map(e => WUXING_NAME[e]).join('·') + ' 결핍'
-      : '결핍 없음';
+    // 대운 (이전 · 현재 · 다음 3개 구간만)
+    let daeunStr = '대운 정보 없음';
+    if (daeunTimeline?.decades?.length) {
+      const idx  = (typeof currentDecadeIdx === 'number') ? currentDecadeIdx : -1;
+      const cur  = idx >= 0 ? daeunTimeline.decades[idx] : null;
+      const prev = idx > 0 ? daeunTimeline.decades[idx - 1] : null;
+      const next = idx >= 0 && idx + 1 < daeunTimeline.decades.length ? daeunTimeline.decades[idx + 1] : null;
+      const lines = [];
+      lines.push(`대운 진행 방향: ${daeunTimeline.direction} / 첫 대운 시작: 만 ${daeunTimeline.daeunStart.age}세`);
+      if (cur) {
+        lines.push(`현재 대운: ${cur.startAge}~${cur.endAge}세, 간지 ${cur.ganji} (${cur.stem}${cur.branch})`);
+      } else {
+        lines.push(`현재는 첫 대운(만 ${daeunTimeline.daeunStart.age}세) 시작 전 — 부모·가정 환경의 영향이 큰 유년기`);
+      }
+      if (prev) lines.push(`이전 대운: ${prev.startAge}~${prev.endAge}세, 간지 ${prev.ganji}`);
+      if (next) lines.push(`다음 대운: ${next.startAge}세부터, 간지 ${next.ganji}로 전환`);
+      daeunStr = lines.join('\n');
+    }
 
     // ═══════════════════════════════════════
     // 프롬프트
@@ -151,13 +164,29 @@ export default async function handler(req, res) {
 일간: ${stemDesc}
 일주: ${ilju} (${BRANCH_ANIMAL[dayBranch]}띠 지지)
 
-[분석 수치]
+[격국·강약]
+格(격): ${geokName}${geokPurityPct != null ? ` (순도 ${geokPurityPct}%)` : ''}${geokNote ? ` — ${geokNote}` : ''}
+신강/신약: ${strengthLabel} (${strengthScore}점/100)
 오행 분포: 목${elCount['목']} 화${elCount['화']} 토${elCount['토']} 금${elCount['금']} 수${elCount['수']} → ${excessDesc} / ${lackDesc}
-십신 분포: 비겁${bigeop} 식상${siksang} 재성${jaeseong} 관성${gwanseong} 인성${inseong}
-지배 십신: ${ssRanked.join(', ') || '없음'}
-신강/신약: ${strengthLabel} (자아계열 ${selfPow} vs 극설계열 ${otherPow})
-格(격): ${geokName}
-일지 십신(배우자궁): ${dayBranchSS || '미상'}
+
+[용신·희신·기신·한신]
+용신(가장 필요한 기운): ${yongStr}
+희신(용신을 돕는 기운): ${heeStr}
+기신(피해야 할 기운): ${giStr}
+한신(중립적인 기운): ${hanStr}
+
+[합충형파해]
+${interStr}
+
+[5축 자원 점수]
+${resourceStr || '미상'}
+${typeName ? `타고난 유형: ${typeName}${typeDesc ? ` — ${typeDesc}` : ''}` : ''}
+
+[12신살(일지 기준)]
+${shinsalStr}
+
+[대운 흐름]
+${daeunStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -166,7 +195,7 @@ export default async function handler(req, res) {
    일간의 오행을 자연물에 빗대어 도입부를 열어라.
    예) 기토(己土) → "논밭의 흙", 임수(壬水) → "거대한 강물",
        갑목(甲木) → "하늘을 향해 자라는 거목"
-   그 오행에 다른 십신들이 쏟아질 때 어떤 일이 벌어지는지 자연현상으로 풀어라.
+   그 오행에 다른 기운들이 쏟아질 때 어떤 일이 벌어지는지 자연현상으로 풀어라.
 
 2. **질문 → 반전 구조를 써라**
    "이런 구조를 가진 사람은 두 가지 유형 중 하나입니다.
@@ -175,9 +204,9 @@ export default async function handler(req, res) {
    이 패턴을 최소 2번 이상 사용해라.
 
 3. **수치를 감정 언어로 번역해라**
-   "비겁이 ${bigeop}개" → "어떤 압박에도 휘어지지 않는 독립심"
-   "재성이 ${jaeseong}개" → 재물과의 관계를 구체적으로 묘사
-   숫자를 그냥 나열하지 말고 반드시 삶의 언어로 변환해라.
+   격국·용신·합충형파해·자원 점수를 그냥 나열하지 말고, 반드시 삶의 언어로 변환해라.
+   예) "용신이 정인" → "스스로를 다그치기보다 누군가의 신뢰와 인정 속에서 진짜 힘이 나오는 구조"
+   예) "재성이 약함" → 재물과의 관계를 구체적으로 묘사
 
 4. **이중 구조를 폭로해라**
    겉으로 보이는 모습과 실제 내면이 어떻게 다른지 구체적으로 대비시켜라.
@@ -187,47 +216,60 @@ export default async function handler(req, res) {
    이 조합이 얼마나 드문지, 이 구조를 가진 사람이 어떤 잠재력을 품는지
    희소성과 특이성을 강조해라.
 
-[섹션 구성 — 5개 전부 완성할 것]
+6. **대운 섹션은 그래프나 수치 나열이 아니라 서술로 풀어라**
+   "지금 OO세~OO세 구간을 지나고 있다"는 사실을 먼저 알려준 뒤,
+   그 대운 간지가 원국과 만나 어떤 흐름을 만드는지, 다음 대운으로 넘어가면
+   무엇이 달라지는지를 이야기처럼 설명해라. 단정적인 길흉 예언("이 시기에 망한다" 등)은 금지하고,
+   "어떤 결을 타게 되는지"를 설명하는 톤을 유지해라.
+
+[섹션 구성 — 6개 전부 완성할 것]
 
 **[1] ${stemDesc}이 빚어낸 ${displayName}님의 본질**
 - ${ilju} 일주의 오행 메타포로 시작
-- ${strengthLabel} 구조가 성격에 어떻게 작동하는지
+- ${geokName} · ${strengthLabel} 구조가 성격에 어떻게 작동하는지
 - 겉으로 보이는 모습 vs 내면의 실제 기질 대비
 - 분량: 4~5문단, 각 문단 3~4문장
 
 **[2] 타고난 재능의 지형도**
-- 오행 ${excessDesc}이 만드는 강점 영역
+- 오행 ${excessDesc}과 용신·희신이 만드는 강점 영역
 - ${geokName}이 부여하는 특수 재능
 - 이 재능이 어떤 상황에서 폭발적으로 발휘되는지
 - 분량: 3~4문단
 
 **[3] 재물과 ${displayName}님의 관계**
-- 재성 ${jaeseong}개 구조로 시작 → 돈이 어떤 방식으로 들어오고 나가는지
+- 5축 자원 점수 중 재성 관련 점수로 시작 → 돈이 어떤 방식으로 들어오고 나가는지
 - 질문→반전 구조로 재물 유형 정의
-- 돈을 잃는 패턴과 지켜야 할 원칙
+- 기신이 가리키는, 돈을 잃는 패턴과 지켜야 할 원칙
 - 분량: 3~4문단
 
 **[4] 일과 사회에서 ${displayName}님이 빛나는 방식**
-- 관성 ${gwanseong}개 + ${geokName} 조합으로 직업 방향
+- 5축 자원 점수 중 관성 관련 점수 + ${geokName} 조합으로 직업 방향
 - 조직 vs 독립 중 어느 쪽이 맞는지 단호하게 판단
 - 성공하는 구체적 방식과 반드시 피해야 할 함정
 - 분량: 3~4문단
 
 **[5] 관계와 사랑 — ${displayName}님이 사람을 대하는 방식**
-- 일지 십신 ${dayBranchSS || '구조'}이 배우자궁에 앉은 의미
-- 비겁 ${bigeop}개 구조가 관계에서 만드는 패턴
+- 합충형파해 정보를 활용해 관계에서 반복되는 패턴 설명
+- 5축 자원 점수 중 비겁 관련 점수가 관계에서 만드는 패턴
 - 반복되는 관계 패턴과 진짜 인연을 만나는 조건
+- 분량: 3~4문단
+
+**[6] 인생의 흐름 — 지금 ${displayName}님은 어느 시기를 지나고 있나**
+- [대운 흐름] 데이터를 바탕으로 현재 대운이 원국과 어떻게 맞물리는지 설명
+- 다음 대운으로 넘어가면 무엇이 달라지는지
+- 이 시기를 어떻게 활용하면 좋을지 실질적인 조언
 - 분량: 3~4문단
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [금지 사항]
 - "~할 수 있습니다", "~일 수도 있어요" 같은 모호한 표현 금지
-- 단순 수치 나열 금지 (반드시 삶의 언어로 번역)
+- 단순 수치·한자 용어 나열 금지 (반드시 삶의 언어로 번역)
 - 섹션 중간에 끊기 금지
 - 일반적인 운세 상투어 금지 ("좋은 기운이 들어옵니다" 등)
 - 마크다운 헤더(#) 사용 금지 — **볼드**만 사용
+- 대운 섹션에서 단정적인 길흉 예언("이 시기에 사고난다", "이 시기에 부자된다") 금지
 
-지금 바로 [1]부터 [5]까지 전부 작성해.
+지금 바로 [1]부터 [6]까지 전부 작성해.
 `.trim();
 
     // ═══════════════════════════════════════
