@@ -3393,6 +3393,16 @@ function renderTodayPlanetPanel(todayData) {
   }
 }
 
+function closeTodayFortune() {
+  const resultEl  = _$("todayResult");
+  const inputCard = document.getElementById('todayInputCard');
+  if (resultEl)  { resultEl.innerHTML = ''; resultEl.style.display = 'none'; }
+  if (inputCard) inputCard.style.display = '';
+  // 닫고 다시 열 때 도시를 바꿔서 새로 생성할 수 있도록, 캐시된 계산 결과를 비운다.
+  window.TodayResult = null;
+  window.TodayQuestionCount = 0;
+}
+
 /* =========================================================
    오늘의 운세 — AI 호출
    ========================================================= */
@@ -3452,47 +3462,61 @@ async function requestTodayFortune() {
     const geminiData = await geminiRes.json();
     if (!geminiRes.ok || geminiData.error) throw new Error(geminiData.error || "AI 분석 오류");
 
-    const formatted = (geminiData.result || "")
-      .replace(/## (.+)/g, '<h3 style="color:#fcd34d;margin:16px 0 8px;font-size:14px;">$1</h3>')
-      .replace(/\*\*(.+?)\*\*/g, "<strong style='color:#e2e8f0;'>$1</strong>")
-      .replace(/\n/g, "<br>");
+    const sectionsHtml = (geminiData.result || "")
+      .split(/\n(?=## )/).filter(Boolean)
+      .map(sec => {
+        const m     = sec.match(/^## (.+?)\n([\s\S]*)$/);
+        const title = m ? m[1].trim() : '';
+        const body  = (m ? m[2] : sec).trim();
+        const bodyHtml = body.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+          `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+        ).join('');
+        return `
+        <div style="margin-bottom:22px;">
+          <div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#dfba6b;font-family:Georgia,serif;margin-bottom:8px;">${title}</div>
+          <div style="font-size:13.5px;color:#beb39a;line-height:1.9;font-weight:300;">${bodyHtml}</div>
+        </div>`;
+      }).join('');
 
     window.TodayReadingResult = geminiData.result || "";
 
     resultEl.innerHTML = `
-      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">
-        ${formatted}
+      <div style="border-top:1px solid rgba(200,168,96,.18);padding-top:18px;">
+        ${sectionsHtml}
       </div>
 
       <!-- 질문 섹션 -->
-      <div id="todayQuestionSection" style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;">
-        <div style="font-size:12px;color:#fcd34d;letter-spacing:1px;margin-bottom:10px;">💬 추가 질문 (최대 3회)</div>
+      <div id="todayQuestionSection" style="margin-top:8px;border-top:1px solid rgba(200,168,96,.18);padding-top:16px;">
+        <div style="font-size:11px;letter-spacing:.2em;color:#9b8f74;margin-bottom:10px;">추가 질문 (최대 3회)</div>
         <div style="display:flex;gap:8px;">
           <input id="todayQuestionInput" type="text" placeholder="오늘 운세에 대해 질문하세요..."
-            style="flex:1;padding:8px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
-            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;"
+            style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid rgba(200,168,96,.28);
+            background:rgba(255,255,255,.035);color:#efe8d6;font-size:13px;font-family:inherit;outline:none;"
             onkeydown="if(event.key==='Enter')askTodayQuestion()"
           />
           <button onclick="askTodayQuestion()" style="
-            background:linear-gradient(135deg,#d97706,#b45309);
-            color:#fff;font-size:12px;font-weight:700;
-            border:none;border-radius:8px;padding:8px 14px;cursor:pointer;
+            background:linear-gradient(165deg,#f8edc6 0%,#e8cd86 38%,#caa44f 72%,#e4cd92 100%);
+            color:#3a2b07;font-size:12.5px;font-weight:600;font-family:Georgia,serif;
+            border:none;border-radius:8px;padding:0 16px;cursor:pointer;
           ">전송</button>
         </div>
-        <div style="font-size:10px;color:#475569;margin-top:4px;" id="todayQuestionCount">남은 질문: 3회</div>
+        <div style="font-size:10.5px;color:#7d7257;margin-top:6px;" id="todayQuestionCount">남은 질문: 3회</div>
         <div id="todayQuestionResult" style="margin-top:12px;"></div>
       </div>
 
-      <div style="margin-top:12px;text-align:right;">
-        <button onclick="window.TodayResult=null;window.TodayQuestionCount=0;requestTodayFortune();" style="
-          background:rgba(217,119,6,.2);border:1px solid rgba(217,119,6,.4);
-          color:#fcd34d;font-size:11px;border-radius:8px;padding:5px 12px;cursor:pointer;
-        ">🔄 다시 보기</button>
+      <div style="margin-top:18px;text-align:center;">
+        <button onclick="closeTodayFortune()" style="
+          background:transparent;border:1px solid rgba(200,168,96,.3);
+          color:#9b8f74;font-size:11px;border-radius:20px;padding:7px 18px;cursor:pointer;font-family:Georgia,serif;letter-spacing:.05em;
+        ">✕ 닫기</button>
       </div>
     `;
     window.TodayQuestionCount = 0;
     resultEl.style.display = "block";
     if (statusEl) statusEl.textContent = "";
+
+    const todayInputCard = document.getElementById('todayInputCard');
+    if (todayInputCard) todayInputCard.style.display = 'none';
 
   } catch (err) {
     errorEl.textContent   = "⚠️ " + (err.message || "오늘 운세를 불러오지 못했습니다.");
@@ -3576,11 +3600,11 @@ async function askTodayQuestion() {
 
   const qIdx = window.TodayQuestionCount || 0;
   resultEl.innerHTML += `
-    <div style="margin-bottom:8px;padding:8px 12px;background:rgba(255,255,255,.05);border-radius:8px;font-size:12px;color:#fcd34d;">
+    <div style="margin-bottom:8px;padding:8px 12px;background:rgba(200,168,96,.06);border-radius:8px;font-size:12px;color:#dfba6b;">
       Q: ${question}
     </div>
-    <div id="tqAnswer${qIdx}" style="margin-bottom:16px;font-size:13px;color:#cbd3f0;padding:0 4px;">
-      <span style="color:#64748b;">답변 생성 중...</span>
+    <div id="tqAnswer${qIdx}" style="margin-bottom:16px;font-size:13px;color:#beb39a;padding:0 4px;">
+      <span style="color:#7d7257;">답변 생성 중...</span>
     </div>`;
 
   try {
