@@ -20,6 +20,7 @@ export default async function handler(req, res) {
       natal, natalAngles, todayTransit,
       natalAspectsFull = [],
       todayAspectsFull = [], progTransitAspects = [], retrograde = {}, vocData = {},
+      stations = [], signChanges = [],
       moonPhase = null, progression = null,
       todayDate, currentTime = '', meta
     } = todayData;
@@ -102,8 +103,25 @@ export default async function handler(req, res) {
     const progStr = progression
       ? `프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}', ${progression.sun.house}하우스 (현재 삶의 챕터와 자아 진화 방향)\n` +
         `프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}', ${progression.moon.house}하우스 (현재 감정·관심의 초점, 약 2~3개월 단위 흐름)\n` +
-        `프로그레션 ASC: ${progression.asc.sign} ${progression.asc.degree}°${progression.asc.minute}' (현재 세상에 보이는 페르소나)`
+        `프로그레션 수성: ${progression.mercury.sign} ${progression.mercury.degree}°${progression.mercury.minute}', ${progression.mercury.house}하우스 (현재 생각·소통 방식의 결)\n` +
+        `프로그레션 금성: ${progression.venus.sign} ${progression.venus.degree}°${progression.venus.minute}', ${progression.venus.house}하우스 (현재 관계·가치관에서 끌리는 방향)\n` +
+        `프로그레션 화성: ${progression.mars.sign} ${progression.mars.degree}°${progression.mars.minute}', ${progression.mars.house}하우스 (현재 추진력·행동 방식의 결)\n` +
+        `프로그레션 ASC: ${progression.asc.sign} ${progression.asc.degree}°${progression.asc.minute}' (현재 세상에 보이는 페르소나)\n` +
+        `프로그레션 MC: ${progression.mc.sign} ${progression.mc.degree}°${progression.mc.minute}' (현재 사회적 방향·평판의 결)`
       : '(프로그레션 정보 없음)';
+
+    // ── 오늘의 전환점 문자열 (역행 시작/종료, 사인 이동 — 매일 같은 정적 상태가
+    //    아니라 "오늘 막 일어나는 변화"를 따로 부각하기 위한 용도)
+    const TRANS_KR = { retrograde_start: '역행을 시작하는', retrograde_end: '역행을 끝내고 직행으로 돌아서는' };
+    const stationStr = stations.length
+      ? stations.map(s => `${s.kr}이(가) 오늘 즈음 ${TRANS_KR[s.type]} 시점`).join('\n')
+      : '';
+    const signChangeStr = signChanges.length
+      ? signChanges.map(s => `${s.kr}이(가) 오늘 ${s.toSign}로 사인을 옮기는 시점`).join('\n')
+      : '';
+    const transitionStr = (stationStr || signChangeStr)
+      ? [stationStr, signChangeStr].filter(Boolean).join('\n')
+      : '(오늘 특별한 전환점 없음 — 평소와 비슷한 흐름이 이어지는 날)';
 
     // ── 공통 데이터 블록
     const baseData =
@@ -125,6 +143,9 @@ ${transitStr}
 
 [역행 행성 현황]
 ${retroStr}
+
+[오늘의 전환점 — 매일 똑같이 적용되는 게 아니라 "오늘 즈음에만" 해당하는 사실]
+${transitionStr}
 
 [세컨더리 프로그레션 (현재 삶의 배경 흐름)]
 ${progStr}
@@ -179,7 +200,8 @@ ${question}
 - 네이탈 에스펙트는 이 사람의 타고난 패턴입니다. 오늘 에스펙트가 이 패턴을 건드릴 때(같은 행성, 같은 배치) 특히 강하게 발현된다고 해석하세요.
 - 오브 3° 이내 에스펙트는 각 항목에서 반드시 삶의 언어로 근거로 언급하세요.
 - 역행 중인 행성이 있다면 해당 영역(수성=소통/계약, 금성=관계/소비, 화성=행동력)에서 오늘 주의사항을 구체적으로 쓰세요.
-- 프로그레션 태양의 사인·하우스로 현재 삶의 큰 흐름을, 프로그레션 달의 사인·하우스로 현재 감정적 초점을 "오늘의 전체 에너지" 섹션에 한두 문장으로 자연스럽게 녹여 쓰세요.
+- "오늘의 전환점" 데이터에 내용이 있다면(역행 시작/종료, 사인 이동), 이건 매일 똑같이 적용되는 정적 정보가 아니라 "오늘 즈음에만" 해당하는 특별한 사실입니다. "오늘의 전체 에너지" 섹션의 **첫머리**에서 이 사실을 강하게 부각해 쓰세요(예: "오늘은 평소와 다르게 한 흐름이 막 바뀌는 날입니다" 같은 톤). 내용이 없으면("오늘 특별한 전환점 없음") 이 부분은 언급하지 말고 평소처럼 쓰세요.
+- 프로그레션 태양·달·수성·금성·화성의 사인·하우스로 현재 삶의 큰 흐름·감정적 초점·생각과 소통의 결·관계에서 끌리는 방향·추진력의 결을, 프로그레션 ASC·MC로 현재 세상에 보이는 페르소나와 사회적 방향을 "오늘의 전체 에너지" 섹션에 자연스럽게 녹여 쓰세요. 전부 나열하지 말고 오늘 다른 데이터(에스펙트·전환점)와 결이 맞는 1~2개를 골라 비중 있게 쓰세요.
 - 프로그레션→트랜짓 에스펙트 중 orb 2° 이내 항목이 있다면 "이 사람의 삶의 흐름이 오늘 하늘과 맞닿는 순간"으로 삶의 언어로 표현해 "오늘의 전체 에너지" 섹션에 녹여 쓰세요 (점성술 용어 사용 금지).
 - 달의 위상(신월~그믐)에 따른 에너지 방향성(확장기/절정/수확/성찰)을 "오늘의 전체 에너지" 섹션에 한 문장으로 자연스럽게 녹여 쓰세요.
 - VOC 구간이 있다면 해당 시간대에 중요한 결정/계약/시작을 피하라고 시간대와 함께 반드시 명시하세요.

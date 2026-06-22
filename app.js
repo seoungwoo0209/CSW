@@ -3355,7 +3355,11 @@ function renderTodayPlanetPanel(todayData) {
     progEl.innerHTML =
       `<span><span style="color:#c8a860;font-size:10px;">☀ 프로그 태양</span> <span style="color:#cabfa0;">${pg.sun.sign} ${pg.sun.degree}° · ${pg.sun.house}H</span></span>` +
       `<span><span style="color:#c8a860;font-size:10px;">🌙 프로그 달</span> <span style="color:#cabfa0;">${pg.moon.sign} ${pg.moon.degree}° · ${pg.moon.house}H</span></span>` +
-      `<span><span style="color:#c8a860;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#cabfa0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>`;
+      `<span><span style="color:#c8a860;font-size:10px;">☿ 프로그 수성</span> <span style="color:#cabfa0;">${pg.mercury.sign} ${pg.mercury.degree}° · ${pg.mercury.house}H</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">♀ 프로그 금성</span> <span style="color:#cabfa0;">${pg.venus.sign} ${pg.venus.degree}° · ${pg.venus.house}H</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">♂ 프로그 화성</span> <span style="color:#cabfa0;">${pg.mars.sign} ${pg.mars.degree}° · ${pg.mars.house}H</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">↑ 프로그 ASC</span> <span style="color:#cabfa0;">${pg.asc.sign} ${pg.asc.degree}°</span></span>` +
+      `<span><span style="color:#c8a860;font-size:10px;">⟂ 프로그 MC</span> <span style="color:#cabfa0;">${pg.mc.sign} ${pg.mc.degree}°</span></span>`;
   }
 
   panel.style.display = "block";

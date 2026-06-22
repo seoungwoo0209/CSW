@@ -106,20 +106,39 @@ export default async function handler(req, res) {
     const { asc: todayAsc, mc: todayMc } = calcHousesPlacidus(todayJD, appLat, appLng);
     const { northLon: todayNorthLon, southLon: todaySouthLon } = calcLunarNodes(todayJD);
 
+    // ── "접근중/이탈중" 판정용 — 1일 후 트랜짓 스냅샷
+    //    위치 한 시점만으론 거리가 좁아지는지 늘어나는지 알 수 없어서(어느 쪽이 더
+    //    빠른지·역행인지에 따라 달라짐), 실제로 1일 뒤 위치를 한 번 더 계산해
+    //    오브가 줄어드는지(접근중) 늘어나는지(이탈중) 직접 비교한다.
+    const futureKST = new Date(todayKST.getTime() + 86400000);
+    const futureRaw     = Ephemeris.getAllPlanets(futureKST, appLng, appLat, 0);
+    const futurePlanets = extractPlanets(futureRaw.observed);
+    const futureJD = calcJulianDay(
+      futureKST.getUTCFullYear(), futureKST.getUTCMonth() + 1, futureKST.getUTCDate(),
+      futureKST.getUTCHours() + futureKST.getUTCMinutes() / 60
+    );
+    const { asc: futureAsc, mc: futureMc } = calcHousesPlacidus(futureJD, appLat, appLng);
+    const { northLon: futureNorthLon, southLon: futureSouthLon } = calcLunarNodes(futureJD);
+    const futureTransitPoints = buildAspectPoints(futurePlanets, futureAsc, futureMc, futureNorthLon, futureSouthLon);
+
     // ── 오늘 트랜짓 → 네이탈 에스펙트 (행성 10개 + ASC + MC + 북노드 + 릴리스 = 12포인트 전부)
     const natalPoints   = buildAspectPoints(natalPlanets, asc, mc, natalNorthLon, natalSouthLon);
     const transitPoints = buildAspectPoints(todayPlanets, todayAsc, todayMc, todayNorthLon, todaySouthLon);
     const todayAspectsFull = calcAllAspects(transitPoints, natalPoints, {
-      labelPrefixA: '오늘 ', labelPrefixB: '네이탈 '
+      labelPrefixA: '오늘 ', labelPrefixB: '네이탈 ',
+      futurePointsA: futureTransitPoints, futurePointsB: natalPoints, // 네이탈은 고정값이라 그대로 재사용
     });
 
-    // ── 네이탈×네이탈 에스펙트 (출생 차트 고유 패턴)
+    // ── 네이탈×네이탈 에스펙트 (출생 차트 고유 패턴 — 둘 다 고정이라 접근/이탈 개념 없음)
     const natalAspectsFull = calcAllAspects(natalPoints, natalPoints, { sameSet: true });
 
     // ── 프로그레션 → 트랜짓 에스펙트 (12포인트 × 12포인트)
+    //    프로그레션 포인트는 하루 동안 거의 안 움직이므로(1일=1년 기법상 실제로는
+    //    1일의 1/365.25만큼만 진행) 고정값으로 두고, 트랜짓 쪽만 미래 스냅샷을 쓴다.
     const progPoints = buildAspectPoints(progPlanets, progAsc, progMc, progNorthLon, progSouthLon);
     const progTransitAspects = calcAllAspects(progPoints, transitPoints, {
-      labelPrefixA: '프로그레션 ', labelPrefixB: '오늘 '
+      labelPrefixA: '프로그레션 ', labelPrefixB: '오늘 ',
+      futurePointsA: progPoints, futurePointsB: futureTransitPoints,
     });
 
     // ── 역행 계산 (어제 정오 vs 오늘 정오 경도 비교)
@@ -137,6 +156,45 @@ export default async function handler(req, res) {
       if (diff > 180)  diff -= 360;
       if (diff < -180) diff += 360;
       retrograde[k] = diff < 0;
+    });
+
+    // ── 오늘이 "특별한 전환점"인지 — 매일 똑같은 정적 상태(지금 역행 중/아님)만
+    //    알려주는 걸 넘어서, 오늘 근처에 역행이 시작/끝나거나 행성이 사인을
+    //    바꾸는 "사건"이 있는지 감지한다.
+    const twoDaysAgoKST     = new Date(todayKST.getTime() - 2 * 86400000);
+    const twoDaysAgoRaw     = Ephemeris.getAllPlanets(twoDaysAgoKST, lng, lat, 0);
+    const twoDaysAgoPlanets = extractPlanets(twoDaysAgoRaw.observed);
+
+    function velDiff(curLon, prevLon) {
+      let d = curLon - prevLon;
+      if (d > 180)  d -= 360;
+      if (d < -180) d += 360;
+      return d;
+    }
+
+    // 역행 시작/종료: 어제→오늘 속도와 그저께→어제 속도의 방향이 다르면,
+    // 그 사이(오늘 근처)에 station(정지·방향전환)이 있었다는 뜻.
+    const stations = [];
+    RETRO_KEYS.forEach(k => {
+      const velNow  = velDiff(todayPlanets[k].lon, yesterdayPlanets[k].lon);
+      const velPrev = velDiff(yesterdayPlanets[k].lon, twoDaysAgoPlanets[k].lon);
+      if ((velNow < 0) !== (velPrev < 0)) {
+        stations.push({ key: k, kr: PLANET_KR[k], type: velNow < 0 ? 'retrograde_start' : 'retrograde_end' });
+      }
+    });
+
+    // 사인 이동: 어제와 오늘의 사인이 다른 행성(달은 2~3일마다 바뀌어 너무
+    // 흔해서 제외, 태양도 한 달에 한 번이라 일별 "사건"으로는 포함).
+    const SIGNS_FOR_EVENTS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                              '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+    const SIGN_CHANGE_KEYS = ['sun','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+    const signChanges = [];
+    SIGN_CHANGE_KEYS.forEach(k => {
+      const todaySign     = Math.floor(todayPlanets[k].lon / 30);
+      const yesterdaySign = Math.floor(yesterdayPlanets[k].lon / 30);
+      if (todaySign !== yesterdaySign) {
+        signChanges.push({ key: k, kr: PLANET_KR[k], toSign: SIGNS_FOR_EVENTS[todaySign] });
+      }
     });
 
     // ── 달의 VOC 계산
@@ -157,36 +215,48 @@ export default async function handler(req, res) {
     }
 
     // KST 자정(00:00 KST)부터 24시간 스캔
+    // 단, 마지막 에스펙트가 자정 "이전"에 있었을 경우(=오늘 시작부터 이미 VOC 진행
+    // 중인 경우)를 놓치지 않도록, 자정 12시간 전부터 미리 살펴서 lastAspectHour를
+    // 채워둔다(달이 한 사인에 머무는 시간이 최소 47시간이라 12시간 룩백으로는
+    // 사인 경계와 헷갈릴 일이 없다). 룩백 구간은 vocStartHour 판정에만 쓰고,
+    // 사인 변경(VOC 종료) 판정은 자정(h=0) 이후로만 본다.
     const dayStart = new Date(Date.UTC(kstY, kstM - 1, kstD, 0, 0, 0) - 9 * 3600000);
+    const LOOKBACK_H = 12;
 
-    let lastAspectHour  = -1;
-    let vocStartHour    = -1;
-    let vocEndHour      = -1;
-    let currentMoonSign = Math.floor(getMoonLon(dayStart) / 30);
+    let lastAspectHour  = null;
+    let vocStartHour    = null;
+    let vocEndHour      = null;
+    let voidSinceBefore = false; // 자정 이전부터 이미 VOC였는지
+    const currentMoonSign = Math.floor(getMoonLon(dayStart) / 30);
 
-    for (let h = 0; h <= 24; h++) {
+    for (let h = -LOOKBACK_H; h <= 24; h++) {
       const t       = new Date(dayStart.getTime() + h * 3600000);
       const moonLon = getMoonLon(t);
-      const moonSign = Math.floor(moonLon / 30);
 
-      // 사인 변경 = VOC 종료
-      if (moonSign !== currentMoonSign) {
-        vocEndHour = h;
-        break;
+      // 사인 변경 = VOC 종료 (자정 이후만 판정)
+      if (h >= 0) {
+        const moonSign = Math.floor(moonLon / 30);
+        if (moonSign !== currentMoonSign) {
+          vocEndHour = h;
+          break;
+        }
       }
 
-      // 행성과 에스펙트 확인
-      const planets24 = extractPlanets(Ephemeris.getAllPlanets(t, lng, lat, 0).observed);
+      // 행성과 에스펙트 확인 (앱 사용 위치 기준으로 일관되게)
+      const planets24 = extractPlanets(Ephemeris.getAllPlanets(t, appLng, appLat, 0).observed);
       const inAspect = MAJOR_PLANET_KEYS.some(k =>
         k !== 'moon' && hasAspect(moonLon, planets24[k].lon)
       );
 
       if (inAspect) {
         lastAspectHour = h;
-        vocStartHour   = -1; // 리셋
-      } else if (lastAspectHour >= 0 && vocStartHour === -1) {
-        vocStartHour = h;
+        vocStartHour   = null; // 리셋
+      } else if (vocStartHour === null) {
+        // lastAspectHour가 아직 한 번도 안 잡혔다면(룩백 구간 내내 에스펙트가 없었음)
+        // 룩백 시작점부터 이미 VOC였던 것으로 간주
+        vocStartHour = (lastAspectHour !== null) ? h : -LOOKBACK_H;
       }
+      if (h === 0 && vocStartHour !== null) voidSinceBefore = true;
     }
 
     const SIGNS_KR = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
@@ -197,15 +267,17 @@ export default async function handler(req, res) {
     const nextMoonSignIdx  = Math.floor(tomorrowMoonLon / 30);
     const nextMoonSign     = SIGNS_KR[nextMoonSignIdx];
 
-    const vocData = vocStartHour >= 0 && vocEndHour > vocStartHour
+    const displayStartHour = vocStartHour !== null ? Math.max(0, vocStartHour) : null;
+
+    const vocData = displayStartHour !== null && vocEndHour !== null && vocEndHour > displayStartHour
       ? {
           isVoc:      true,
-          startHour:  vocStartHour,   // KST 기준
+          startHour:  displayStartHour,   // KST 기준
           endHour:    vocEndHour,
-          startStr:   `${String(vocStartHour).padStart(2,'0')}:00`,
+          startStr:   voidSinceBefore ? '00:00(전날부터 진행 중)' : `${String(displayStartHour).padStart(2,'0')}:00`,
           endStr:     `${String(vocEndHour).padStart(2,'0')}:00`,
           nextSign:   nextMoonSign,
-          desc: `오늘 ${String(vocStartHour).padStart(2,'0')}:00 ~ ${String(vocEndHour).padStart(2,'0')}:00 달이 ${nextMoonSign}으로 넘어가기 전 보이드 오브 코스(VOC) 구간입니다.`
+          desc: `오늘 ${voidSinceBefore ? '00:00(전날부터 진행 중)' : String(displayStartHour).padStart(2,'0') + ':00'} ~ ${String(vocEndHour).padStart(2,'0')}:00 달이 ${nextMoonSign}으로 넘어가기 전 보이드 오브 코스(VOC) 구간입니다.`
         }
       : { isVoc: false, desc: '오늘은 달의 VOC 구간이 없습니다.' };
 
@@ -252,12 +324,18 @@ export default async function handler(req, res) {
       todayAspectsFull,
       progTransitAspects,
       retrograde,
+      stations,
+      signChanges,
       vocData,
       moonPhase,
       progression: {
-        sun:      { ...toSignInfo(progWithHouse.sun.lon),  house: progWithHouse.sun.house  },
-        moon:     { ...toSignInfo(progWithHouse.moon.lon), house: progWithHouse.moon.house },
+        sun:      { ...toSignInfo(progWithHouse.sun.lon),     house: progWithHouse.sun.house     },
+        moon:     { ...toSignInfo(progWithHouse.moon.lon),    house: progWithHouse.moon.house    },
+        mercury:  { ...toSignInfo(progWithHouse.mercury.lon), house: progWithHouse.mercury.house },
+        venus:    { ...toSignInfo(progWithHouse.venus.lon),   house: progWithHouse.venus.house   },
+        mars:     { ...toSignInfo(progWithHouse.mars.lon),    house: progWithHouse.mars.house    },
         asc:      toSignInfo(progAsc),
+        mc:       toSignInfo(progMc),
         ageYears: Math.round(ageYears * 100) / 100,
       },
       todayDate:     todayStr,
@@ -406,13 +484,6 @@ function angularDistance(a, b) {
   return diff > 180 ? 360 - diff : diff;
 }
 
-function signedAngularDiff(lonA, lonB) {
-  let diff = norm360(lonB) - norm360(lonA);
-  if (diff > 180)  diff -= 360;
-  if (diff < -180) diff += 360;
-  return diff;
-}
-
 const ASPECT_DEFS = [
   { name:'컨정션',   angle:  0, orb:8, symbol:'☌' },
   { name:'섹스타일', angle: 60, orb:4, symbol:'⚹' },
@@ -465,7 +536,7 @@ function buildAspectPoints(planets, asc, mc, northLon, southLon) {
    범용 에스펙트 계산 — pointsA × pointsB 전체 조합
    ========================================================= */
 function calcAllAspects(pointsA, pointsB, opts = {}) {
-  const { labelPrefixA = '', labelPrefixB = '', sameSet = false } = opts;
+  const { labelPrefixA = '', labelPrefixB = '', sameSet = false, futurePointsA = null, futurePointsB = null } = opts;
   const aspects = [];
 
   for (let i = 0; i < pointsA.length; i++) {
@@ -477,8 +548,16 @@ function calcAllAspects(pointsA, pointsB, opts = {}) {
       for (const asp of ASPECT_DEFS) {
         const diff = Math.abs(dist - asp.angle);
         if (diff <= asp.orb) {
-          const signed   = signedAngularDiff(p1.lon, p2.lon);
-          const applying = signed > 0 ? dist < asp.angle : dist > asp.angle;
+          // 접근중/이탈중: 한 시점의 위치만으론 알 수 없다(어느 쪽이 더 빠른지·
+          // 역행인지에 따라 달라짐). futurePoints가 주어지면 실제로 1일 뒤
+          // 오브가 줄었는지(접근중)로 판정하고, 없으면(나탈×나탈처럼 둘 다
+          // 고정값) 의미가 없으므로 null로 둔다.
+          let applying = null;
+          if (futurePointsA && futurePointsB) {
+            const f1 = futurePointsA[i], f2 = futurePointsB[j];
+            const futureDiff = Math.abs(angularDistance(f1.lon, f2.lon) - asp.angle);
+            applying = futureDiff < diff;
+          }
           aspects.push({
             point1:  labelPrefixA + p1.label,
             point2:  labelPrefixB + p2.label,
