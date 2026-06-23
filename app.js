@@ -1456,6 +1456,403 @@ function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
 }
 
 /* =========================================================
+   직업 — "✨ OO운 보기" 버튼 클릭 전용
+   window.AstroResult 재사용 (새 계산 없음). 천왕성/역행/목성회귀처럼
+   "지금 이 순간"에 의존하는 값은 gemini-career.js가 서버에서 직접 계산.
+   ========================================================= */
+let _jobHuntingRevealInFlight = false;
+let _promotionRevealInFlight  = false;
+let _jobChangeRevealInFlight  = false;
+let _startupRevealInFlight    = false;
+
+// 일식/월식이 MC·ASC·IC·DSC·태양 근처에 닿는 시점 — 4개 직업 화면 공통 보너스 시그널
+// (astro-extras.js의 신월만월 계산을 그대로 재사용, 새 계산 없음 / 화면당 1회만 호출되도록 캐싱)
+let _eclipseCareerSignalCache = null;
+async function _getEclipseCareerSignal(astroData) {
+  if (_eclipseCareerSignalCache !== null) return _eclipseCareerSignalCache;
+  try {
+    const cityName = getCitySelectValue();
+    const { lat, lng, utcOffset } = getCityCoords(cityName);
+    const res = await fetch('/api/astro-extras', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'moon-phases',
+        natal: astroData.natal, angles: astroData.angles, nodes: astroData.nodes, houses: astroData.houses,
+        appLat: lat, appLng: lng, appUtcOffset: utcOffset
+      })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) { _eclipseCareerSignalCache = null; return null; }
+
+    const careerPoints = ['MC', 'IC', 'ASC', 'DSC', '태양'];
+    const candidates = (data.events || [])
+      .filter(ev => (ev.type === 'solarEclipse' || ev.type === 'lunarEclipse'))
+      .map(ev => ({ ev, hit: (ev.conjunctions || []).find(c => careerPoints.includes(c.point)) }))
+      .filter(x => x.hit);
+
+    if (!candidates.length) { _eclipseCareerSignalCache = null; return null; }
+
+    candidates.sort((a, b) => new Date(a.ev.dateLocal) - new Date(b.ev.dateLocal));
+    const top = candidates[0];
+    _eclipseCareerSignalCache = {
+      dateLocal: top.ev.dateLocal,
+      type: top.ev.type === 'solarEclipse' ? '일식' : '월식',
+      conjunctPoint: top.hit.point,
+    };
+    return _eclipseCareerSignalCache;
+  } catch (e) {
+    console.warn('일식/월식 시그널 조회 실패:', e.message);
+    return null;
+  }
+}
+
+function _buildCareerCommonFields(astroData) {
+  const ascRulerKey = _SIGN_RULER[astroData.angles.asc.sign];
+  const mcRulerKey  = _SIGN_RULER[astroData.angles.mc.sign];
+  const ascRuler = ascRulerKey ? { key: ascRulerKey, label: _LOVE_PLANET_KR[ascRulerKey], ...astroData.natal[ascRulerKey] } : null;
+  const mcRuler  = mcRulerKey  ? { key: mcRulerKey,  label: _LOVE_PLANET_KR[mcRulerKey],  ...astroData.natal[mcRulerKey]  } : null;
+
+  const nowMonthIdx = new Date().getMonth();
+  const transitNow  = astroData.transits?.[nowMonthIdx] || null;
+
+  return {
+    name:   window.SajuResult?.name || '',
+    gender: window.SajuResult?.gender || 'M',
+    ascSign: astroData.angles.asc.sign,
+    ascRuler,
+    mcSign:  astroData.angles.mc.sign,
+    mcRuler,
+    progMcSign: astroData.progression?.angles?.mc?.sign,
+    houses: astroData.houses,
+    jupiter: astroData.natal.jupiter,
+    transitNow,
+  };
+}
+
+async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtraFields, renderFn, errorLabel }) {
+  if (window[inFlightFlagName]) return;
+  if (!window.AstroResult) {
+    alert("생년월일과 출생시각을 먼저 입력해주세요. (정통 사주 또는 점성술 탭에서 한 번 계산되면 자동으로 준비됩니다)");
+    return;
+  }
+  window[inFlightFlagName] = true;
+
+  const introCard  = _$(idPrefix + 'InputCard');
+  const loading    = _$(idPrefix + 'Loading');
+  const resultArea = _$(idPrefix + 'ResultArea');
+  if (resultArea) resultArea.style.display = 'none';
+  if (loading)    loading.style.display = 'block';
+  if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
+
+  let succeeded = false;
+  try {
+    const astroData = window.AstroResult;
+    const eclipseSignal = await _getEclipseCareerSignal(astroData);
+
+    const payload = {
+      type,
+      ..._buildCareerCommonFields(astroData),
+      eclipseSignal,
+      ...buildExtraFields(astroData),
+    };
+
+    const res = await fetch("/api/gemini-career", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
+
+    if (resultArea) resultArea.innerHTML = renderFn(payload, data.result || '');
+    succeeded = true;
+
+  } catch (err) {
+    console.error(errorLabel + " 분석 중 오류:", err);
+    setAlert(errorLabel + " 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+  } finally {
+    window[inFlightFlagName] = false;
+    if (loading)   loading.style.display = 'none';
+    if (introCard) introCard.querySelectorAll('button').forEach(b => { b.disabled = false; b.style.opacity = '1'; });
+    if (succeeded) {
+      if (resultArea) resultArea.style.display = 'block';
+      if (introCard)  introCard.style.display = 'none';
+    }
+  }
+}
+
+function _careerPanelHtml(raw, sections) {
+  const markerRe = /===SECTION:(\w+)===/g;
+  const hits = [];
+  let m;
+  while ((m = markerRe.exec(raw)) !== null) {
+    hits.push({ key: m[1], contentStart: m.index + m[0].length, markerStart: m.index });
+  }
+  hits.forEach((hit, i) => {
+    const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
+    sections[hit.key] = raw.slice(hit.contentStart, end).trim();
+  });
+}
+
+function _careerToParas(text) {
+  if (!text) return '<p style="margin:0;color:#9b8f74;">해설을 불러오지 못했습니다.</p>';
+  return text.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean).map(p =>
+    `<p style="margin:0 0 12px;">${p.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f4ecd8;">$1</strong>').replace(/\n/g, '<br>')}</p>`
+  ).join('');
+}
+
+const _CAREER_PANEL_STYLE = `border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+  border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px 18px 16px;margin-bottom:6px;`;
+const _CAREER_EYEBROW_STYLE = `font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:10px;`;
+const _CAREER_TITLE_STYLE = `font-size:18px;font-weight:700;margin-bottom:14px;
+  background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
+const _CAREER_AI_EYEBROW_STYLE = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
+const _CAREER_AI_TEXT_STYLE = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+
+// 1) 취업·합격운
+async function revealJobHunting() {
+  await _revealCareerScreen({
+    inFlightFlagName: '_jobHuntingRevealInFlight',
+    idPrefix: 'jobHunting',
+    type: 'job-hunting',
+    errorLabel: '취업·합격운',
+    renderFn: _renderJobHuntingHtml,
+    buildExtraFields: (astroData) => {
+      const house6 = _findHouseOccupants(astroData, 6);
+      const house10 = _findHouseOccupants(astroData, 10);
+      const house6RulerKey = _SIGN_RULER[astroData.houses?.[5]?.sign];
+      const house6Ruler = house6RulerKey ? { key: house6RulerKey, label: _LOVE_PLANET_KR[house6RulerKey], ...astroData.natal[house6RulerKey] } : null;
+      return {
+        house6Sign: astroData.houses?.[5]?.sign,
+        house6Occupants: house6,
+        house6Ruler,
+        house10Sign: astroData.angles.mc.sign,
+        house10Occupants: house10,
+        mercury: astroData.natal.mercury,
+        mars: astroData.natal.mars,
+        jupiterSign: astroData.natal.jupiter.sign,
+        saturn: astroData.natal.saturn,
+      };
+    }
+  });
+}
+
+function _renderJobHuntingHtml(payload, raw) {
+  const sections = {};
+  _careerPanelHtml(raw, sections);
+  const ecl = payload.eclipseSignal;
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">求 職 之 運</div>
+      <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 취업 기질</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">6하우스 · ${payload.house6Sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">10하우스(MC) · ${payload.house10Sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">수성 · ${payload.mercury.sign}</span>
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 나의 취업 기질 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.nature)}</div>
+    </div>
+
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
+      <div style="${_CAREER_TITLE_STYLE}">지금의 합격·면접 타이밍</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
+        ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
+// 2) 직장·승진운
+async function revealPromotion() {
+  await _revealCareerScreen({
+    inFlightFlagName: '_promotionRevealInFlight',
+    idPrefix: 'promotion',
+    type: 'promotion',
+    errorLabel: '직장·승진운',
+    renderFn: _renderPromotionHtml,
+    buildExtraFields: (astroData) => {
+      const house10 = _findHouseOccupants(astroData, 10);
+      const house11 = _findHouseOccupants(astroData, 11);
+      return {
+        house10Sign: astroData.angles.mc.sign,
+        house10Occupants: house10,
+        saturn: astroData.natal.saturn,
+        sun: astroData.natal.sun,
+        mars: astroData.natal.mars,
+        venus: astroData.natal.venus,
+        house11Sign: astroData.houses?.[10]?.sign,
+        house11Occupants: house11,
+        house12Sign: astroData.houses?.[11]?.sign,
+      };
+    }
+  });
+}
+
+function _renderPromotionHtml(payload, raw) {
+  const sections = {};
+  _careerPanelHtml(raw, sections);
+  const ecl = payload.eclipseSignal;
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">職 場 之 運</div>
+      <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 직장 내 위치</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">MC · ${payload.house10Sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">토성 · ${payload.saturn.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">11하우스(인맥) · ${payload.house11Sign}</span>
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 직장 스타일·인간관계 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.nature)}</div>
+    </div>
+
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
+      <div style="${_CAREER_TITLE_STYLE}">지금의 승진·협상 흐름</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 토성 · ${payload.transitNow?.planets?.saturn?.house ? payload.transitNow.planets.saturn.house + '하우스' : '정보 없음'}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
+        ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 흐름 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
+// 3) 이직·스카웃운
+async function revealJobChange() {
+  await _revealCareerScreen({
+    inFlightFlagName: '_jobChangeRevealInFlight',
+    idPrefix: 'jobChange',
+    type: 'job-change',
+    errorLabel: '이직·스카웃운',
+    renderFn: _renderJobChangeHtml,
+    buildExtraFields: (astroData) => {
+      return {
+        uranus: astroData.natal.uranus,
+        northNodeSign: astroData.nodes?.north?.sign,
+        northNodeHouse: astroData.nodes?.north?.house,
+        house9Sign: astroData.houses?.[8]?.sign,
+      };
+    }
+  });
+}
+
+function _renderJobChangeHtml(payload, raw) {
+  const sections = {};
+  _careerPanelHtml(raw, sections);
+  const ecl = payload.eclipseSignal;
+  const mcChanged = payload.progMcSign && payload.progMcSign !== payload.mcSign;
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">移 職 之 運</div>
+      <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 커리어 점프 패턴</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">천왕성 · ${payload.uranus.sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">북노드 · ${payload.northNodeSign}(${payload.northNodeHouse}하우스)</span>
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 이직 패턴 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.nature)}</div>
+    </div>
+
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
+      <div style="${_CAREER_TITLE_STYLE}">지금의 이직·스카웃 타이밍</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${mcChanged ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">프로그레션 MC 전환 · ${payload.progMcSign}</span>` : ''}
+        ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
+// 4) 창업·부업운
+async function revealStartup() {
+  await _revealCareerScreen({
+    inFlightFlagName: '_startupRevealInFlight',
+    idPrefix: 'startup',
+    type: 'startup',
+    errorLabel: '창업·부업운',
+    renderFn: _renderStartupHtml,
+    buildExtraFields: (astroData) => {
+      const house2 = _findHouseOccupants(astroData, 2);
+      const house8 = _findHouseOccupants(astroData, 8);
+      const house2RulerKey = _SIGN_RULER[astroData.houses?.[1]?.sign];
+      const house8RulerKey = _SIGN_RULER[astroData.houses?.[7]?.sign];
+      const house2Ruler = house2RulerKey ? { key: house2RulerKey, label: _LOVE_PLANET_KR[house2RulerKey], ...astroData.natal[house2RulerKey] } : null;
+      const house8Ruler = house8RulerKey ? { key: house8RulerKey, label: _LOVE_PLANET_KR[house8RulerKey], ...astroData.natal[house8RulerKey] } : null;
+      return {
+        house2Sign: astroData.houses?.[1]?.sign,
+        house2Occupants: house2,
+        house2Ruler,
+        house8Sign: astroData.houses?.[7]?.sign,
+        house8Occupants: house8,
+        house8Ruler,
+        mars: astroData.natal.mars,
+        jupiterSign: astroData.natal.jupiter.sign,
+        sun: astroData.natal.sun,
+        house5Sign: astroData.houses?.[4]?.sign,
+      };
+    }
+  });
+}
+
+function _renderStartupHtml(payload, raw) {
+  const sections = {};
+  _careerPanelHtml(raw, sections);
+  const ecl = payload.eclipseSignal;
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">創 業 之 運</div>
+      <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 사업가 기질</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">2하우스(자기자본) · ${payload.house2Sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">8하우스(투자) · ${payload.house8Sign}</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">화성 · ${payload.mars.sign}</span>
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 사업가 기질 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.nature)}</div>
+    </div>
+
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
+      <div style="${_CAREER_TITLE_STYLE}">지금이 시작하기 좋은 시기인지</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
+        ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
+      </div>
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 시기 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
+    </div>
+  `;
+}
+
+/* =========================================================
    점성술 차트 미리 계산
    출생 정보 바뀔 때마다 /api/astro-calc를 호출해
    window.AstroResult에 저장해 둠.

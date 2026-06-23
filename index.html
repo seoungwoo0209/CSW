@@ -170,6 +170,21 @@
         <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
       </div>
 
+      <div class="home-card" onclick="onCardTap('job')">
+        <div class="home-card-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 21l18 0"/><path d="M9 8l1 0"/><path d="M9 12l1 0"/><path d="M9 16l1 0"/><path d="M14 8l1 0"/><path d="M14 12l1 0"/><path d="M14 16l1 0"/>
+            <path d="M5 21v-16a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v16"/>
+          </svg>
+        </div>
+        <div class="home-card-body">
+          <span class="home-card-num gold-text">06</span>
+          <strong class="home-card-title">직업</strong>
+          <span class="home-card-desc">일과 커리어의 타이밍을 읽다</span>
+        </div>
+        <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+      </div>
+
     </div>
 
     <div class="home-footer">
@@ -802,6 +817,293 @@
   </div>
 
   <!-- ══════════════════════════════════════
+       직업 스크린 (선택 화면)
+       ══════════════════════════════════════ -->
+  <div id="screen-job" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="goHome()">←</button>
+      <span class="screen-topbar-title">직업</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+      <div class="home-cards">
+
+        <div class="home-card" onclick="enterScreen('jobHunting')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3l8 -8"/><path d="M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">01</span>
+            <strong class="home-card-title">취업·합격운</strong>
+            <span class="home-card-desc">취준·시험·면접의 타이밍</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+        <div class="home-card" onclick="enterScreen('promotion')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 17l6 -6l4 4l8 -8"/><path d="M14 7l7 0l0 7"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">02</span>
+            <strong class="home-card-title">직장·승진운</strong>
+            <span class="home-card-desc">연봉 협상·사내 인간관계</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+        <div class="home-card" onclick="enterScreen('jobChange')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M17 3l4 4l-4 4"/><path d="M3 7l11 0l7 0"/><path d="M7 21l-4 -4l4 -4"/><path d="M21 17l-11 0l-7 0"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">03</span>
+            <strong class="home-card-title">이직·스카웃운</strong>
+            <span class="home-card-desc">커리어 점프의 타이밍</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+        <div class="home-card" onclick="enterScreen('startup')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21l18 0"/><path d="M5 21v-10l7 -7l7 7v10"/><path d="M9 21v-6a3 3 0 0 1 6 0v6"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">04</span>
+            <strong class="home-card-title">창업·부업운</strong>
+            <span class="home-card-desc">N잡러·개인 사업의 타이밍</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       취업·합격운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-jobHunting" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('job')">←</button>
+      <span class="screen-topbar-title">취업·합격운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="jobHuntingInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">취업·합격운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          6·10하우스와 수성·목성으로 취업 기질을 읽고,<br>지금이 합격에 유리한 시기인지 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          나의 취업 기질<span class="dot">·</span>지금의 시기<span class="dot">·</span>면접·시험 타이밍
+        </p>
+
+        <button onclick="revealJobHunting()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 취업·합격운 보기</span>
+        </button>
+      </div>
+
+      <div id="jobHuntingLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">취업·합격운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="jobHuntingResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       직장·승진운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-promotion" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('job')">←</button>
+      <span class="screen-topbar-title">직장·승진운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="promotionInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">직장·승진운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          10하우스 지배행성과 토성·태양으로 직장 내 위치를 읽고,<br>승진·협상에 유리한 시기를 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          나의 직장 스타일<span class="dot">·</span>인간관계<span class="dot">·</span>승진의 시기
+        </p>
+
+        <button onclick="revealPromotion()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 직장·승진운 보기</span>
+        </button>
+      </div>
+
+      <div id="promotionLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">직장·승진운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="promotionResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       이직·스카웃운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-jobChange" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('job')">←</button>
+      <span class="screen-topbar-title">이직·스카웃운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="jobChangeInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">이직·스카웃운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          천왕성과 북노드로 커리어 점프의 결을 읽고,<br>지금이 이직·스카웃에 유리한 시기인지 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          이직의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>오퍼 수락 여부
+        </p>
+
+        <button onclick="revealJobChange()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 이직·스카웃운 보기</span>
+        </button>
+      </div>
+
+      <div id="jobChangeLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">이직·스카웃운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="jobChangeResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       창업·부업운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-startup" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('job')">←</button>
+      <span class="screen-topbar-title">창업·부업운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="startupInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">창업·부업운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          2·8하우스와 화성·목성으로 사업가 기질을 읽고,<br>지금이 시작하기 좋은 시기인지 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          사업가 기질<span class="dot">·</span>재정의 흐름<span class="dot">·</span>시작의 시기
+        </p>
+
+        <button onclick="revealStartup()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 창업·부업운 보기</span>
+        </button>
+      </div>
+
+      <div id="startupLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">창업·부업운을 분석하고 있습니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="startupResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
        점성술 스크린
        ══════════════════════════════════════ -->
   <div id="screen-astro" class="screen">
@@ -946,6 +1248,6 @@
   <script src="./saju_engine.js?v=3"></script>
   <script src="./astro-events-engine.js?v=1"></script>
   <script src="./saju_ui.js?v=7"></script>
-  <script src="./app.js?v=28"></script>
+  <script src="./app.js?v=29"></script>
 </body>
 </html>
