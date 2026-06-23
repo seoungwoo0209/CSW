@@ -19,30 +19,52 @@ function buildLovePrompt(body) {
     name, gender, venus, mars, moon, saturn,
     house5Sign, house7Sign, house5Occupants, house7Occupants,
     house7Ruler, satVenusAspect, satRulerAspect,
-    transitNow, progMoonHouse, progMoonSign
+    transitNow, progMoonHouse, progMoonSign,
+    ascSign, ascRuler, house5Ruler, house8Sign, house8Occupants,
+    progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
+    jupiterVenusAspect, eclipseSignal, venusRetro
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr     = gender === 'M' ? '남성' : '여성';
 
-  const house5Str = `${house5Sign}자리${house5Occupants?.length ? ` (${house5Occupants.join(', ')} 위치)` : ''}`;
-  const house7Str = `${house7Sign}자리${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}`;
+  const house5Str = `${house5Sign}${house5Occupants?.length ? ` (${house5Occupants.join(', ')} 위치)` : ''}`;
+  const house7Str = `${house7Sign}${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}`;
+  const house8Str = `${house8Sign}${house8Occupants?.length ? ` (${house8Occupants.join(', ')} 위치)` : ''}`;
 
   let transitStr = '트랜짓 정보 없음';
   if (transitNow) {
     transitStr = `이번 달 트랜짓 — 금성: ${transitNow.planets.venus.sign}, 화성: ${transitNow.planets.mars.sign}`;
   }
   const progMoonStr = progMoonSign ? `프로그레션 달: ${progMoonSign} ${progMoonHouse}하우스` : '프로그레션 정보 없음';
+  const progVenusStr = progVenusSign ? `프로그레션 금성: ${progVenusSign} ${progVenusHouse}하우스 (지금 어떤 사랑에 끌리는지의 변화)` : '프로그레션 금성 정보 없음';
 
   const house7RulerStr = house7Ruler
     ? `7하우스(${house7Sign}) 지배행성: ${house7Ruler.label} — ${house7Ruler.sign} ${house7Ruler.house}하우스`
     : '7하우스 지배행성 정보 없음';
+  const house5RulerStr = house5Ruler
+    ? `5하우스(${house5Sign}) 지배행성: ${house5Ruler.label} — ${house5Ruler.sign} ${house5Ruler.house}하우스`
+    : '5하우스 지배행성 정보 없음';
+  const ascRulerStr = ascRuler
+    ? `차트 지배행성(ASC ${ascSign}): ${ascRuler.label} — ${ascRuler.sign} ${ascRuler.house}하우스 (연애를 대하는 전체적인 태도)`
+    : '차트 지배행성 정보 없음';
   const satVenusStr = satVenusAspect
     ? `토성-금성: ${satVenusAspect.aspect} (orb ${satVenusAspect.orb}°)`
     : '토성-금성 간 뚜렷한 어스펙트 없음';
   const satRulerStr = satRulerAspect
     ? `토성-7하우스 지배행성: ${satRulerAspect.aspect} (orb ${satRulerAspect.orb}°)`
     : '';
+  const jupVenusStr = jupiterVenusAspect
+    ? `목성-금성: ${jupiterVenusAspect.aspect} (orb ${jupiterVenusAspect.orb}°) — 전통적으로 "사랑의 행운" 지표`
+    : '목성-금성 간 뚜렷한 어스펙트 없음';
+  const nodeStr = northNodeSign ? `북노드: ${northNodeSign} ${northNodeHouse}하우스 — 어떤 관계로 성장해가야 하는지의 방향` : '';
+  const venusRetroStr = `금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 옛 인연이나 과거의 사랑 방식이 다시 떠오르는 시기)' : '순행 중'}`;
+  const eclipseStr = eclipseSignal
+    ? (() => {
+        const d = new Date(eclipseSignal.dateLocal);
+        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${eclipseSignal.type}이 ${eclipseSignal.conjunctPoint}에 근접 — 관계의 중요한 전환점으로 해석 가능`;
+      })()
+    : '올해 연애 관련 일식/월식 시그널 없음';
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -58,6 +80,11 @@ function buildLovePrompt(body) {
 달(Moon): ${moon.sign} ${moon.house}하우스 — 정서적으로 원하는 것
 5하우스(연애·설렘): ${house5Str}
 7하우스(진지한 파트너십): ${house7Str}
+8하우스(깊은 정서적·성적 유대): ${house8Str}
+${house5RulerStr}
+${ascRulerStr}
+${jupVenusStr}
+${nodeStr}
 
 [결혼·지속적 관계 — 토성·7하우스 지배행성]
 토성(Saturn): ${saturn.sign} ${saturn.house}하우스 — 책임감·관계를 얼마나 오래 지속시키는가
@@ -68,6 +95,9 @@ ${satRulerStr}
 [올해의 흐름]
 ${transitStr}
 ${progMoonStr}
+${progVenusStr}
+${venusRetroStr}
+${eclipseStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -111,22 +141,35 @@ function buildReunionPrompt(body) {
     house7Sign, house7Occupants, house7Ruler,
     satVenusAspect, satRulerAspect,
     transitNow, progMoonHouse, progMoonSign,
-    venusRetro
+    venusRetro,
+    ascSign, ascRuler, house8Sign, house8Occupants,
+    progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
+    jupiterVenusAspect, eclipseSignal
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr     = gender === 'M' ? '남성' : '여성';
 
-  const house7Str = `${house7Sign}자리${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}`;
+  const house7Str = `${house7Sign}${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}`;
+  const house8Str = `${house8Sign}${house8Occupants?.length ? ` (${house8Occupants.join(', ')} 위치)` : ''}`;
 
   const house7RulerStr = house7Ruler
     ? `7하우스(${house7Sign}) 지배행성: ${house7Ruler.label} — ${house7Ruler.sign} ${house7Ruler.house}하우스`
     : '7하우스 지배행성 정보 없음';
+  const ascRulerStr = ascRuler
+    ? `차트 지배행성(ASC ${ascSign}): ${ascRuler.label} — ${ascRuler.sign} ${ascRuler.house}하우스`
+    : '차트 지배행성 정보 없음';
   const satVenusStr = satVenusAspect
     ? `토성-금성: ${satVenusAspect.aspect} (orb ${satVenusAspect.orb}°)`
     : '토성-금성 간 뚜렷한 어스펙트 없음';
   const satRulerStr = satRulerAspect
     ? `토성-7하우스 지배행성: ${satRulerAspect.aspect} (orb ${satRulerAspect.orb}°)`
+    : '';
+  const jupVenusStr = jupiterVenusAspect
+    ? `목성-금성: ${jupiterVenusAspect.aspect} (orb ${jupiterVenusAspect.orb}°)`
+    : '목성-금성 간 뚜렷한 어스펙트 없음';
+  const nodeStr = northNodeSign
+    ? `북노드: ${northNodeSign} ${northNodeHouse}하우스 — 전통적으로 "운명적·카르마적 재회"를 가리키는 핵심 지표`
     : '';
 
   const transitSaturnHouse = transitNow?.planets?.saturn?.house ?? null;
@@ -137,6 +180,13 @@ function buildReunionPrompt(body) {
     transitStr = `이번 달 트랜짓 — 금성: ${transitNow.planets.venus.sign}, 토성: ${transitNow.planets.saturn.sign} (${transitSaturnHouse}하우스)`;
   }
   const progMoonStr = progMoonSign ? `프로그레션 달: ${progMoonSign} ${progMoonHouse}하우스` : '프로그레션 정보 없음';
+  const progVenusStr = progVenusSign ? `프로그레션 금성: ${progVenusSign} ${progVenusHouse}하우스` : '프로그레션 금성 정보 없음';
+  const eclipseStr = eclipseSignal
+    ? (() => {
+        const d = new Date(eclipseSignal.dateLocal);
+        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${eclipseSignal.type}이 ${eclipseSignal.conjunctPoint}에 근접 — 관계의 중요한 전환점으로 해석 가능`;
+      })()
+    : '올해 연애 관련 일식/월식 시그널 없음';
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -153,15 +203,21 @@ function buildReunionPrompt(body) {
 달(Moon): ${moon.sign} ${moon.house}하우스 — 미련·정서적 애착의 패턴
 토성(Saturn): ${saturn.sign} ${saturn.house}하우스 — 관계를 다시 시험하고 재정비하려는 성향
 7하우스(진지한 파트너십): ${house7Str}
+8하우스(깊은 정서적·성적 유대, 미련의 뿌리): ${house8Str}
 ${house7RulerStr}
+${ascRulerStr}
 ${satVenusStr}
 ${satRulerStr}
+${jupVenusStr}
+${nodeStr}
 
 [지금 시점의 재회 타이밍 신호]
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${transitSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
 ${transitStr}
 ${progMoonStr}
+${progVenusStr}
+${eclipseStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -362,7 +418,7 @@ export default async function handler(req, res) {
     }
 
     let venusRetro = false;
-    if (isReunion || isReunionKnown) {
+    if (!isCompatibility) {
       try { venusRetro = isVenusRetrogradeNow(); } catch (e) { console.warn('금성 역행 계산 실패:', e.message); }
     }
 
@@ -372,7 +428,7 @@ export default async function handler(req, res) {
         ? buildCompatibilityPrompt(req.body)
         : isReunion
           ? buildReunionPrompt({ ...req.body, venusRetro })
-          : buildLovePrompt(req.body);
+          : buildLovePrompt({ ...req.body, venusRetro });
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (최대 3회 재시도)
@@ -418,7 +474,7 @@ export default async function handler(req, res) {
     }
 
     const responseBody = { result: reply };
-    if (isReunion || isReunionKnown) responseBody.venusRetrograde = venusRetro;
+    if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
     return res.status(200).json(responseBody);
 
   } catch (error) {

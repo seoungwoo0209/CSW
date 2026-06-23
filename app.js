@@ -783,6 +783,31 @@ function _findAspectBetween(aspectsFull, labelA, labelB) {
   return aspectsFull.find(a => (a.point1 === labelA && a.point2 === labelB) || (a.point1 === labelB && a.point2 === labelA)) || null;
 }
 
+// 연애운/재회운 보강 — 차트 지배행성, 5하우스 지배행성, 8하우스, 프로그레션 금성,
+// 북노드, 목성-금성 어스펙트 (직업 탭 보강과 동일한 기준으로 추가)
+function _buildLoveEnhancedFields(astroData) {
+  const ascRulerKey = _SIGN_RULER[astroData.angles.asc.sign];
+  const ascRuler = ascRulerKey ? { key: ascRulerKey, label: _LOVE_PLANET_KR[ascRulerKey], ...astroData.natal[ascRulerKey] } : null;
+
+  const house5RulerKey = _SIGN_RULER[astroData.houses?.[4]?.sign];
+  const house5Ruler = house5RulerKey ? { key: house5RulerKey, label: _LOVE_PLANET_KR[house5RulerKey], ...astroData.natal[house5RulerKey] } : null;
+
+  const house8 = _findHouseOccupants(astroData, 8);
+
+  return {
+    ascSign: astroData.angles.asc.sign,
+    ascRuler,
+    house5Ruler,
+    house8Sign: astroData.houses?.[7]?.sign,
+    house8Occupants: house8,
+    progVenusSign:  astroData.progression?.planets?.venus?.sign,
+    progVenusHouse: astroData.progression?.planets?.venus?.house,
+    northNodeSign:  astroData.nodes?.north?.sign,
+    northNodeHouse: astroData.nodes?.north?.house,
+    jupiterVenusAspect: _findAspectBetween(astroData.natalAspectsFull, '목성', '금성'),
+  };
+}
+
 async function revealLoveFortune() {
   if (_loveRevealInFlight) return;
   if (!window.AstroResult) {
@@ -816,6 +841,7 @@ async function revealLoveFortune() {
     const satRulerAspect = (house7Ruler && house7RulerKey !== 'saturn')
       ? _findAspectBetween(astroData.natalAspectsFull, '토성', house7Ruler.label)
       : null;
+    const eclipseSignal = await _getEclipseLoveSignal(astroData);
 
     const payload = {
       type:   'love',
@@ -835,6 +861,8 @@ async function revealLoveFortune() {
       transitNow,
       progMoonHouse: astroData.progression?.planets?.moon?.house,
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
+      ..._buildLoveEnhancedFields(astroData),
+      eclipseSignal,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -845,7 +873,7 @@ async function revealLoveFortune() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
-    if (resultArea) resultArea.innerHTML = _renderLoveFortuneHtml(payload, data.result || '');
+    if (resultArea) resultArea.innerHTML = _renderLoveFortuneHtml(payload, data.result || '', data.venusRetrograde);
     succeeded = true;
 
   } catch (err) {
@@ -862,7 +890,7 @@ async function revealLoveFortune() {
   }
 }
 
-function _renderLoveFortuneHtml(payload, raw) {
+function _renderLoveFortuneHtml(payload, raw, venusRetrograde) {
   const markerRe = /===SECTION:(\w+)===/g;
   const hits = [];
   let m;
@@ -902,8 +930,14 @@ function _renderLoveFortuneHtml(payload, raw) {
       </div>
       <div style="margin-top:10px;font-size:12px;color:#8d8268;">
         5하우스(${payload.house5Sign}) ${payload.house5Occupants.length ? '· ' + payload.house5Occupants.join(', ') : ''} ·
-        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''}
+        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''} ·
+        8하우스(${payload.house8Sign || '?'}) ${payload.house8Occupants?.length ? '· ' + payload.house8Occupants.join(', ') : ''}
       </div>
+      ${payload.ascRuler || payload.jupiterVenusAspect ? `
+      <div style="margin-top:6px;font-size:12px;color:#8d8268;">
+        ${payload.ascRuler ? `차트 지배행성 · ${payload.ascRuler.label} ${payload.ascRuler.sign}` : ''}
+        ${payload.jupiterVenusAspect ? ` · 목성-금성 ${payload.jupiterVenusAspect.aspect} (행운의 사랑 지표)` : ''}
+      </div>` : ''}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 기질 해설</div>
@@ -916,6 +950,7 @@ function _renderLoveFortuneHtml(payload, raw) {
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">토성 · ${payload.saturn.sign} ${payload.saturn.house}하우스</span>
         ${payload.house7Ruler ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">7하우스 지배행성 · ${payload.house7Ruler.label} ${payload.house7Ruler.sign} ${payload.house7Ruler.house}하우스</span>` : ''}
+        ${payload.northNodeSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">북노드 · ${payload.northNodeSign} ${payload.northNodeHouse}하우스</span>` : ''}
       </div>
       <div style="margin-top:10px;font-size:12px;color:#8d8268;">
         ${payload.satVenusAspect ? `토성-금성 ${payload.satVenusAspect.aspect}` : '토성-금성 어스펙트 없음'}
@@ -936,6 +971,9 @@ function _renderLoveFortuneHtml(payload, raw) {
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">트랜짓 화성 · ${payload.transitNow.planets.mars.sign}</span>
         ` : ''}
         ${payload.progMoonSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 달 · ${payload.progMoonSign} ${payload.progMoonHouse}하우스</span>` : ''}
+        ${payload.progVenusSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 금성 · ${payload.progVenusSign} ${payload.progVenusHouse}하우스</span>` : ''}
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
+        ${payload.eclipseSignal ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${payload.eclipseSignal.type} · ${payload.eclipseSignal.conjunctPoint} 근접</span>` : ''}
       </div>
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
@@ -983,6 +1021,7 @@ async function revealReunionFortune() {
     const satRulerAspect = (house7Ruler && house7RulerKey !== 'saturn')
       ? _findAspectBetween(astroData.natalAspectsFull, '토성', house7Ruler.label)
       : null;
+    const eclipseSignal = await _getEclipseLoveSignal(astroData);
 
     const payload = {
       type:   'reunion',
@@ -1000,6 +1039,8 @@ async function revealReunionFortune() {
       transitNow,
       progMoonHouse: astroData.progression?.planets?.moon?.house,
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
+      ..._buildLoveEnhancedFields(astroData),
+      eclipseSignal,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -1069,8 +1110,13 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">달 · ${payload.moon.sign} ${payload.moon.house}하우스</span>
       </div>
       <div style="margin-top:10px;font-size:12px;color:#8d8268;">
-        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''}
+        7하우스(${payload.house7Sign}) ${payload.house7Occupants.length ? '· ' + payload.house7Occupants.join(', ') : ''} ·
+        8하우스(${payload.house8Sign || '?'}) ${payload.house8Occupants?.length ? '· ' + payload.house8Occupants.join(', ') : ''}
       </div>
+      ${payload.northNodeSign ? `
+      <div style="margin-top:6px;font-size:12px;color:#8d8268;">
+        북노드 · ${payload.northNodeSign} ${payload.northNodeHouse}하우스 (운명적·카르마적 재회 지표)
+      </div>` : ''}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 패턴 해설</div>
@@ -1084,6 +1130,8 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;${saturnIn78 ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">트랜짓 토성 · ${payload.transitNow?.planets?.saturn?.sign || ''} ${transitSaturnHouse ? transitSaturnHouse + '하우스' : ''}</span>
         ${payload.progMoonSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 달 · ${payload.progMoonSign} ${payload.progMoonHouse}하우스</span>` : ''}
+        ${payload.progVenusSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 금성 · ${payload.progVenusSign} ${payload.progVenusHouse}하우스</span>` : ''}
+        ${payload.eclipseSignal ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${payload.eclipseSignal.type} · ${payload.eclipseSignal.conjunctPoint} 근접</span>` : ''}
       </div>
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
@@ -1465,11 +1513,11 @@ let _promotionRevealInFlight  = false;
 let _jobChangeRevealInFlight  = false;
 let _startupRevealInFlight    = false;
 
-// 일식/월식이 MC·ASC·IC·DSC·태양 근처에 닿는 시점 — 4개 직업 화면 공통 보너스 시그널
-// (astro-extras.js의 신월만월 계산을 그대로 재사용, 새 계산 없음 / 화면당 1회만 호출되도록 캐싱)
-let _eclipseCareerSignalCache = null;
-async function _getEclipseCareerSignal(astroData) {
-  if (_eclipseCareerSignalCache !== null) return _eclipseCareerSignalCache;
+// 일식/월식이 특정 포인트(MC·ASC·IC·DSC·태양·금성 등) 근처에 닿는 시점 — 직업/연애 공통 보너스 시그널
+// (astro-extras.js의 신월만월 계산을 그대로 재사용, 새 계산 없음 / 화면당 1회만 호출되도록 이벤트 원본을 캐싱)
+let _moonPhaseEventsCache = null;
+async function _fetchMoonPhaseEventsCached(astroData) {
+  if (_moonPhaseEventsCache !== null) return _moonPhaseEventsCache;
   try {
     const cityName = getCitySelectValue();
     const { lat, lng, utcOffset } = getCityCoords(cityName);
@@ -1483,28 +1531,39 @@ async function _getEclipseCareerSignal(astroData) {
       })
     });
     const data = await res.json();
-    if (!res.ok || data.error) { _eclipseCareerSignalCache = null; return null; }
-
-    const careerPoints = ['MC', 'IC', 'ASC', 'DSC', '태양'];
-    const candidates = (data.events || [])
-      .filter(ev => (ev.type === 'solarEclipse' || ev.type === 'lunarEclipse'))
-      .map(ev => ({ ev, hit: (ev.conjunctions || []).find(c => careerPoints.includes(c.point)) }))
-      .filter(x => x.hit);
-
-    if (!candidates.length) { _eclipseCareerSignalCache = null; return null; }
-
-    candidates.sort((a, b) => new Date(a.ev.dateLocal) - new Date(b.ev.dateLocal));
-    const top = candidates[0];
-    _eclipseCareerSignalCache = {
-      dateLocal: top.ev.dateLocal,
-      type: top.ev.type === 'solarEclipse' ? '일식' : '월식',
-      conjunctPoint: top.hit.point,
-    };
-    return _eclipseCareerSignalCache;
+    if (!res.ok || data.error) { _moonPhaseEventsCache = []; return []; }
+    _moonPhaseEventsCache = data.events || [];
+    return _moonPhaseEventsCache;
   } catch (e) {
-    console.warn('일식/월식 시그널 조회 실패:', e.message);
-    return null;
+    console.warn('신월/만월 이벤트 조회 실패:', e.message);
+    _moonPhaseEventsCache = [];
+    return [];
   }
+}
+
+function _findNearestEclipseSignal(events, targetPoints) {
+  const candidates = (events || [])
+    .filter(ev => (ev.type === 'solarEclipse' || ev.type === 'lunarEclipse'))
+    .map(ev => ({ ev, hit: (ev.conjunctions || []).find(c => targetPoints.includes(c.point)) }))
+    .filter(x => x.hit);
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => new Date(a.ev.dateLocal) - new Date(b.ev.dateLocal));
+  const top = candidates[0];
+  return {
+    dateLocal: top.ev.dateLocal,
+    type: top.ev.type === 'solarEclipse' ? '일식' : '월식',
+    conjunctPoint: top.hit.point,
+  };
+}
+
+async function _getEclipseCareerSignal(astroData) {
+  const events = await _fetchMoonPhaseEventsCached(astroData);
+  return _findNearestEclipseSignal(events, ['MC', 'IC', 'ASC', 'DSC', '태양']);
+}
+
+async function _getEclipseLoveSignal(astroData) {
+  const events = await _fetchMoonPhaseEventsCached(astroData);
+  return _findNearestEclipseSignal(events, ['DSC', '금성', '태양']);
 }
 
 function _buildCareerCommonFields(astroData) {
