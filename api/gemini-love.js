@@ -463,7 +463,7 @@ export default async function handler(req, res) {
       const errData = await response.json().catch(() => ({}));
       const message = errData?.error?.message || `Gemini API 오류 (status: ${response.status})`;
       console.error('Gemini API error:', message);
-      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
+      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.', _debugStatus: response.status, _debugMessage: message });
     }
 
     const data  = await response.json();
@@ -479,6 +479,6 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('handler error:', error);
-    return res.status(500).json({ error: 'AI 운세를 불러오는 중 오류가 발생했습니다.' });
+    return res.status(500).json({ error: 'AI 운세를 불러오는 중 오류가 발생했습니다.', _debugMessage: error?.message, _debugName: error?.name });
   }
 }
