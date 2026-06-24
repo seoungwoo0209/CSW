@@ -250,10 +250,10 @@ ${majorEventsOrdered.map((e, i) =>
           }
         );
         if (response.ok) break;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
       } catch (e) {
         lastError = e;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
       }
     }
 
