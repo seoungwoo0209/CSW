@@ -230,9 +230,9 @@ ${majorEventsOrdered.map((e, i) =>
   `\n### E${i + 1}\n(${e.when} · [하우스 ${e.house ?? '—'} / 영역 ${e.category || 'general'}] ${e.fact} — 이 이벤트의 삶에서의 의미와 대응 방법 2~3문장)`
 ).join('')}`;
 
-    /* ── Gemini API 호출 (최대 3회 재시도) ──────────────────── */
+    /* ── Gemini API 호출 (최대 4회 재시도, 점진적 대기) ──────────────────── */
     let response, lastError;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -250,10 +250,10 @@ ${majorEventsOrdered.map((e, i) =>
           }
         );
         if (response.ok) break;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       } catch (e) {
         lastError = e;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       }
     }
 

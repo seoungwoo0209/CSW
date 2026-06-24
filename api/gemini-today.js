@@ -232,9 +232,9 @@ ${question}
 오늘 하루를 어떻게 보내면 가장 좋을지, 이 사람의 차트에서 나온 근거를 바탕으로 구체적이고 실용적인 조언을 3~4문장으로 마무리하세요. 절대 중간에 끊지 마세요.`;
     }
 
-    // ── Gemini API 호출 (최대 3회 재시도)
+    // ── Gemini API 호출 (최대 4회 재시도, 점진적 대기)
     let response, lastError;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -252,10 +252,10 @@ ${question}
           }
         );
         if (response.ok) break;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       } catch (e) {
         lastError = e;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       }
     }
     if (!response) throw lastError || new Error('재시도 실패');

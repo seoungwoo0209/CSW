@@ -269,9 +269,9 @@ ${transitStr}
 - 반드시 이 사람의 데이터에서 근거를 찾아 구체적으로 써야 함`;
     }
 
-    // ── Gemini API 호출 (자동 재시도 최대 3회)
+    // ── Gemini API 호출 (자동 재시도 최대 4회, 점진적 대기)
     let response, lastError;
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (let attempt = 1; attempt <= 4; attempt++) {
       try {
         response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
@@ -289,10 +289,10 @@ ${transitStr}
           }
         );
         if (response.ok) break;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       } catch (e) {
         lastError = e;
-        if (attempt < 3) await new Promise(r => setTimeout(r, 1500));
+        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 2000));
       }
     }
     if (!response) throw lastError || new Error('재시도 실패');
