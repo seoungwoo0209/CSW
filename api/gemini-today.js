@@ -232,46 +232,45 @@ ${question}
 오늘 하루를 어떻게 보내면 가장 좋을지, 이 사람의 차트에서 나온 근거를 바탕으로 구체적이고 실용적인 조언을 3~4문장으로 마무리하세요. 절대 중간에 끊지 마세요.`;
     }
 
-    // ── Gemini API 호출 (최대 4회 재시도, 점진적 대기)
-    let response, lastError;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      try {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.75,
-                maxOutputTokens: 16384,
-                thinkingConfig: { thinkingBudget: 0 },
-              }
-            })
-          }
-        );
-        if (response.ok) break;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
-      } catch (e) {
-        lastError = e;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
-      }
+    // ── Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
+    const controllers = [];
+    const fireAttempt = () => {
+      const controller = new AbortController();
+      controllers.push(controller);
+      return fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.75,
+              maxOutputTokens: 16384,
+              thinkingConfig: { thinkingBudget: 0 },
+            }
+          })
+        }
+      ).then(async r => {
+        if (!r.ok) throw new Error(`status ${r.status}`);
+        const json = await r.json();
+        const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!reply) throw new Error('빈 응답');
+        return reply;
+      });
+    };
+
+    let reply, lastError;
+    try {
+      reply = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
+    } catch (aggErr) {
+      lastError = aggErr;
     }
-    if (!response) throw lastError || new Error('재시도 실패');
-
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      console.error('Gemini API error:', errData?.error?.message);
-      return res.status(502).json({ error: '현재 접속자가 많습니다. 잠시 후 다시 시도해주세요.' });
-    }
-
-    const data  = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-
+    controllers.forEach(c => c.abort());
     if (!reply) {
-      console.error('Gemini 응답 파싱 실패:', JSON.stringify(data));
-      return res.status(502).json({ error: '응답을 가져오지 못했습니다. 다시 시도해주세요.' });
+      console.error('Gemini API error (all parallel attempts failed):', lastError?.message || lastError);
+      return res.status(502).json({ error: '현재 접속자가 많습니다. 잠시 후 다시 시도해주세요.' });
     }
 
     return res.status(200).json({ result: reply });
