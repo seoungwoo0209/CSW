@@ -119,6 +119,7 @@ body{
   color: #e6cd8a;
 }
 .home-logo svg { width: 20px; height: 20px; }
+.home-logo-img { height: 44px; width: auto; display: block; }
 .gold-text {
   background: linear-gradient(100deg, #f4e6bd 0%, #d8bd80 50%, #c2a25a 100%);
   -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; color: transparent;
