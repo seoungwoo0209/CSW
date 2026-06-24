@@ -451,28 +451,24 @@ export default async function handler(req, res) {
             }
           })
         }
-      ).then(r => {
+      ).then(async r => {
         if (!r.ok) throw new Error(`status ${r.status}`);
-        return r;
+        const json = await r.json();
+        const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!reply) throw new Error('빈 응답');
+        return reply;
       });
     };
 
-    let response, lastError;
+    let reply, lastError;
     try {
-      response = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
+      reply = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
     } catch (aggErr) {
       lastError = aggErr;
     }
     controllers.forEach(c => c.abort());
-    if (!response) {
-      console.error('Gemini API error (all parallel attempts failed):', lastError?.message || lastError);
-      return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
-    }
-
-    const data  = await response.json();
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!reply) {
-      console.error('Gemini 응답 파싱 실패:', JSON.stringify(data));
+      console.error('Gemini API error (all parallel attempts failed):', lastError?.message || lastError);
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
