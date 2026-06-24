@@ -431,38 +431,41 @@ export default async function handler(req, res) {
           : buildLovePrompt({ ...req.body, venusRetro });
 
     // ═══════════════════════════════════════
-    // Gemini API 호출 (최대 3회 재시도)
+    // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
     // ═══════════════════════════════════════
-    let response, lastError;
-    for (let attempt = 1; attempt <= 4; attempt++) {
-      try {
-        response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ parts: [{ text: prompt }] }],
-              generationConfig: {
-                temperature: 0.9,
-                maxOutputTokens: 4096,
-              }
-            })
-          }
-        );
-        if (response.ok) break;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
-      } catch (e) {
-        lastError = e;
-        if (attempt < 4) await new Promise(r => setTimeout(r, attempt * 1000));
-      }
-    }
-    if (!response) throw lastError || new Error('재시도 실패');
+    const controllers = [];
+    const fireAttempt = () => {
+      const controller = new AbortController();
+      controllers.push(controller);
+      return fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.9,
+              maxOutputTokens: 4096,
+            }
+          })
+        }
+      ).then(r => {
+        if (!r.ok) throw new Error(`status ${r.status}`);
+        return r;
+      });
+    };
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      const message = errData?.error?.message || `Gemini API 오류 (status: ${response.status})`;
-      console.error('Gemini API error:', message);
+    let response, lastError;
+    try {
+      response = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
+    } catch (aggErr) {
+      lastError = aggErr;
+    }
+    controllers.forEach(c => c.abort());
+    if (!response) {
+      console.error('Gemini API error (all parallel attempts failed):', lastError?.message || lastError);
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
