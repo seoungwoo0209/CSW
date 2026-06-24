@@ -4676,7 +4676,7 @@ async function requestTodayFortune() {
     }
 
     // Gemini 호출
-    if (statusEl) statusEl.textContent = "✨ AI가 오늘 운세를 읽고 있습니다...";
+    if (statusEl) statusEl.textContent = "✨ 셀레스코드 고유 알고리즘을 토대로 AI가 오늘의 운세를 정밀하게 해석 중입니다...";
 
     const geminiRes = await fetch("/api/gemini-today", {
       method: "POST",
@@ -5020,7 +5020,7 @@ async function requestAstroReading() {
 
     // Gemini 해석
     const loadingDiv = loading.querySelector("div");
-    if (loadingDiv) loadingDiv.textContent = "✨ AI가 점성술 리딩 중입니다...";
+    if (loadingDiv) loadingDiv.textContent = "✨ 셀레스코드 고유 알고리즘을 토대로 AI가 점성술 차트를 정밀하게 해석 중입니다...";
 
     const geminiRes = await fetch("/api/gemini-astro", {
       method: "POST",
