@@ -1,3 +1,5 @@
+import { applyCors } from './_cors.js';
+
 /* =========================================================
    api/annual-events.js  v1.0
    연간운세 이벤트 엔진 — 서버사이드, ephemeris 정밀 계산
@@ -842,6 +844,7 @@ function pickAspectHighlights(aspectsFull, n = 5) {
 
 /* ─── 메인 핸들러 ─────────────────────────────────────────── */
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }

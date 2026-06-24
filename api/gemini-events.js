@@ -6,6 +6,8 @@
          사실 판단·추측·퍼센트 수치 금지.
    ========================================================= */
 
+import { applyCors } from './_cors.js';
+
 /* ─── 하우스 테마 → 구체적 현실 시나리오 어휘 팔레트 ───
    annual-events.js의 HOUSE_THEME(추상 라벨, 예: "철학·여행")을 AI가 그대로
    베끼면 "해외, 교육, 철학 영역의 기회" 식으로 막연해진다. "이벤트 개별
@@ -26,6 +28,7 @@ const HOUSE_VOCAB = {
 };
 
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }

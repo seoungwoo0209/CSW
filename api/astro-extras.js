@@ -9,11 +9,13 @@
    ========================================================= */
 
 import Ephemeris from 'ephemeris';
+import { applyCors } from './_cors.js';
 
 const MOON_SPEED = 360 / 27.321661; // deg/day, 평균 항성월 기준 (루나리턴용)
 const ECLIPSE_LAT_THRESHOLD = 1.5;  // |달의 황위| 이 값보다 작으면 일식/월식 (신월만월용)
 
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }

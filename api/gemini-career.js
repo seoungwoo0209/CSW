@@ -5,6 +5,7 @@
    ========================================================= */
 
 import Ephemeris from 'ephemeris';
+import { applyCors } from './_cors.js';
 
 function norm360(a) { return ((a % 360) + 360) % 360; }
 
@@ -321,6 +322,7 @@ ${eclipseStr(eclipseSignal)}
 }
 
 export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method Not Allowed' });
   }
