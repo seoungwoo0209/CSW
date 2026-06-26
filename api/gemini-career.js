@@ -805,6 +805,9 @@ export default async function handler(req, res) {
     : type === 'startup'     ? buildStartupPrompt(req.body, sky)
     : buildBusinessPrompt(req.body, sky);
 
+    // 비즈니스운은 섹션이 6개(나머지는 4개)라 본문이 더 길어서 토큰 한도를 더 넉넉히 잡는다.
+    const maxOutputTokens = type === 'business' ? 7500 : 5500;
+
     // ═══════════════════════════════════════
     // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
     // ═══════════════════════════════════════
@@ -822,7 +825,7 @@ export default async function handler(req, res) {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.9,
-              maxOutputTokens: 5500,
+              maxOutputTokens,
             }
           })
         }
