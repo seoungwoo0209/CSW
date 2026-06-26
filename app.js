@@ -1794,12 +1794,13 @@ const _STRENGTH_MOON = {
 function _strengthBadgeHtml(strength) {
   const m = _STRENGTH_MOON[(strength || '').trim()];
   if (!m) return '';
+  const nowMonth = new Date().getMonth() + 1;
   return `
     <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.07);">
       <div style="flex-shrink:0;width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(200,168,96,.06);border:1px solid rgba(200,168,96,.25);">
         <div style="font-size:27px;line-height:1;filter:drop-shadow(0 0 10px rgba(232,196,120,.55));animation:moon-float 3.2s ease-in-out infinite;">${m.icon}</div>
       </div>
-      <div style="display:inline-block;font-size:12.5px;font-weight:700;color:#f6e9c1;background:linear-gradient(90deg,rgba(200,168,96,.22),rgba(200,168,96,.05));border:1px solid rgba(200,168,96,.4);padding:4px 12px;border-radius:999px;">${m.label}</div>
+      <div style="display:inline-block;font-size:12.5px;font-weight:700;color:#f6e9c1;background:linear-gradient(90deg,rgba(200,168,96,.22),rgba(200,168,96,.05));border:1px solid rgba(200,168,96,.4);padding:4px 12px;border-radius:999px;">${nowMonth}월 · ${m.label}</div>
     </div>
   `;
 }
@@ -1809,7 +1810,7 @@ function _strengthBadgeHtml(strength) {
 // 상대적으로(min~max) 정규화한 값이다 — 숫자·퍼센트는 절대 텍스트로 노출하지 않는다(법적 리스크 회피).
 function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
-  const { scores, nowIdx, bestIdx } = monthlyStrength;
+  const { scores, bestIdx } = monthlyStrength;
   const min = Math.min(...scores), max = Math.max(...scores);
   const heightOf = (s) => min === max ? 55 : Math.round(((s - min) / (max - min)) * 70 + 20);
 
@@ -1818,13 +1819,9 @@ function _strengthTimelineHtml(monthlyStrength) {
     const barStyle = i === bestIdx
       ? 'background:linear-gradient(180deg,#f6e9c1,#caa74e);box-shadow:0 0 10px rgba(232,196,120,.5);'
       : 'background:rgba(200,168,96,.18);';
-    const nowDot = i === nowIdx
-      ? '<div style="width:4px;height:4px;border-radius:50%;background:#caa74e;margin-top:4px;"></div>'
-      : '<div style="height:8px;"></div>';
     return `
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:70px;">
         <div style="width:100%;border-radius:4px 4px 2px 2px;${barStyle}height:${h}%;"></div>
-        ${nowDot}
       </div>
     `;
   }).join('');
