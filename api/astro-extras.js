@@ -54,7 +54,7 @@ function handleSolarReturn(body) {
     throw new ValidationError('생년월일, 출생시각, 출생지(위도/경도)가 필요합니다.');
   }
   if (!natal || !angles || !nodes || !houses) {
-    throw new ValidationError('나탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
+    throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
   }
 
   const natalHouseLons = houses.map(h => h.longitude);
@@ -156,7 +156,7 @@ function handleLunarReturn(body) {
     throw new ValidationError('생년월일, 출생시각, 출생지(위도/경도)가 필요합니다.');
   }
   if (!natal || !angles || !nodes || !houses) {
-    throw new ValidationError('나탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
+    throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
   }
 
   const natalHouseLons = houses.map(h => h.longitude);
@@ -255,7 +255,7 @@ function handleMoonPhases(body) {
   const { natal, angles, nodes, houses, appLat, appLng, appUtcOffset } = body;
 
   if (!natal || !angles || !nodes || !houses) {
-    throw new ValidationError('나탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
+    throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
   }
 
   const natalHouseLons = houses.map(h => h.longitude);
@@ -407,7 +407,7 @@ function handleTransit(body) {
     throw new ValidationError('트랜짓 날짜/시각/도시(위도·경도)가 필요합니다.');
   }
   if (!natal || !angles || !nodes || !houses) {
-    throw new ValidationError('나탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
+    throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
   }
 
   const natalHouseLons = houses.map(h => h.longitude);

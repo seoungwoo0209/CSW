@@ -780,7 +780,7 @@ async function revealSajuResults() {
 
 /* =========================================================
    연애운 — "✨ 연애운 보기" 버튼 클릭 전용
-   window.AstroResult(나탈+트랜짓+프로그레션, 이미 백그라운드에서
+   window.AstroResult(네이탈+트랜짓+프로그레션, 이미 백그라운드에서
    계산되어 있음)에서 연애 관련 포인트만 골라 AI에 전달
    ========================================================= */
 let _loveRevealInFlight = false;
@@ -2384,15 +2384,14 @@ async function runAstroCalc() {
 
     window.AstroResult = astroData;
 
-    // 나탈 차트 그리드 표시
+    // 네이탈 차트 그리드 표시
     renderAstroNatal(astroData);
 
     // 연간 운세 패널 초기화
     renderAnnualEventsPanel(astroData);
 
     if (statusEl) {
-      statusEl.textContent = "✅ 차트 계산 완료 — AI 해석 버튼을 눌러주세요.";
-      statusEl.style.color = "#86efac";
+      statusEl.textContent = "";
     }
 
   } catch (err) {
@@ -2774,7 +2773,7 @@ function renderAspectAccordion(aspects, title, icon, accentColor) {
 }
 
 /* =========================================================
-   네이탈 차트 렌더링 (나탈만 표시 — 데이터는 풀 패키지)
+   네이탈 차트 렌더링 (네이탈만 표시 — 데이터는 풀 패키지)
    ========================================================= */
 function renderAstroNatal(astroData) {
   const panel = _$("astroNatalPanel");
@@ -2851,8 +2850,8 @@ function renderAstroNatal(astroData) {
   // 세컨더리 프로그레션 차트도 함께 렌더링
   renderAstroProgression(astroData);
 
-  // 나탈-나탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
-  // (renderAstroProgression 이후에 삽입해야 나탈 패널 바로 아래에 위치함)
+  // 네이탈-네이탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
+  // (renderAstroProgression 이후에 삽입해야 네이탈 패널 바로 아래에 위치함)
   {
     const existingNatalAspectPanel = document.getElementById('astroNatalAspectPanel');
     if (existingNatalAspectPanel) existingNatalAspectPanel.remove();
@@ -2860,7 +2859,7 @@ function renderAstroNatal(astroData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'astroNatalAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      astroData.natalAspectsFull, '나탈-나탈 에스펙트', '🔯', '#c4b5fd'
+      astroData.natalAspectsFull, '네이탈-네이탈 에스펙트', '🔯', '#c4b5fd'
     );
     panel.after(aspectPanel);
   }
@@ -2901,7 +2900,7 @@ function renderAstroProgression(astroData) {
 
   const natal = astroData.natal;
 
-  // 나탈 vs 프로그레션 비교 그리드
+  // 네이탈 vs 프로그레션 비교 그리드
   const rowsHtml = Object.entries(PLANET_KR).map(([key, label]) => {
     const n = natal[key];
     const p = prog.planets[key];
@@ -2950,7 +2949,7 @@ function renderAstroProgression(astroData) {
       <!-- 헤더 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
         <div style="font-size:10px;color:#475569;">행성</div>
-        <div style="font-size:10px;color:#475569;">나탈</div>
+        <div style="font-size:10px;color:#475569;">네이탈</div>
         <div style="font-size:10px;color:#a5b4fc;">프로그레션 ✦변화</div>
       </div>
 
@@ -3020,11 +3019,11 @@ function renderAstroProgression(astroData) {
       </div>
 
       <!-- 에스펙트 -->
-      ${renderAspectAccordion(prog.aspectsFull, '나탈-프로그레션 에스펙트', '🔭', '#a5b4fc')}
+      ${renderAspectAccordion(prog.aspectsFull, '네이탈-프로그레션 에스펙트', '🔭', '#a5b4fc')}
     </div>
   `;
 
-  // 나탈 패널 바로 아래에 삽입
+  // 네이탈 패널 바로 아래에 삽입
   const natalPanel = document.getElementById("astroNatalPanel");
   if (natalPanel) {
     natalPanel.after(panel);
@@ -3039,11 +3038,11 @@ function renderAstroProgression(astroData) {
 
 /* =========================================================
    프로그레션 태양 타임라인 계산
-   A방식: 프로그레션 태양 위치를 나탈 하우스 커스프에 올려서 계산
+   A방식: 프로그레션 태양 위치를 네이탈 하우스 커스프에 올려서 계산
    ========================================================= */
 function calcProgTimeline(astroData) {
   const meta   = astroData.meta;
-  const houses = astroData.houses; // 나탈 하우스 커스프 12개
+  const houses = astroData.houses; // 네이탈 하우스 커스프 12개
 
   if (!meta?.birthDate || !meta?.birthTime || !houses) return null;
 
@@ -3078,7 +3077,7 @@ function calcProgTimeline(astroData) {
     return norm360(L0 + C);
   }
 
-  // 나탈 하우스 커스프 (절대 경도 배열)
+  // 네이탈 하우스 커스프 (절대 경도 배열)
   const natalCusps = houses.map(h => h.longitude);
 
   function getHouse(lon) {
@@ -3229,7 +3228,7 @@ function renderProgTimeline(astroData) {
       border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
     ">
       <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:4px;">🗺️ 프로그레션 태양 타임라인</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:16px;">나탈 하우스 기준 · A방식</div>
+      <div style="font-size:11px;color:#475569;margin-bottom:16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;min-width:420px;">
@@ -3247,7 +3246,7 @@ function renderProgTimeline(astroData) {
       </div>
 
       <div style="margin-top:12px;font-size:10px;color:#334155;text-align:right;">
-        프로그레스드 태양 1년 ≈ 1° 이동 · Placidus 나탈 하우스 고정
+        프로그레스드 태양 1년 ≈ 1° 이동 · Placidus 네이탈 하우스 고정
       </div>
     </div>
   `;
@@ -3263,7 +3262,7 @@ function renderProgTimeline(astroData) {
    ========================================================= */
 function buildProgressionTimeline(astroData, lonFn, stepYears = 0.1) {
   const meta   = astroData.meta;
-  const houses = astroData.houses; // 나탈 하우스 커스프 12개
+  const houses = astroData.houses; // 네이탈 하우스 커스프 12개
 
   if (!meta?.birthDate || !meta?.birthTime || !houses) return null;
 
@@ -3285,7 +3284,7 @@ function buildProgressionTimeline(astroData, lonFn, stepYears = 0.1) {
   }
   function norm360(a) { return ((a % 360) + 360) % 360; }
 
-  // 나탈 하우스 커스프 (절대 경도 배열)
+  // 네이탈 하우스 커스프 (절대 경도 배열)
   const natalCusps = houses.map(h => h.longitude);
 
   function getHouse(lon) {
@@ -3472,7 +3471,7 @@ function renderProgMoonTimeline(astroData) {
       <summary style="cursor:pointer;font-size:12px;color:#a5b4fc;letter-spacing:2px;">
         🌙 프로그레션 달 타임라인 (${chapters.length}개) — 클릭하여 펼치기
       </summary>
-      <div style="font-size:11px;color:#475569;margin:8px 0 16px;">나탈 하우스 기준 · A방식</div>
+      <div style="font-size:11px;color:#475569;margin:8px 0 16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;overflow-y:auto;max-height:420px;">
         <table style="width:100%;border-collapse:collapse;min-width:420px;">
@@ -3490,7 +3489,7 @@ function renderProgMoonTimeline(astroData) {
       </div>
 
       <div style="margin-top:12px;font-size:10px;color:#334155;text-align:right;">
-        프로그레스드 달 1년 ≈ 13° 이동 · Placidus 나탈 하우스 고정
+        프로그레스드 달 1년 ≈ 13° 이동 · Placidus 네이탈 하우스 고정
       </div>
     </details>
   `;
@@ -3518,7 +3517,7 @@ function calcSaturnLonApprox(T) {
 
 /* =========================================================
    토성 리턴(Saturn Return) 계산 — 실제 시간 기준(1년=1년)으로
-   트랜짓 토성이 나탈 토성 위치로 돌아오는 시점을 탐색
+   트랜짓 토성이 네이탈 토성 위치로 돌아오는 시점을 탐색
    ========================================================= */
 function calcSaturnReturns(astroData) {
   const meta        = astroData.meta;
@@ -3557,7 +3556,7 @@ function calcSaturnReturns(astroData) {
   const now        = new Date();
   const currentAge = (now - birthUTC) / (365.25 * 86400000);
 
-  // 0~90세(실제 연수) 스캔하며 트랜짓 토성이 나탈 토성 위치를 통과하는 시점 탐색
+  // 0~90세(실제 연수) 스캔하며 트랜짓 토성이 네이탈 토성 위치를 통과하는 시점 탐색
   const returns = [];
   const step = 0.05;
   let prevDiff = null;
@@ -3638,7 +3637,7 @@ function renderSaturnReturnPanel(astroData) {
     ">
       <div style="font-size:12px;color:#fbbf24;letter-spacing:2px;margin-bottom:4px;">🪐 토성 리턴</div>
       <div style="font-size:11px;color:#475569;margin-bottom:14px;">
-        트랜짓 토성이 나탈 토성(${natalSaturn.sign} ${natalSaturn.degree}°${natalSaturn.minute}' · ${natalSaturn.house}H) 위치로 돌아오는 시기
+        트랜짓 토성이 네이탈 토성(${natalSaturn.sign} ${natalSaturn.degree}°${natalSaturn.minute}' · ${natalSaturn.house}H) 위치로 돌아오는 시기
       </div>
       ${rowsHtml}
     </div>
@@ -3687,14 +3686,14 @@ function selectSolarCity(cityName) {
    솔라리턴 패널 렌더링
    ========================================================= */
 /* =========================================================
-   솔라리턴 차트 1건(현재/다음) 렌더링 — 나탈 비교 그리드 + 에스펙트 아코디언
+   솔라리턴 차트 1건(현재/다음) 렌더링 — 네이탈 비교 그리드 + 에스펙트 아코디언
    ========================================================= */
 function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
   const {
     accentColor = '#fde047',
     headerLabel = '솔라리턴',
     aspectTitle1 = '솔라리턴-솔라리턴 에스펙트',
-    aspectTitle2 = '솔라리턴-나탈 에스펙트',
+    aspectTitle2 = '솔라리턴-네이탈 에스펙트',
     aspectIcon1 = '☀️',
     aspectIcon2 = '🔗',
   } = opts || {};
@@ -3776,7 +3775,7 @@ function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
       <div style="margin-top:12px;">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
           <div style="font-size:10px;color:#475569;">행성</div>
-          <div style="font-size:10px;color:#475569;">나탈</div>
+          <div style="font-size:10px;color:#475569;">네이탈</div>
           <div style="font-size:10px;color:${accentColor};">${headerLabel} ✦변화</div>
         </div>
         ${planetRowsHtml}
@@ -3808,7 +3807,7 @@ async function renderSolarReturnPanel(astroData) {
     ">
       <div style="font-size:12px;color:#fde047;letter-spacing:2px;margin-bottom:4px;">☀️ 솔라리턴</div>
       <div style="font-size:11px;color:#475569;margin-bottom:12px;">
-        트랜짓 태양이 나탈 태양 위치로 돌아오는 시점의 어센던트
+        트랜짓 태양이 네이탈 태양 위치로 돌아오는 시점의 어센던트
       </div>
       <div style="margin-bottom:14px;">
         <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">솔라리턴에 적용할 도시</label>
@@ -3863,7 +3862,7 @@ async function renderSolarReturnPanel(astroData) {
       accentColor: '#fde047',
       headerLabel: '솔라리턴',
       aspectTitle1: '솔라리턴-솔라리턴 에스펙트',
-      aspectTitle2: '솔라리턴-나탈 에스펙트',
+      aspectTitle2: '솔라리턴-네이탈 에스펙트',
       aspectIcon1: '☀️',
       aspectIcon2: '🔗',
     };
@@ -3904,7 +3903,7 @@ async function renderLunarReturnPanel(astroData) {
     ">
       <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:4px;">🌙 루나리턴</div>
       <div style="font-size:11px;color:#475569;margin-bottom:12px;">
-        트랜짓 달이 나탈 달 위치로 돌아오는 시점의 어센던트 (${cityName} 기준, 솔라리턴과 동일 도시)
+        트랜짓 달이 네이탈 달 위치로 돌아오는 시점의 어센던트 (${cityName} 기준, 솔라리턴과 동일 도시)
       </div>
       <div id="astroLunarReturnRows" style="font-size:12px;color:#94a3b8;">⏳ 루나리턴 계산 중...</div>
     </div>
@@ -3941,7 +3940,7 @@ async function renderLunarReturnPanel(astroData) {
       accentColor: '#a5b4fc',
       headerLabel: '루나리턴',
       aspectTitle1: '루나리턴-루나리턴 에스펙트',
-      aspectTitle2: '루나리턴-나탈 에스펙트',
+      aspectTitle2: '루나리턴-네이탈 에스펙트',
       aspectIcon1: '🌙',
       aspectIcon2: '🔗',
     };
@@ -4020,7 +4019,7 @@ async function renderMoonPhasesPanel(astroData) {
       </summary>
       <div style="margin-top:12px;">
         <div id="astroMoonPhasesDesc" style="font-size:11px;color:#475569;margin-bottom:12px;">
-          신월/만월(및 일식/월식) — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
+          신월/만월(및 일식/월식) — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
         </div>
         <div id="astroMoonPhasesRows" style="font-size:12px;color:#94a3b8;">⏳ 신월/만월 계산 중...</div>
       </div>
@@ -4053,7 +4052,7 @@ async function renderMoonPhasesPanel(astroData) {
       accentColor: '#c4b5fd',
       headerLabel: '트랜짓',
       aspectTitle1: '트랜짓-트랜짓 에스펙트',
-      aspectTitle2: '트랜짓-나탈 에스펙트',
+      aspectTitle2: '트랜짓-네이탈 에스펙트',
       aspectIcon1: '🌑',
       aspectIcon2: '🔗',
     };
@@ -4061,7 +4060,7 @@ async function renderMoonPhasesPanel(astroData) {
     const titleEl = panel.querySelector('#astroMoonPhasesTitle');
     const descEl  = panel.querySelector('#astroMoonPhasesDesc');
     if (titleEl) titleEl.textContent = `🌑🌕 ${data.year} 신월·만월 캘린더 — 클릭하여 펼치기`;
-    if (descEl) descEl.textContent = `${data.year}년 신월/만월(및 일식/월식) ${data.events.length}회 — 나의 나탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)`;
+    if (descEl) descEl.textContent = `${data.year}년 신월/만월(및 일식/월식) ${data.events.length}회 — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)`;
 
     if (rowsEl) {
       rowsEl.innerHTML = data.events.map(ev => renderMoonPhaseEventRow(ev, astroData, mpOpts)).join("");
@@ -4160,7 +4159,7 @@ async function renderTransitPanel(astroData) {
     ">
       <div style="font-size:12px;color:#34d399;letter-spacing:2px;margin-bottom:4px;">🪐 트랜짓 차트</div>
       <div style="font-size:11px;color:#475569;margin-bottom:14px;">
-        특정 날짜/시각의 트랜짓 행성을 나탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산
+        특정 날짜/시각의 트랜짓 행성을 네이탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
@@ -4245,7 +4244,7 @@ async function calcTransitChart() {
       accentColor: '#34d399',
       headerLabel: '트랜짓',
       aspectTitle1: '트랜짓-트랜짓 에스펙트',
-      aspectTitle2: '트랜짓-나탈 에스펙트',
+      aspectTitle2: '트랜짓-네이탈 에스펙트',
       aspectIcon1: '🪐',
       aspectIcon2: '🔗',
     };
@@ -5040,7 +5039,7 @@ function renderTodayPlanetPanel(todayData) {
 
   panel.style.display = "block";
 
-  // 트랜짓-나탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
+  // 트랜짓-네이탈 에스펙트 (행성10 + ASC/MC + 북노드/릴리스 전체) — 아코디언
   {
     const existingTodayAspectPanel = document.getElementById('todayAspectPanel');
     if (existingTodayAspectPanel) existingTodayAspectPanel.remove();
@@ -5048,7 +5047,7 @@ function renderTodayPlanetPanel(todayData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'todayAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      todayData.todayAspectsFull, '트랜짓-나탈 에스펙트', '🌅', '#dfba6b'
+      todayData.todayAspectsFull, '트랜짓-네이탈 에스펙트', '🌅', '#dfba6b'
     );
     panel.after(aspectPanel);
   }

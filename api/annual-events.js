@@ -16,8 +16,8 @@ import { applyCors } from './_cors.js';
      행성 위치 불일치 제거).
    - 트랜짓 임팩트·생애주기 리턴의 "when"을 월 근사 대신
      일/시간 단위로 정밀화(거친 스캔 → 구간별 극값 정밀화).
-   - 해당 targetYear의 솔라리턴 사실(ASC 사인·태양 나탈 하우스·
-     SR-나탈 타이트 에스펙트 top3)을 layer:'common' 이벤트로 추가.
+   - 해당 targetYear의 솔라리턴 사실(ASC 사인·태양 네이탈 하우스·
+     SR-네이탈 타이트 에스펙트 top3)을 layer:'common' 이벤트로 추가.
 
    범위 밖(작업지시서 0절): 사주 통합 안 함, 일식 표 확장 안 함
    (2030 월식 데이터는 검증된 출처가 없어 추가하지 않음 — 5절 참조).
@@ -273,7 +273,7 @@ function getEclipseEvents(year, cusps) {
     const signKR   = SIGNS[Math.floor(norm360(e.lon) / 30)] || '';
     const deg      = Math.floor(e.lon % 30);
     const category = HOUSE_CAT[house] || 'general';
-    const hStr      = `나탈 ${house}하우스(${HOUSE_THEME[house]}) 활성화. `;
+    const hStr      = `네이탈 ${house}하우스(${HOUSE_THEME[house]}) 활성화. `;
     return {
       id:`eclipse_${e.type}_${e.date}`, when:e.date,
       layer:'common', tier:1, category,
@@ -298,7 +298,7 @@ function calcProfection(birthYear, targetYear, cusps) {
 
 /* ─── 거친 스캔 + 구간별 극값 정밀화로 트랜짓 근접일 찾기 ───
    calcLon(date): 그 시각의 트랜짓 행성 황경.
-   natalLon: 비교할 나탈 포인트 황경. aspectAngle/orb: 에스펙트 각/허용오차.
+   natalLon: 비교할 네이탈 포인트 황경. aspectAngle/orb: 에스펙트 각/허용오차.
    stepDays: 거친 스캔 간격(외행성은 느리므로 3일이면 1.5°오브도 놓치지 않음).
    반환: [{ date, orb }] 오브 이내로 근접한 모든 시점(역행 등으로 여러 번 가능). */
 function findClosestApproaches(year, calcLon, natalLon, aspectAngle, orb, stepDays = 3) {
@@ -349,7 +349,7 @@ function resolveCategory(natalKey) {
   return { mc:'career', saturn:'career', venus:'relationship', moon:'family', jupiter:'wealth' }[natalKey] || 'general';
 }
 
-/* ─── 트랜짓 외행성 × 나탈 포인트 임팩트 이벤트 ──────────── */
+/* ─── 트랜짓 외행성 × 네이탈 포인트 임팩트 이벤트 ──────────── */
 const ASPECTS_TIGHT = [
   { angle:   0, name:'컨정션',   sym:'☌', orb:2.5 },
   { angle:  60, name:'섹스타일', sym:'⚹', orb:1.5 },
@@ -382,7 +382,7 @@ function collectImpacts(year, lonAt, natal, cusps) {
         const hits = findClosestApproaches(year, calcLon, nLon, asp.angle, asp.orb);
         if (!hits.length) continue;
 
-        // 같은 (트랜짓 행성·어스펙트·나탈 포인트) 조합이 한 해에 여러 번 잡히면(주로 외행성
+        // 같은 (트랜짓 행성·어스펙트·네이탈 포인트) 조합이 한 해에 여러 번 잡히면(주로 외행성
         // 역행으로 같은 지점을 다시 지나갈 때) 별개 사건이 아니라 "한 흐름이 여러 번 정점을
         // 찍는다"는 하나의 사건으로 합친다 — 따로 두면 같은 이야기가 사건 개수만큼 반복된다.
         const sortedByDate = [...hits].sort((a, b) => a.date - b.date);
@@ -395,8 +395,8 @@ function collectImpacts(year, lonAt, natal, cusps) {
         const whenStr = fmtWhen(tightest.date);
 
         const factStr = sortedByDate.length === 1
-          ? `${whenStr} · 트랜짓 ${tp.kr} ${asp.sym} 나탈 ${np.kr} (${tpHouse}하우스). 오브 ${tightest.orb}° — ${vStr}.`
-          : `${sortedByDate.map(h => fmtWhen(h.date)).join(', ')} · 트랜짓 ${tp.kr} ${asp.sym} 나탈 ${np.kr} (${tpHouse}하우스)이 한 해 동안 ${sortedByDate.length}번 정점을 찍는 하나의 흐름(역행으로 같은 지점을 반복해서 지나감). 가장 타이트한 시점은 ${whenStr}, 오브 ${tightest.orb}° — ${vStr}.`;
+          ? `${whenStr} · 트랜짓 ${tp.kr} ${asp.sym} 네이탈 ${np.kr} (${tpHouse}하우스). 오브 ${tightest.orb}° — ${vStr}.`
+          : `${sortedByDate.map(h => fmtWhen(h.date)).join(', ')} · 트랜짓 ${tp.kr} ${asp.sym} 네이탈 ${np.kr} (${tpHouse}하우스)이 한 해 동안 ${sortedByDate.length}번 정점을 찍는 하나의 흐름(역행으로 같은 지점을 반복해서 지나감). 가장 타이트한 시점은 ${whenStr}, 오브 ${tightest.orb}° — ${vStr}.`;
 
         events.push({
           id: `tr_${tp.name}_${asp.angle}_${np.key}_${whenStr}`,
@@ -626,8 +626,8 @@ function commonPlanetEvent(year, cusps, planetName, lonAt, planetKR, baseCat) {
 }
 
 /* ─── 솔라리턴 사실 추출 — astro-solar-return.js의 findReturn 로직 포팅 ───
-   화면(차트)을 옮기는 게 아니라, 그 해 SR의 ASC 사인·태양 나탈 하우스·
-   SR↔나탈 타이트 에스펙트 top3 "사실"만 뽑아 연간 이벤트 스키마로 만든다. */
+   화면(차트)을 옮기는 게 아니라, 그 해 SR의 ASC 사인·태양 네이탈 하우스·
+   SR↔네이탈 타이트 에스펙트 top3 "사실"만 뽑아 연간 이벤트 스키마로 만든다. */
 function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses, targetYear) {
   const natalHouseLons = houses.map(h => h.longitude);
   const lonAt = makeLonAt(lng, lat);
@@ -676,7 +676,7 @@ function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses
     layer: 'common', tier: 1, category: 'general',
     technique: 'Solar Return',
     bodies: ['태양'], house: srSunHouse, orb: null, valence: 'neutral',
-    fact: `${whenStr} 솔라리턴 — 그 해의 어센던트는 ${ascSignInfo.sign}, 태양은 나탈 ${srSunHouse}하우스(${HOUSE_THEME[srSunHouse]})에 위치. `
+    fact: `${whenStr} 솔라리턴 — 그 해의 어센던트는 ${ascSignInfo.sign}, 태양은 네이탈 ${srSunHouse}하우스(${HOUSE_THEME[srSunHouse]})에 위치. `
       + `이 해 전체의 분위기와 에너지가 집중되는 영역을 보여주는 1년 단위 회귀점.`,
     importance: 'major',
   }];
@@ -688,7 +688,7 @@ function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses
       layer: 'common', tier: 1, category: 'general',
       technique: 'Solar Return aspects to natal',
       bodies: ['태양'], house: srSunHouse, orb: aspectsToNatal[0].orb, valence: 'double_edged',
-      fact: `솔라리턴 차트가 나탈과 가장 타이트하게 맞물리는 지점: ${aspText}. 이 연결이 그 해 SR이 삶에 가장 직접적으로 건드리는 부분.`,
+      fact: `솔라리턴 차트가 네이탈과 가장 타이트하게 맞물리는 지점: ${aspText}. 이 연결이 그 해 SR이 삶에 가장 직접적으로 건드리는 부분.`,
       importance: 'minor',
     });
   }
@@ -838,7 +838,7 @@ function buildProgNowFacts(meta, targetYear, lonAt, cusps, lat, lng) {
   return facts;
 }
 
-/* ─── 배경 팩트 — 나탈-나탈/프로그레션-나탈 에스펙트 중 가장 타이트한 것들 ───
+/* ─── 배경 팩트 — 네이탈-네이탈/프로그레션-네이탈 에스펙트 중 가장 타이트한 것들 ───
    "그 해의 사건"이 아니라 "이 사람 자체"에 대한 늘 참인 배경 정보라
    이벤트 스키마(when/tier 등)에 끼워넣지 않고 별도 background 필드로 둔다.
    natalAspectsFull/progAspectsFull은 클라이언트(astro-calc.js 결과)에서

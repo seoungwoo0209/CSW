@@ -552,7 +552,7 @@ function calcAllAspects(pointsA, pointsB, opts = {}) {
         if (diff <= asp.orb) {
           // 접근중/이탈중: 한 시점의 위치만으론 알 수 없다(어느 쪽이 더 빠른지·
           // 역행인지에 따라 달라짐). futurePoints가 주어지면 실제로 1일 뒤
-          // 오브가 줄었는지(접근중)로 판정하고, 없으면(나탈×나탈처럼 둘 다
+          // 오브가 줄었는지(접근중)로 판정하고, 없으면(네이탈×네이탈처럼 둘 다
           // 고정값) 의미가 없으므로 null로 둔다.
           let applying = null;
           if (futurePointsA && futurePointsB) {

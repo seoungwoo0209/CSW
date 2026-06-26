@@ -321,7 +321,7 @@ function buildLovePrompt(body) {
 [기본 정보]
 이름: ${displayName} / 성별: ${genderKr}
 
-[타고난 연애 기질 — 나탈 차트]
+[타고난 연애 기질 — 네이탈 차트]
 금성(Venus): ${venus.sign} ${venus.house}하우스 — 끌림의 방식·사랑을 표현하고 받는 방식
 화성(Mars): ${mars.sign} ${mars.house}하우스 — 욕망·연애에서의 추진력
 달(Moon): ${moon.sign} ${moon.house}하우스 — 정서적으로 원하는 것
@@ -477,7 +477,7 @@ function buildReunionPrompt(body) {
 [기본 정보]
 이름: ${displayName} / 성별: ${genderKr}
 
-[재회와 관련된 본인의 패턴 — 나탈 차트]
+[재회와 관련된 본인의 패턴 — 네이탈 차트]
 금성(Venus): ${venus.sign} ${venus.house}하우스 — 과거 인연에 대한 애착 방식
 화성(Mars): ${mars.sign} ${mars.house}하우스
 달(Moon): ${moon.sign} ${moon.house}하우스 — 미련·정서적 애착의 패턴

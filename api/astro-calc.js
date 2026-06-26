@@ -222,7 +222,7 @@ function extractPlanets(observed) {
 }
 
 /* =========================================================
-   나탈 차트 계산 (UTC 변환 → 행성 → 하우스 → 노드) — 본인/상대방 공용
+   네이탈 차트 계산 (UTC 변환 → 행성 → 하우스 → 노드) — 본인/상대방 공용
    기존 handler 본문 그대로 추출한 것이라 동작 변화 없음
    ========================================================= */
 function computeNatalChart(birthDate, birthTime, lat, lng, utcOffset) {
@@ -246,7 +246,7 @@ function computeNatalChart(birthDate, birthTime, lat, lng, utcOffset) {
   const bHr = birthUTC.getUTCHours() + birthUTC.getUTCMinutes() / 60
               + birthUTC.getUTCSeconds() / 3600;
 
-  // 나탈 행성 계산
+  // 네이탈 행성 계산
   const natalRaw = Ephemeris.getAllPlanets(birthUTC, lng, lat, 0);
   const planets  = extractPlanets(natalRaw.observed);
 
@@ -496,7 +496,7 @@ function calcSunLon(T) {
 
 /* =========================================================
    연도별 월별 트랜짓 계산 (연도 무관)
-   매달 15일 기준, 나탈 하우스 커스프로 하우스 배정
+   매달 15일 기준, 네이탈 하우스 커스프로 하우스 배정
    ========================================================= */
 function calcTransitsByYear(natalHouses, year) {
   const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',

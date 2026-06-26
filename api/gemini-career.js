@@ -332,10 +332,10 @@ MC 지배행성: ${mcRuler?.label || '?'} — ${mcRuler?.sign || '?'} ${mcRuler?
 [지금 시점의 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (채용 행운기 여부)
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (결과가 시험받는 시기 여부)
-${aspectStr(currentLongitude('jupiter'), mercury.longitude, '트랜짓 목성', '나탈 수성')}
-${aspectStr(currentLongitude('saturn'), mercury.longitude, '트랜짓 토성', '나탈 수성')}
+${aspectStr(currentLongitude('jupiter'), mercury.longitude, '트랜짓 목성', '네이탈 수성')}
+${aspectStr(currentLongitude('saturn'), mercury.longitude, '트랜짓 토성', '네이탈 수성')}
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 면접·계약·서류에 불리하거나 재시도가 필요한 시기' : '순행 중'}
-프로그레션 MC: ${progMcSign || '정보 없음'} (나탈 MC ${mcSign}과 다르면 경력 테마 전환기)
+프로그레션 MC: ${progMcSign || '정보 없음'} (네이탈 MC ${mcSign}과 다르면 경력 테마 전환기)
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -428,8 +428,8 @@ function buildPromotionPrompt(body, sky) {
 [지금 시점의 승진·협상 타이밍 신호]
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (전통적 "승진 시험" 시그널 — MC/10하우스 근접 시 강함)
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (확장·인정기 여부)
-${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '나탈 MC')}
-${aspectStr(currentLongitude('saturn'), sun.longitude, '트랜짓 토성', '나탈 태양')}
+${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '네이탈 MC')}
+${aspectStr(currentLongitude('saturn'), sun.longitude, '트랜짓 토성', '네이탈 태양')}
 화성 역행 여부: ${sky.marsRetro ? (marsRetroStr || '역행 중') + ' — 협상·assertive한 행동을 서두르면 역효과 가능' : '순행 중'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -482,7 +482,7 @@ function buildJobChangePrompt(body, sky) {
   const genderKr = gender === 'M' ? '남성' : '여성';
   const mcChanged = progMcSign && progMcSign !== mcSign;
 
-  // 트랜짓 천왕성이 나탈 MC·ASC(정체성·출발점)와 합/트라인/섹스타일인지는 jobChangeFavCountAt 안에서 월별로 판단
+  // 트랜짓 천왕성이 네이탈 MC·ASC(정체성·출발점)와 합/트라인/섹스타일인지는 jobChangeFavCountAt 안에서 월별로 판단
   const uranusLonNow = currentLongitude('uranus');
 
   const nowMonthIdx = new Date().getMonth();
@@ -509,15 +509,15 @@ function buildJobChangePrompt(body, sky) {
 천왕성(돌발적 변화·혁신 욕구): ${uranus.sign} ${uranus.house}하우스
 북노드(인생 방향·운명적 경로): ${northNodeSign} ${northNodeHouse}하우스
 9하우스(확장·도약형 이동): ${house9Sign}
-나탈 MC: ${mcSign}
+네이탈 MC: ${mcSign}
 목성(기회를 알아채고 잡는 타고난 감각): ${jupiterSign}
 
 [지금 시점의 이직 타이밍 신호]
 ${transitWindowStr(uranusTransitWindow, '트랜짓 천왕성')} (MC·태양·10하우스 근접 시 급작스런 제안/변화 가능성 강함)
-${aspectStr(uranusLonNow, mcLon, '트랜짓 천왕성', '나탈 MC')}
-${aspectStr(uranusLonNow, ascLon, '트랜짓 천왕성', '나탈 ASC')}
-프로그레션 MC: ${progMcSign || '정보 없음'}${mcChanged ? ' — 나탈 MC와 달라짐 (경력 테마 전환기, 떠날 준비가 된 시기로 해석 가능)' : ' — 나탈 MC와 동일 (아직 전환기 아님)'}
-목성 회귀 진행 중인가(나탈 목성 위치로 트랜짓 목성이 돌아옴, ~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
+${aspectStr(uranusLonNow, mcLon, '트랜짓 천왕성', '네이탈 MC')}
+${aspectStr(uranusLonNow, ascLon, '트랜짓 천왕성', '네이탈 ASC')}
+프로그레션 MC: ${progMcSign || '정보 없음'}${mcChanged ? ' — 네이탈 MC와 달라짐 (경력 테마 전환기, 떠날 준비가 된 시기로 해석 가능)' : ' — 네이탈 MC와 동일 (아직 전환기 아님)'}
+목성 회귀 진행 중인가(네이탈 목성 위치로 트랜짓 목성이 돌아옴, ~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -610,8 +610,8 @@ MC(나만의 사업 정체성): ${mcSign}, 지배행성 ${mcRuler?.label || '?'}
 [지금 시점의 창업 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (2/8/10하우스 근접 시 재정 확장기)
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (아직 다져야 할 시기인지 신호)
-${aspectStr(currentLongitude('jupiter'), mars.longitude, '트랜짓 목성', '나탈 화성')}
-${aspectStr(currentLongitude('saturn'), mars.longitude, '트랜짓 토성', '나탈 화성')}
+${aspectStr(currentLongitude('jupiter'), mars.longitude, '트랜짓 목성', '네이탈 화성')}
+${aspectStr(currentLongitude('saturn'), mars.longitude, '트랜짓 토성', '네이탈 화성')}
 목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
@@ -727,8 +727,8 @@ MC(회사의 대외적 정체성·명성): ${mcStr}
 [지금 시점의 비즈니스 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (6·7·10하우스 근접 시 확장·계약·명성 상승기)
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (조직·계약이 시험받는 시기 여부)
-${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '나탈 MC')}
-${aspectStr(currentLongitude('saturn'), mcLon, '트랜짓 토성', '나탈 MC')}
+${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '네이탈 MC')}
+${aspectStr(currentLongitude('saturn'), mcLon, '트랜짓 토성', '네이탈 MC')}
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 계약·서류·협상에 불리하거나 재검토가 필요한 시기' : '순행 중'}
 목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
