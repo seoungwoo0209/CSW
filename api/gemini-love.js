@@ -138,6 +138,51 @@ function loveReasonAt(monthIdx, ctx) {
   return null;
 }
 
+/* =========================================================
+   궁합 — 4가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
+   ========================================================= */
+// topAspects의 point1/point2는 항상 "나 X" / "상대 Y" 형태 (calcAllAspects가 그렇게 라벨링)
+function findAspectsBetweenPlanets(aspects, planetA, planetB) {
+  return (aspects || []).filter(a =>
+    (a.point1 === `나 ${planetA}` && a.point2 === `상대 ${planetB}`) ||
+    (a.point1 === `나 ${planetB}` && a.point2 === `상대 ${planetA}`)
+  );
+}
+function aspectPairScore(aspects, pairs) {
+  let s = 0;
+  for (const [pa, pb] of pairs) {
+    for (const a of findAspectsBetweenPlanets(aspects, pa, pb)) {
+      if (a.aspect === '트라인' || a.aspect === '섹스타일') s += 1;
+      if (a.aspect === '스퀘어' || a.aspect === '어포지션') s -= 1;
+    }
+  }
+  return s;
+}
+// 출생시각 모르면 상대방 하우스가 부정확해서(정오로 가정) 하우스 오버레이 신호는 신뢰할 수 없음 — 그때는 0 처리
+function houseOverlayBonus(houseOverlay, partnerTimeUnknown, planetKeys, targetHouses) {
+  if (!houseOverlay || partnerTimeUnknown) return 0;
+  for (const k of planetKeys) {
+    if (targetHouses.includes(houseOverlay.partnerPlanetsInMyHouses?.[k])) return 1;
+    if (targetHouses.includes(houseOverlay.myPlanetsInPartnerHouses?.[k])) return 1;
+  }
+  return 0;
+}
+// 하우스 오버레이는 +1만 있는 비대칭 신호라(상응하는 -1 신호가 없음) 행성·하우스 1개로 좁혀서
+// 강함 쪽으로 과하게 치우치지 않게 한다(시뮬레이션으로 확인).
+function romanticSparkScore(aspects, houseOverlay, partnerTimeUnknown) {
+  return aspectPairScore(aspects, [['금성', '화성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [5]);
+}
+function communicationScore(aspects, houseOverlay, partnerTimeUnknown) {
+  return aspectPairScore(aspects, [['수성', '수성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mercury'], [3]);
+}
+function emotionalSafetyScore(aspects, houseOverlay, partnerTimeUnknown) {
+  return aspectPairScore(aspects, [['달', '달'], ['달', '태양']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['moon'], [4]);
+}
+function longTermSynergyScore(aspects, houseOverlay, partnerTimeUnknown) {
+  return aspectPairScore(aspects, [['토성', '토성'], ['토성', '태양'], ['토성', '달'], ['토성', '금성']])
+    + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['saturn'], [7]);
+}
+
 function buildLovePrompt(body) {
   const {
     name, gender, venus, mars, moon, saturn,
@@ -429,13 +474,21 @@ function buildCompatibilityPrompt(body) {
     : '뚜렷한 어스펙트 없음';
 
   const overlayStr = houseOverlay
-    ? `${partnerLabel}의 태양이 ${myLabel}의 ${houseOverlay.partnerPlanetsInMyHouses.sun}하우스, 달이 ${houseOverlay.partnerPlanetsInMyHouses.moon}하우스, 금성이 ${houseOverlay.partnerPlanetsInMyHouses.venus}하우스에 위치\n`
-      + `${myLabel}의 태양이 ${partnerLabel}의 ${houseOverlay.myPlanetsInPartnerHouses.sun}하우스, 달이 ${houseOverlay.myPlanetsInPartnerHouses.moon}하우스, 금성이 ${houseOverlay.myPlanetsInPartnerHouses.venus}하우스에 위치`
+    ? `${partnerLabel}의 태양이 ${myLabel}의 ${houseOverlay.partnerPlanetsInMyHouses.sun}하우스, 달이 ${houseOverlay.partnerPlanetsInMyHouses.moon}하우스, 금성이 ${houseOverlay.partnerPlanetsInMyHouses.venus}하우스, 화성이 ${houseOverlay.partnerPlanetsInMyHouses.mars}하우스, 수성이 ${houseOverlay.partnerPlanetsInMyHouses.mercury}하우스, 토성이 ${houseOverlay.partnerPlanetsInMyHouses.saturn}하우스에 위치\n`
+      + `${myLabel}의 태양이 ${partnerLabel}의 ${houseOverlay.myPlanetsInPartnerHouses.sun}하우스, 달이 ${houseOverlay.myPlanetsInPartnerHouses.moon}하우스, 금성이 ${houseOverlay.myPlanetsInPartnerHouses.venus}하우스, 화성이 ${houseOverlay.myPlanetsInPartnerHouses.mars}하우스, 수성이 ${houseOverlay.myPlanetsInPartnerHouses.mercury}하우스, 토성이 ${houseOverlay.myPlanetsInPartnerHouses.saturn}하우스에 위치`
     : '하우스 오버레이 정보 없음';
 
   const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함 — 하우스 오버레이는 참고용일 뿐 정밀하지 않음)` : '';
 
-  return `
+  const categoryGrades = {
+    romanticSpark:   strengthFromScore(romanticSparkScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    communication:   strengthFromScore(communicationScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    emotionalSafety: strengthFromScore(emotionalSafetyScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    longTerm:        strengthFromScore(longTermSynergyScore(topAspects, houseOverlay, partnerTimeUnknown)),
+  };
+  const gradesStr = `로맨틱 스파크(매력·속궁합): ${categoryGrades.romanticSpark} / 소통·가치관 싱크: ${categoryGrades.communication} / 정서적 안전지대: ${categoryGrades.emotionalSafety} / 장기적 미래 시너지: ${categoryGrades.longTerm}`;
+
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 두 사람의 차트 데이터를 바탕으로 ${myLabel}님과 ${partnerLabel}님의 궁합(시너지) 리포트를 작성해.
 
@@ -455,6 +508,9 @@ ${overlayStr}${timeNote}
 
 [컴포지트 차트 — 관계 자체의 성격]
 컴포지트 태양: ${composite.sun.sign} / 컴포지트 달: ${composite.moon.sign} / 컴포지트 ASC: ${composite.asc.sign}
+
+[4가지 핵심 시너지 등급 — 이미 확정되어 있음]
+${gradesStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -464,24 +520,27 @@ ${overlayStr}${timeNote}
 3. "~할 수 있습니다" 같은 모호한 표현 대신 단정적이고 생생한 문장을 써라.
 4. 좋은 점만 나열하지 말고, 마찰이 생길 수 있는 지점도 솔직하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
+6. 위 "4가지 핵심 시너지 등급"은 이미 확정된 값이다. chemistry·dynamics 해설의 어조와 결론이 그 등급들과 어긋나지 않게 써라(예: 로맨틱 스파크가 약함인데 "불꽃 같은 매력"이라고 쓰면 안 됨).
 
 [섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:chemistry===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
 ===SECTION:chemistry===
-(끌림과 케미 — 두 사람의 핵심 행성과 시너지 어스펙트가 보여주는 매력의 지점)
+(끌림과 케미 — 두 사람의 핵심 행성과 시너지 어스펙트가 보여주는 매력의 지점. 로맨틱 스파크·소통·정서적 안전지대 등급을 자연스럽게 반영)
 - 서로 어디에 끌리는지, 어떤 마찰 지점이 있을 수 있는지
 - 분량: 4~5문단, 각 문단 3~4문장
 
 ===SECTION:dynamics===
-(관계의 결 — 컴포지트 차트가 보여주는 이 관계 자체의 성격)
+(관계의 결 — 컴포지트 차트가 보여주는 이 관계 자체의 성격. 장기적 미래 시너지 등급을 자연스럽게 반영)
 - 이 관계가 어떤 목적/성격을 가지는지, 오래 갈 수 있는 구조인지
 - 분량: 3~4문단
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 chemistry와 dynamics 두 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, categoryGrades };
 }
 
 function buildReunionKnownPrompt(body) {
@@ -596,9 +655,10 @@ export default async function handler(req, res) {
         : isReunion
           ? buildReunionPrompt({ ...req.body, venusRetro })
           : buildLovePrompt({ ...req.body, venusRetro });
-    const prompt = isLove ? built.prompt : built;
+    const prompt = (isLove || isCompatibility) ? built.prompt : built;
     const monthlyStrength = isLove ? built.monthlyStrength : null;
     const conclusion = isLove ? built.conclusion : null;
+    const categoryGrades = isCompatibility ? built.categoryGrades : null;
     // 솔로일 때만 strength·suggestion 2개 섹션이 추가돼 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
     const maxOutputTokens = (isLove && monthlyStrength) ? 6500 : 4096;
 
@@ -652,10 +712,14 @@ export default async function handler(req, res) {
         console.warn('연애운 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
       }
     }
+    if (isCompatibility && (!reply.includes('===SECTION:chemistry===') || !reply.includes('===SECTION:dynamics==='))) {
+      console.warn('궁합 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
+    }
 
     const responseBody = { result: reply };
     if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
     if (isLove) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
+    if (isCompatibility) { responseBody.categoryGrades = categoryGrades; }
     return res.status(200).json(responseBody);
 
   } catch (error) {

@@ -1419,7 +1419,8 @@ async function revealCompatibility() {
     if (!calcData.synastry) throw new Error("궁합 데이터를 계산하지 못했습니다.");
 
     const synastry = calcData.synastry;
-    const topAspects = (synastry.synastryAspects || []).slice(0, 10);
+    // 4가지 핵심 시너지 등급(로맨틱 스파크 등) 계산에 필요한 행성 쌍이 top10 밖에 있을 수도 있어 전체 목록을 보낸다.
+    const topAspects = synastry.synastryAspects || [];
     const isReunionMode = _compatMode === 'reunion';
 
     const aiPayload = {
@@ -1459,6 +1460,7 @@ async function revealCompatibility() {
     const aiData = await aiRes.json();
     if (!aiRes.ok || aiData.error) throw new Error(aiData.error || "서버 오류가 발생했습니다.");
 
+    aiPayload.categoryGrades = aiData.categoryGrades || null;
     if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '', aiData.venusRetrograde);
     succeeded = true;
 
@@ -1474,6 +1476,30 @@ async function revealCompatibility() {
       if (introCard)  introCard.style.display = 'none';
     }
   }
+}
+
+const _COMPAT_CATEGORY_LABELS = {
+  romanticSpark:   { title: '로맨틱 스파크', sub: '매력·속궁합' },
+  communication:   { title: '소통·가치관 싱크', sub: '지적 교감' },
+  emotionalSafety: { title: '정서적 안전지대', sub: '마음의 편안함' },
+  longTerm:        { title: '장기적 미래 시너지', sub: '결혼·지속 궁합' },
+};
+function _compatGradeRowsHtml(grades) {
+  if (!grades) return '';
+  const cells = Object.entries(_COMPAT_CATEGORY_LABELS).map(([key, meta]) => {
+    const g = _STRENGTH_MOON[(grades[key] || '').trim()];
+    if (!g) return '';
+    return `
+      <div style="border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(200,168,96,.18);padding:12px 14px;display:flex;align-items:center;gap:10px;">
+        <span style="font-size:20px;flex-shrink:0;">${g.icon}</span>
+        <div>
+          <div style="font-size:12px;color:#f0e6cc;font-weight:700;">${meta.title} · ${grades[key]}</div>
+          <div style="font-size:10.5px;color:#857a60;margin-top:2px;">${meta.sub}</div>
+        </div>
+      </div>
+    `;
+  }).join('');
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin-top:12px;">${cells}</div>`;
 }
 
 function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
@@ -1555,6 +1581,7 @@ function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
       <div style="font-size:12px;color:#8d8268;">
         주요 어스펙트 ${payload.topAspects.length}개 발견${payload.partnerTimeUnknown ? ' · 상대방 출생시각 미상으로 상승점·하우스 정보는 제외됨' : ''}
       </div>
+      ${_compatGradeRowsHtml(payload.categoryGrades)}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 끌림과 케미 해설</div>
