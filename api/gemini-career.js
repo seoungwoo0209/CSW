@@ -75,6 +75,101 @@ function aspectScore(transitLon, natalLons) {
   return 0;
 }
 
+// ── "올해의 흐름" 타임라인용 — 월별(day=15 샘플) 트랜짓 조회 ──
+// astro-calc.js의 calcTransitsByYear가 만들어놓은 12개월 배열을 그대로 재사용 (새 정밀도 도입 없음)
+function monthlyLon(transits, monthIdx, planetKey) {
+  return transits?.[monthIdx]?.planets?.[planetKey]?.longitude ?? null;
+}
+function monthlyHouse(transits, monthIdx, planetKey) {
+  return transits?.[monthIdx]?.planets?.[planetKey]?.house ?? null;
+}
+// app.js의 _retrogradeWindow와 동일한 "전월 대비 경도 차이가 음수면 역행" 판정을 월별 배열로 생성
+function monthlyRetroFlags(transits, planetKey) {
+  if (!Array.isArray(transits) || transits.length !== 12) return null;
+  const lons = transits.map(t => t.planets?.[planetKey]?.longitude);
+  if (lons.some(l => l == null)) return null;
+  return lons.map((lon, i) => {
+    const a = i === 0 ? lons[0] : lons[i - 1];
+    const b = i === 0 ? lons[1] : lons[i];
+    let diff = b - a;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return diff < 0;
+  });
+}
+function eclipseMonthIndex(eclipseSignal) {
+  if (!eclipseSignal) return null;
+  return new Date(eclipseSignal.dateLocal).getMonth();
+}
+// "이번달" 막대가 기존 "지금" 배지와 정확히 같은 값이 나오도록, 12개월 배열 중 이번달 인덱스만
+// day-15 샘플이 아니라 실시간 Ephemeris 경도/하우스로 덮어쓴다 (다른 11개월은 그대로 day-15 샘플 유지 — 새 정밀도 도입 없음)
+function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
+  if (!Array.isArray(transits) || transits.length !== 12) return transits;
+  const patched = transits.map((t, i) => i === nowMonthIdx ? { ...t, planets: { ...t.planets } } : t);
+  for (const key of planetKeys) {
+    const lon = currentLongitude(key);
+    const house = (houses && houses.length === 12) ? getHouseOf(lon, houses) : patched[nowMonthIdx].planets[key]?.house;
+    patched[nowMonthIdx].planets[key] = { ...patched[nowMonthIdx].planets[key], longitude: lon, house };
+  }
+  return patched;
+}
+// scores(12개, 강도 점수 또는 호의신호 개수)와 현재월 인덱스로 타임라인 응답 객체 생성
+function buildMonthlyStrength(scores, nowIdx) {
+  let bestIdx = 0;
+  for (let i = 1; i < scores.length; i++) if (scores[i] > scores[bestIdx]) bestIdx = i;
+  return { scores, nowIdx, bestIdx };
+}
+
+// 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
+// "지금" 강도도 이 함수에 nowMonthIdx를 넣어 호출하므로, 배지 값과 타임라인의 이번달 막대가 항상 일치한다.
+function jobHuntingScoreAt(monthIdx, ctx) {
+  const { transits, mercuryLon, eclipseMonth, mercuryRetroFlags } = ctx;
+  let s = 0;
+  if ([6, 10].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
+  if ([6, 10].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
+  if (mercuryRetroFlags?.[monthIdx]) s -= 1;
+  if (eclipseMonth === monthIdx) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [mercuryLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [mercuryLon]);
+  return s;
+}
+function promotionScoreAt(monthIdx, ctx) {
+  const { transits, mcLon, sunLon, eclipseMonth, marsRetroFlags } = ctx;
+  let s = 0;
+  if ([2, 10, 11].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
+  if ([10, 12].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
+  if (eclipseMonth === monthIdx) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [mcLon, sunLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [mcLon, sunLon]);
+  if (marsRetroFlags?.[monthIdx]) s -= 1;
+  return s;
+}
+function startupScoreAt(monthIdx, ctx) {
+  const { transits, marsLon, eclipseMonth, jupiterRetroFlags, natalJupiterLon } = ctx;
+  let s = 0;
+  if ([2, 8, 10].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
+  if ([2, 8, 10].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
+  if (eclipseMonth === monthIdx) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [marsLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [marsLon]);
+  if (jupiterRetroFlags?.[monthIdx]) s -= 1;
+  const jLonM = monthlyLon(transits, monthIdx, 'jupiter');
+  if (natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5) s += 1;
+  return s;
+}
+function jobChangeFavCountAt(monthIdx, ctx) {
+  const { transits, mcLon, ascLon, eclipseMonth, natalJupiterLon, mcChanged } = ctx;
+  const uranusHouseFav = [1, 10].includes(monthlyHouse(transits, monthIdx, 'uranus'));
+  const uranusLonM = monthlyLon(transits, monthIdx, 'uranus');
+  const uranusAspectFav = [mcLon, ascLon].some(lon => {
+    const a = aspectName(uranusLonM, lon);
+    return a === '합' || _isHarmoniousAspect(a);
+  });
+  const jLonM = monthlyLon(transits, monthIdx, 'jupiter');
+  const jupiterReturnActiveM = natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5;
+  return [uranusHouseFav, !!mcChanged, jupiterReturnActiveM, uranusAspectFav, eclipseMonth === monthIdx].filter(Boolean).length;
+}
+
 // 직업 4종류 공통 — "지금 하늘" 시그널 한 번에 계산 (Ephemeris 호출, 새 계산 파일 불필요)
 function computeCareerSkySignals(houses, natalJupiterLon) {
   const uranusLon = currentLongitude('uranus');
@@ -141,7 +236,7 @@ function buildJobHuntingPrompt(body, sky) {
     name, gender, ascSign, ascRuler, mcSign, mcRuler, progMcSign,
     house6Sign, house6Occupants, house6Ruler, house10Sign, house10Occupants,
     mercury, mars, jupiterSign, saturn, eclipseSignal,
-    jupiterTransitWindow, saturnTransitWindow
+    jupiterTransitWindow, saturnTransitWindow, transits, houses
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -149,18 +244,22 @@ function buildJobHuntingPrompt(body, sky) {
 
   const house6Str = `${house6Sign}${house6Occupants?.length ? ` (${house6Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house6Ruler?.label || '?'}(${house6Ruler?.sign || '?'})`;
 
-  let strengthScore = 0;
-  if ([6, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
-  if ([6, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
-  if (sky.mercuryRetro) strengthScore -= 1;
-  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
-  // 하우스 위치만으론 못 잡는 신호 보강 — 트랜짓 목성/토성이 나탈 수성(서류·면접 소통력)과 에스펙트
-  strengthScore += aspectScore(currentLongitude('jupiter'), [mercury.longitude]);
-  strengthScore += aspectScore(currentLongitude('saturn'), [mercury.longitude]);
+  const nowMonthIdx = new Date().getMonth();
+  const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
+  if (mercuryRetroFlags) mercuryRetroFlags[nowMonthIdx] = sky.mercuryRetro;
+  const ctx = {
+    transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
+    mercuryLon: mercury.longitude,
+    eclipseMonth: eclipseMonthIndex(eclipseSignal),
+    mercuryRetroFlags,
+  };
+  const monthlyScores = Array.from({ length: 12 }, (_, m) => jobHuntingScoreAt(m, ctx));
+  const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님(${genderKr})의 "취업·합격운" 리포트를 작성해.
 (취준·시험·면접의 타이밍에 초점 — 일반적인 직업운 전반이 아니라 "지금 합격/채용에 가까워지고 있는가"에 집중해.)
@@ -212,6 +311,8 @@ ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength };
 }
 
 /* =========================================================
@@ -222,7 +323,7 @@ function buildPromotionPrompt(body, sky) {
     name, gender, mcSign, mcRuler, house10Occupants,
     saturn, sun, mars, venus, house11Sign, house11Occupants, house12Sign,
     house2Sign, house2Occupants, house2Ruler, jupiterSign,
-    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow, mcLon
+    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow, mcLon, transits, houses
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -233,17 +334,21 @@ function buildPromotionPrompt(body, sky) {
   const house2Str  = `${house2Sign}${house2Occupants?.length ? ` (${house2Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house2Ruler?.label || '?'}(${house2Ruler?.sign || '?'})`;
   const marsRetroStr = retroWindowStr(marsRetroWindow, '화성');
 
-  let strengthScore = 0;
-  if ([2, 10, 11].includes(jupiterTransitWindow?.house)) strengthScore += 1;
-  if ([10, 12].includes(saturnTransitWindow?.house)) strengthScore -= 1;
-  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
-  // 트랜짓 목성/토성이 나탈 MC·태양(인정받기·가시성)과 에스펙트인지 추가 반영
-  strengthScore += aspectScore(currentLongitude('jupiter'), [mcLon, sun.longitude]);
-  strengthScore += aspectScore(currentLongitude('saturn'), [mcLon, sun.longitude]);
-  if (sky.marsRetro) strengthScore -= 1;
+  const nowMonthIdx = new Date().getMonth();
+  const marsRetroFlags = monthlyRetroFlags(transits, 'mars');
+  if (marsRetroFlags) marsRetroFlags[nowMonthIdx] = sky.marsRetro;
+  const ctx = {
+    transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
+    mcLon, sunLon: sun.longitude,
+    eclipseMonth: eclipseMonthIndex(eclipseSignal),
+    marsRetroFlags,
+  };
+  const monthlyScores = Array.from({ length: 12 }, (_, m) => promotionScoreAt(m, ctx));
+  const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScoreStrict(strengthScore);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님(${genderKr})의 "직장·승진운" 리포트를 작성해.
 (연봉 협상·사내 인간관계·승진 타이밍에 초점.)
@@ -295,6 +400,8 @@ ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength };
 }
 
 /* =========================================================
@@ -303,31 +410,30 @@ ${eclipseStr(eclipseSignal)}
 function buildJobChangePrompt(body, sky) {
   const {
     name, gender, mcSign, progMcSign, uranus, northNodeSign, northNodeHouse,
-    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign, mcLon, ascLon
+    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign, mcLon, ascLon, jupiter, transits, houses
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr = gender === 'M' ? '남성' : '여성';
   const mcChanged = progMcSign && progMcSign !== mcSign;
 
-  // 트랜짓 천왕성이 나탈 MC·ASC(정체성·출발점)와 합/트라인/섹스타일이면 "급작스런 좋은 기회" 호의신호로 추가
+  // 트랜짓 천왕성이 나탈 MC·ASC(정체성·출발점)와 합/트라인/섹스타일인지는 jobChangeFavCountAt 안에서 월별로 판단
   const uranusLonNow = currentLongitude('uranus');
-  const uranusAspectFav = [mcLon, ascLon].some(lon => {
-    const a = aspectName(uranusLonNow, lon);
-    return a === '합' || _isHarmoniousAspect(a);
-  });
 
-  const favorableCount = [
-    [1, 10].includes(uranusTransitWindow?.house),
-    !!mcChanged,
-    !!sky.jupiterReturnActive,
-    uranusAspectFav,
-    !!eclipseSignal, // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
-  ].filter(Boolean).length;
+  const nowMonthIdx = new Date().getMonth();
+  const ctx = {
+    transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['uranus', 'jupiter']),
+    mcLon, ascLon, mcChanged,
+    natalJupiterLon: jupiter?.longitude,
+    eclipseMonth: eclipseMonthIndex(eclipseSignal),
+  };
+  const monthlyScores = Array.from({ length: 12 }, (_, m) => jobChangeFavCountAt(m, ctx));
+  const favorableCount = monthlyScores[nowMonthIdx];
   // 5개 항목 중 호의신호가 3개 이상이어야 "강함"인 기준은 시뮬레이션 결과 너무 엄격해서(강함이 거의 안 나옴) 2개로 완화
   const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님(${genderKr})의 "이직·스카웃운" 리포트를 작성해.
 (커리어 점프·헤드헌팅 제안·오퍼 수락 여부의 타이밍에 초점 — 단순 직장운이 아니라 "지금 떠나도 되는가"에 집중해.)
@@ -375,6 +481,8 @@ ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength };
 }
 
 /* =========================================================
@@ -386,7 +494,7 @@ function buildStartupPrompt(body, sky) {
     house8Sign, house8Occupants, house8Ruler,
     mars, jupiterSign, sun, house5Sign, eclipseSignal,
     jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow,
-    mcSign, mcRuler, saturn
+    mcSign, mcRuler, saturn, jupiter, transits, houses
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -396,18 +504,22 @@ function buildStartupPrompt(body, sky) {
   const house8Str = `${house8Sign}${house8Occupants?.length ? ` (${house8Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house8Ruler?.label || '?'}(${house8Ruler?.sign || '?'})`;
   const jupiterRetroStr = retroWindowStr(jupiterRetroWindow, '목성');
 
-  let strengthScore = 0;
-  if ([2, 8, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
-  if ([2, 8, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
-  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
-  // 트랜짓 목성/토성이 나탈 화성(추진력)과 에스펙트인지 추가 반영
-  strengthScore += aspectScore(currentLongitude('jupiter'), [mars.longitude]);
-  strengthScore += aspectScore(currentLongitude('saturn'), [mars.longitude]);
-  if (sky.jupiterRetro) strengthScore -= 1;
-  if (sky.jupiterReturnActive) strengthScore += 1;
+  const nowMonthIdx = new Date().getMonth();
+  const jupiterRetroFlags = monthlyRetroFlags(transits, 'jupiter');
+  if (jupiterRetroFlags) jupiterRetroFlags[nowMonthIdx] = sky.jupiterRetro;
+  const ctx = {
+    transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
+    marsLon: mars.longitude,
+    eclipseMonth: eclipseMonthIndex(eclipseSignal),
+    jupiterRetroFlags,
+    natalJupiterLon: jupiter?.longitude,
+  };
+  const monthlyScores = Array.from({ length: 12 }, (_, m) => startupScoreAt(m, ctx));
+  const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님(${genderKr})의 "창업·부업운" 리포트를 작성해.
 (N잡러·개인 사업의 시작 타이밍에 초점 — 일반적인 재물운이 아니라 "지금 시작해도 되는가"에 집중해.)
@@ -459,6 +571,8 @@ ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength };
 }
 
 export default async function handler(req, res) {
@@ -482,10 +596,11 @@ export default async function handler(req, res) {
       sky = { mercuryRetro: false, marsRetro: false, jupiterRetro: false, uranusHouse: null, jupiterReturnActive: false };
     }
 
-    const prompt = type === 'job-hunting' ? buildJobHuntingPrompt(req.body, sky)
-                 : type === 'promotion'   ? buildPromotionPrompt(req.body, sky)
-                 : type === 'job-change'  ? buildJobChangePrompt(req.body, sky)
-                 : buildStartupPrompt(req.body, sky);
+    const { prompt, monthlyStrength } =
+      type === 'job-hunting' ? buildJobHuntingPrompt(req.body, sky)
+    : type === 'promotion'   ? buildPromotionPrompt(req.body, sky)
+    : type === 'job-change'  ? buildJobChangePrompt(req.body, sky)
+    : buildStartupPrompt(req.body, sky);
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
@@ -529,7 +644,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
-    return res.status(200).json({ result: reply });
+    return res.status(200).json({ result: reply, monthlyStrength });
 
   } catch (error) {
     console.error('handler error:', error);

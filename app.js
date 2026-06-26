@@ -1696,6 +1696,7 @@ function _buildCareerCommonFields(astroData) {
     saturnTransitWindow,
     jupiter: astroData.natal.jupiter,
     transitNow,
+    transits: astroData.transits,
     mcLon:  astroData.angles.mc.longitude,
     ascLon: astroData.angles.asc.longitude,
   };
@@ -1737,6 +1738,7 @@ async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtr
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
+    payload.monthlyStrength = data.monthlyStrength || null;
     if (resultArea) resultArea.innerHTML = renderFn(payload, data.result || '');
     succeeded = true;
 
@@ -1798,6 +1800,47 @@ function _strengthBadgeHtml(strength) {
         <div style="font-size:27px;line-height:1;filter:drop-shadow(0 0 10px rgba(232,196,120,.55));animation:moon-float 3.2s ease-in-out infinite;">${m.icon}</div>
       </div>
       <div style="display:inline-block;font-size:12.5px;font-weight:700;color:#f6e9c1;background:linear-gradient(90deg,rgba(200,168,96,.22),rgba(200,168,96,.05));border:1px solid rgba(200,168,96,.4);padding:4px 12px;border-radius:999px;">${m.label}</div>
+    </div>
+  `;
+}
+
+// 직업 4종 — "올해의 흐름" 12개월 막대 타임라인.
+// 막대 높이는 서버가 계산한 실제 강도 점수(monthlyStrength.scores)를 그 사람의 12개월 안에서
+// 상대적으로(min~max) 정규화한 값이다 — 숫자·퍼센트는 절대 텍스트로 노출하지 않는다(법적 리스크 회피).
+function _strengthTimelineHtml(monthlyStrength) {
+  if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
+  const { scores, nowIdx, bestIdx } = monthlyStrength;
+  const min = Math.min(...scores), max = Math.max(...scores);
+  const heightOf = (s) => min === max ? 55 : Math.round(((s - min) / (max - min)) * 70 + 20);
+
+  const bars = scores.map((s, i) => {
+    const h = heightOf(s);
+    const barStyle = i === bestIdx
+      ? 'background:linear-gradient(180deg,#f6e9c1,#caa74e);box-shadow:0 0 10px rgba(232,196,120,.5);'
+      : 'background:rgba(200,168,96,.18);';
+    const nowDot = i === nowIdx
+      ? '<div style="width:4px;height:4px;border-radius:50%;background:#caa74e;margin-top:4px;"></div>'
+      : '<div style="height:8px;"></div>';
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:70px;">
+        <div style="width:100%;border-radius:4px 4px 2px 2px;${barStyle}height:${h}%;"></div>
+        ${nowDot}
+      </div>
+    `;
+  }).join('');
+  const labels = scores.map((_, i) =>
+    `<span style="flex:1;text-align:center;font-size:9px;color:#6b6253;">${i + 1}</span>`
+  ).join('');
+
+  return `
+    <div style="margin-bottom:16px;">
+      <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:4px;">${bars}</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px;">${labels}</div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(200,168,96,.08);border:1px solid rgba(200,168,96,.3);border-radius:12px;padding:8px 12px;">
+        <span style="font-size:15px;">🌕</span>
+        <span style="font-size:11.5px;color:#857a60;">올해의 골든타임</span>
+        <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${bestIdx + 1}월</span>
+      </div>
     </div>
   `;
 }
@@ -1870,6 +1913,7 @@ function _renderJobHuntingHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 합격·면접 타이밍</div>
       ${_strengthBadgeHtml(sections.strength)}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
       ${_signalRowsHtml([
         { icon: '♃', k: '트랜짓 목성', v: payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : null },
         ecl ? { icon: ecl.type === '일식' ? '☉' : '☽', k: ecl.type + ' 근접', v: ecl.conjunctPoint } : null,
@@ -1940,6 +1984,7 @@ function _renderPromotionHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 승진·협상 흐름</div>
       ${_strengthBadgeHtml(sections.strength)}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
       ${_signalRowsHtml([
         { icon: '♄', k: '트랜짓 토성', v: payload.transitNow?.planets?.saturn?.house ? payload.transitNow.planets.saturn.house + '하우스' : null },
         { icon: '♃', k: '트랜짓 목성', v: payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : null },
@@ -1998,6 +2043,7 @@ function _renderJobChangeHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 이직·스카웃 타이밍</div>
       ${_strengthBadgeHtml(sections.strength)}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
       ${_signalRowsHtml([
         mcChanged ? { icon: 'MC', k: '프로그레션 MC 전환', v: payload.progMcSign } : null,
         ecl ? { icon: ecl.type === '일식' ? '☉' : '☽', k: ecl.type + ' 근접', v: ecl.conjunctPoint } : null,
@@ -2067,6 +2113,7 @@ function _renderStartupHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금이 시작하기 좋은 시기인지</div>
       ${_strengthBadgeHtml(sections.strength)}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
       ${_signalRowsHtml([
         { icon: '♃', k: '트랜짓 목성', v: payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : null },
         ecl ? { icon: ecl.type === '일식' ? '☉' : '☽', k: ecl.type + ' 근접', v: ecl.conjunctPoint } : null,
