@@ -218,7 +218,7 @@ ${eclipseStr(eclipseSignal)}
 function buildJobChangePrompt(body, sky) {
   const {
     name, gender, mcSign, progMcSign, uranus, northNodeSign, northNodeHouse,
-    house9Sign, transitNow, eclipseSignal
+    house9Sign, eclipseSignal, uranusTransitWindow
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -238,7 +238,7 @@ function buildJobChangePrompt(body, sky) {
 나탈 MC: ${mcSign}
 
 [지금 시점의 이직 타이밍 신호]
-트랜짓 천왕성이 닿은 나탈 하우스: ${sky.uranusHouse ? sky.uranusHouse + '하우스' : '정보 없음'} (MC·태양·10하우스 근접 시 급작스런 제안/변화 가능성 강함)
+${transitWindowStr(uranusTransitWindow, '트랜짓 천왕성')} (MC·태양·10하우스 근접 시 급작스런 제안/변화 가능성 강함)
 프로그레션 MC: ${progMcSign || '정보 없음'}${mcChanged ? ' — 나탈 MC와 달라짐 (경력 테마 전환기, 떠날 준비가 된 시기로 해석 가능)' : ' — 나탈 MC와 동일 (아직 전환기 아님)'}
 목성 회귀 진행 중인가(나탈 목성 위치로 트랜짓 목성이 돌아옴, ~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}

@@ -527,6 +527,9 @@ function calcTransitsByYear(natalHouses, year) {
     const jd=Math.floor(365.25*(y+4716))+Math.floor(30.6001*(mm+1))+d+0.5+B-1524.5;
     const T=(jd-2451545.0)/36525.0;
 
+    const uranusDate = new Date(Date.UTC(year, m - 1, 15));
+    const uranusLon  = norm360(Ephemeris.getAllPlanets(uranusDate, 0, 0, 0).observed.uranus.apparentLongitudeDd);
+
     const planets = {
       sun:     calcSunLon(T),
       mercury: calcMercury(T),
@@ -534,6 +537,7 @@ function calcTransitsByYear(natalHouses, year) {
       mars:    calcMars(T),
       jupiter: calcJupiterLon(T),
       saturn:  calcSaturnLon(T),
+      uranus:  uranusLon,
     };
 
     const monthData = { month: MONTHS[m-1], planets: {} };

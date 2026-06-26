@@ -1890,11 +1890,13 @@ async function revealJobChange() {
     errorLabel: '이직·스카웃운',
     renderFn: _renderJobChangeHtml,
     buildExtraFields: (astroData) => {
+      const uranusTransitWindow = _houseTransitWindow(astroData.transits, 'uranus', new Date().getMonth());
       return {
         uranus: astroData.natal.uranus,
         northNodeSign: astroData.nodes?.north?.sign,
         northNodeHouse: astroData.nodes?.north?.house,
         house9Sign: astroData.houses?.[8]?.sign,
+        uranusTransitWindow,
       };
     }
   });
