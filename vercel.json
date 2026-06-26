@@ -1,3 +1,16 @@
 {
-  "regions": ["icn1"]
+  "regions": ["icn1"],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "csw-saju.vercel.app"
+        }
+      ],
+      "destination": "https://www.celescode.com/:path*",
+      "permanent": true
+    }
+  ]
 }
