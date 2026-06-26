@@ -252,7 +252,7 @@ function handleLunarReturn(body) {
    3) 신월/만월(+일식/월식) 캘린더
    ========================================================= */
 function handleMoonPhases(body) {
-  const { natal, angles, nodes, houses, appLat, appLng, appUtcOffset } = body;
+  const { natal, angles, nodes, houses, lat, lng, utcOffset, appLat, appLng, appUtcOffset } = body;
 
   if (!natal || !angles || !nodes || !houses) {
     throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
@@ -269,9 +269,10 @@ function handleMoonPhases(body) {
     { key: 'dsc', label: 'DSC', lon: dscLon },
   ];
 
-  const aLat    = (appLat != null) ? appLat : 37.5665;
-  const aLng    = (appLng != null) ? appLng : 126.9780;
-  const aOffset = (appUtcOffset != null) ? appUtcOffset : 9;
+  // 현재 위치를 입력 안 했으면 출생지로 대체(없으면 서울 — 호출부 중 출생지 없이 쓰는 곳도 있어 최후 보험으로만 유지)
+  const aLat    = (appLat != null) ? appLat : (lat != null) ? lat : 37.5665;
+  const aLng    = (appLng != null) ? appLng : (lng != null) ? lng : 126.9780;
+  const aOffset = (appUtcOffset != null) ? appUtcOffset : (utcOffset != null) ? utcOffset : 9;
 
   const nowKST = new Date(Date.now() + 9 * 3600000);
   const year   = nowKST.getUTCFullYear();
@@ -401,14 +402,19 @@ function findMoonPhaseEvents(year, lng, lat) {
    4) 트랜짓 차트
    ========================================================= */
 function handleTransit(body) {
-  const { transitDate, transitTime, appLat, appLng, appUtcOffset, natal, angles, nodes, houses } = body;
+  const { transitDate, transitTime, lat, lng, utcOffset, appLat, appLng, appUtcOffset, natal, angles, nodes, houses } = body;
 
-  if (!transitDate || !transitTime || appLat == null || appLng == null) {
-    throw new ValidationError('트랜짓 날짜/시각/도시(위도·경도)가 필요합니다.');
+  if (!transitDate || !transitTime || lat == null || lng == null) {
+    throw new ValidationError('트랜짓 날짜/시각/출생지(위도·경도)가 필요합니다.');
   }
   if (!natal || !angles || !nodes || !houses) {
     throw new ValidationError('네이탈 차트 데이터(natal/angles/nodes/houses)가 필요합니다.');
   }
+
+  // 현재 위치를 입력 안 했으면 출생지로 대체(다른 부가계산 기능과 동일한 방식)
+  const aLat    = (appLat != null) ? appLat : lat;
+  const aLng    = (appLng != null) ? appLng : lng;
+  const aOffset = (appUtcOffset != null) ? appUtcOffset : (utcOffset != null) ? utcOffset : 9;
 
   const natalHouseLons = houses.map(h => h.longitude);
   const natalPoints = buildPointsFromChart(natal, angles, nodes);
@@ -416,7 +422,6 @@ function handleTransit(body) {
   const [yyyy, mm, dd] = transitDate.split('-').map(Number);
   const [hh, mi]       = transitTime.split(':').map(Number);
 
-  const aOffset = (appUtcOffset != null) ? appUtcOffset : 9;
   const localDecimalHour = hh + mi / 60;
   const utcDecimalHour   = localDecimalHour - aOffset;
   const utcH = Math.floor(utcDecimalHour);
@@ -428,10 +433,10 @@ function handleTransit(body) {
     transitUTC.getUTCHours() + transitUTC.getUTCMinutes() / 60
   );
 
-  const raw     = Ephemeris.getAllPlanets(transitUTC, appLng, appLat, 0);
+  const raw     = Ephemeris.getAllPlanets(transitUTC, aLng, aLat, 0);
   const planets = extractPlanets(raw.observed);
 
-  const { asc, mc, houses: transitHouses } = calcHousesPlacidus(jd, appLat, appLng);
+  const { asc, mc, houses: transitHouses } = calcHousesPlacidus(jd, aLat, aLng);
   const planetsWithHouse = assignHouses(planets, natalHouseLons);
   const { northLon, southLon } = calcLunarNodes(jd);
 

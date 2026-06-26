@@ -142,6 +142,10 @@ function deleteProfile(id) {
 }
 
 function getScreenLocation(screenKey) {
+  return getScreenLocationRaw(screenKey) || getProfile()?.birthPlace || null;
+}
+// 출생지로 자동 대체하지 않는 버전 — "현재 위치"가 비어있어야 맞는 화면(솔라리턴/트랜짓)에서 사용
+function getScreenLocationRaw(screenKey) {
   const profile = getProfile();
   if (!profile) return null;
   try {
@@ -151,7 +155,7 @@ function getScreenLocation(screenKey) {
       if (v && v.city) return v.city;
     }
   } catch (e) {}
-  return profile.birthPlace || null;
+  return null;
 }
 function setScreenLocation(screenKey, city) {
   const profile = getProfile();
@@ -171,7 +175,7 @@ function syncFormFromProfile(p) {
 }
 function refreshLocationVars() {
   _todayCity       = getScreenLocation('today');
-  _solarReturnCity = getScreenLocation('astro');
+  _solarReturnCity = getScreenLocationRaw('astro');
 }
 
 /* =========================================================
@@ -3660,9 +3664,9 @@ function renderSaturnReturnPanel(astroData) {
 }
 
 /* =========================================================
-   솔라리턴 적용 도시 선택 (기본값: 출생 도시)
+   솔라리턴 적용 도시 선택 (= 현재 위치. 기본값 없음 — 출생지와 다를 때만 입력)
    ========================================================= */
-let _solarReturnCity = getScreenLocation('astro');
+let _solarReturnCity = getScreenLocationRaw('astro');
 
 function filterSolarCityList(val) {
   const dropdown = _$('solarReturnCityDropdown');
@@ -3802,8 +3806,8 @@ async function renderSolarReturnPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || getCitySelectValue();
-  const { lat: srLat, lng: srLng, utcOffset: srUtcOffset } = getCityCoords(cityName);
+  const cityName = _solarReturnCity || '';
+  const { lat: srLat, lng: srLng, utcOffset: srUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
   panel.id = 'astroSolarReturnPanel';
@@ -3818,7 +3822,7 @@ async function renderSolarReturnPanel(astroData) {
         트랜짓 태양이 네이탈 태양 위치로 돌아오는 시점의 어센던트
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">솔라리턴에 적용할 도시</label>
+        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">현재 위치</label>
         <div style="position:relative;">
           <input id="solarReturnCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
             style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
@@ -3831,6 +3835,7 @@ async function renderSolarReturnPanel(astroData) {
             overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
             margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
         </div>
+        <p style="margin:8px 0 0;font-size:11px;line-height:1.5;color:#7d7257;">비워두면 출생지 기준으로 계산됩니다.</p>
       </div>
       <div id="astroSolarReturnRows" style="font-size:12px;color:#9b8f74;">⏳ 솔라리턴 계산 중...</div>
     </div>
@@ -3898,8 +3903,8 @@ async function renderLunarReturnPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || getCitySelectValue();
-  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityName);
+  const cityName = _solarReturnCity || '';
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
   panel.id = 'astroLunarReturnPanel';
@@ -3911,7 +3916,7 @@ async function renderLunarReturnPanel(astroData) {
     ">
       <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🌙 루나리턴</div>
       <div style="font-size:11px;color:#7d7257;margin-bottom:12px;">
-        트랜짓 달이 네이탈 달 위치로 돌아오는 시점의 어센던트 (${cityName} 기준, 솔라리턴과 동일 도시)
+        트랜짓 달이 네이탈 달 위치로 돌아오는 시점의 어센던트 (${cityName || '출생지'} 기준, 솔라리턴과 동일 도시)
       </div>
       <div id="astroLunarReturnRows" style="font-size:12px;color:#9b8f74;">⏳ 루나리턴 계산 중...</div>
     </div>
@@ -4011,8 +4016,8 @@ async function renderMoonPhasesPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || getCitySelectValue();
-  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityName);
+  const cityName = _solarReturnCity || '';
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
   panel.id = 'astroMoonPhasesPanel';
@@ -4027,7 +4032,7 @@ async function renderMoonPhasesPanel(astroData) {
       </summary>
       <div style="margin-top:12px;">
         <div id="astroMoonPhasesDesc" style="font-size:11px;color:#7d7257;margin-bottom:12px;">
-          신월/만월(및 일식/월식) — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
+          신월/만월(및 일식/월식) — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName || '출생지'} 기준)
         </div>
         <div id="astroMoonPhasesRows" style="font-size:12px;color:#9b8f74;">⏳ 신월/만월 계산 중...</div>
       </div>
@@ -4050,6 +4055,7 @@ async function renderMoonPhasesPanel(astroData) {
         angles: astroData.angles,
         nodes: astroData.nodes,
         houses: astroData.houses,
+        lat: meta.lat, lng: meta.lng, utcOffset: meta.utcOffset,
         appLat, appLng, appUtcOffset
       })
     });
@@ -4068,7 +4074,7 @@ async function renderMoonPhasesPanel(astroData) {
     const titleEl = panel.querySelector('#astroMoonPhasesTitle');
     const descEl  = panel.querySelector('#astroMoonPhasesDesc');
     if (titleEl) titleEl.textContent = `🌑🌕 ${data.year} 신월·만월 캘린더 — 클릭하여 펼치기`;
-    if (descEl) descEl.textContent = `${data.year}년 신월/만월(및 일식/월식) ${data.events.length}회 — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)`;
+    if (descEl) descEl.textContent = `${data.year}년 신월/만월(및 일식/월식) ${data.events.length}회 — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName || '출생지'} 기준)`;
 
     if (rowsEl) {
       rowsEl.innerHTML = data.events.map(ev => renderMoonPhaseEventRow(ev, astroData, mpOpts)).join("");
@@ -4155,7 +4161,7 @@ async function renderTransitPanel(astroData) {
   const nowKST = new Date(Date.now() + 9 * 3600000);
   const defaultDate = nowKST.toISOString().slice(0, 10);
   const defaultTime = nowKST.toISOString().slice(11, 16);
-  const cityName = _transitCity || getCitySelectValue();
+  const cityName = _transitCity || '';
 
   const panel = document.createElement('div');
   panel.id = 'astroTransitPanel';
@@ -4184,7 +4190,7 @@ async function renderTransitPanel(astroData) {
         </div>
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">트랜짓 적용 도시</label>
+        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">현재 위치</label>
         <div style="position:relative;">
           <input id="transitCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
             style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
@@ -4197,6 +4203,7 @@ async function renderTransitPanel(astroData) {
             overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
             margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
         </div>
+        <p style="margin:8px 0 0;font-size:11px;line-height:1.5;color:#7d7257;">비워두면 출생지 기준으로 계산됩니다.</p>
       </div>
       <button onclick="calcTransitChart()" class="intro-card-cta" style="padding:8px 18px;font-size:12px;margin-bottom:14px;">
         <span class="cta-sheen"></span>
@@ -4221,8 +4228,9 @@ async function calcTransitChart() {
 
   const transitDate = _$('transitDateInput')?.value || '';
   const transitTime = _$('transitTimeInput')?.value || '00:00';
-  const cityInputVal = _$('transitCityInput')?.value || getCitySelectValue();
-  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = getCityCoords(cityInputVal);
+  const cityInputVal = _$('transitCityInput')?.value?.trim() || '';
+  _transitCity = cityInputVal || null;
+  const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityInputVal ? getCityCoords(cityInputVal) : {};
 
   if (!transitDate) {
     if (rowsEl) rowsEl.innerHTML = '<div style="font-size:12px;color:#fca5a5;">⚠️ 날짜를 입력해 주세요.</div>';
@@ -4238,6 +4246,7 @@ async function calcTransitChart() {
         type: 'transit',
         transitDate,
         transitTime,
+        lat: meta.lat, lng: meta.lng, utcOffset: meta.utcOffset,
         appLat, appLng, appUtcOffset,
         natal: astroData.natal,
         angles: astroData.angles,
