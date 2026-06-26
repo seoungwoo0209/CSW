@@ -1786,15 +1786,18 @@ function _strengthBadgeHtml(strength) {
   `;
 }
 
-// 직업 4종 — 타이밍 신호 리스트 (원형 심볼 아이콘 + 라벨/값), items: [{icon,k,v}]
+// 직업 4종 — 신호 리스트 (원형 심볼 아이콘 + 라벨/값), 한 줄에 최대 3개, items: [{icon,k,v}]
 function _signalRowsHtml(items) {
   const rows = items.filter(it => it && it.v);
   if (!rows.length) return '';
-  return `<div style="display:flex;flex-direction:column;gap:10px;">` +
+  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px;">` +
     rows.map(it => `
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="flex-shrink:0;width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:rgba(200,168,96,.07);border:1px solid rgba(200,168,96,.28);color:#e0c684;">${it.icon}</div>
-        <div><div style="font-size:11px;color:#857a60;">${it.k}</div><div style="font-size:13px;color:#f0e6cc;font-weight:600;">${it.v}</div></div>
+      <div style="display:flex;align-items:center;gap:7px;min-width:0;">
+        <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:rgba(200,168,96,.07);border:1px solid rgba(200,168,96,.28);color:#e0c684;">${it.icon}</div>
+        <div style="min-width:0;overflow:hidden;">
+          <div style="font-size:10px;color:#857a60;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.k}</div>
+          <div style="font-size:12px;color:#f0e6cc;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${it.v}</div>
+        </div>
       </div>
     `).join('') +
   `</div>`;
@@ -1836,11 +1839,11 @@ function _renderJobHuntingHtml(payload, raw) {
     <div style="${_CAREER_PANEL_STYLE}">
       <div style="${_CAREER_EYEBROW_STYLE}">求 職 之 運</div>
       <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 취업 기질</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">6하우스 · ${payload.house6Sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">10하우스(MC) · ${payload.house10Sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">수성 · ${payload.mercury.sign}</span>
-      </div>
+      ${_signalRowsHtml([
+        { icon: '6H', k: '6하우스', v: payload.house6Sign },
+        { icon: 'MC', k: '10하우스(MC)', v: payload.house10Sign },
+        { icon: '☿', k: '수성', v: payload.mercury.sign },
+      ])}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 나의 취업 기질 해설</div>
@@ -1906,11 +1909,11 @@ function _renderPromotionHtml(payload, raw) {
     <div style="${_CAREER_PANEL_STYLE}">
       <div style="${_CAREER_EYEBROW_STYLE}">職 場 之 運</div>
       <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 직장 내 위치</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">MC · ${payload.house10Sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">토성 · ${payload.saturn.sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">11하우스(인맥) · ${payload.house11Sign}</span>
-      </div>
+      ${_signalRowsHtml([
+        { icon: 'MC', k: 'MC', v: payload.house10Sign },
+        { icon: '♄', k: '토성', v: payload.saturn.sign },
+        { icon: '11H', k: '11하우스(인맥)', v: payload.house11Sign },
+      ])}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 직장 스타일·인간관계 해설</div>
@@ -1965,10 +1968,10 @@ function _renderJobChangeHtml(payload, raw) {
     <div style="${_CAREER_PANEL_STYLE}">
       <div style="${_CAREER_EYEBROW_STYLE}">移 職 之 運</div>
       <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 커리어 점프 패턴</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">천왕성 · ${payload.uranus.sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">북노드 · ${payload.northNodeSign}(${payload.northNodeHouse}하우스)</span>
-      </div>
+      ${_signalRowsHtml([
+        { icon: '♅', k: '천왕성', v: payload.uranus.sign },
+        { icon: '☊', k: '북노드', v: `${payload.northNodeSign}(${payload.northNodeHouse}하우스)` },
+      ])}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 이직 패턴 해설</div>
@@ -2033,11 +2036,11 @@ function _renderStartupHtml(payload, raw) {
     <div style="${_CAREER_PANEL_STYLE}">
       <div style="${_CAREER_EYEBROW_STYLE}">創 業 之 運</div>
       <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 사업가 기질</div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">2하우스(자기자본) · ${payload.house2Sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">8하우스(투자) · ${payload.house8Sign}</span>
-        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">화성 · ${payload.mars.sign}</span>
-      </div>
+      ${_signalRowsHtml([
+        { icon: '2H', k: '2하우스(자기자본)', v: payload.house2Sign },
+        { icon: '8H', k: '8하우스(투자)', v: payload.house8Sign },
+        { icon: '♂', k: '화성', v: payload.mars.sign },
+      ])}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 사업가 기질 해설</div>
