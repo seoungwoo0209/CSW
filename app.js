@@ -34,7 +34,7 @@ function _setInlineAlert(elId, msg) {
 // 출생 정보가 바뀌는 모든 지점(프로필 전환/수정/삭제, 생년월일 입력 변경 등)에서 호출해야
 // 이전 사람의 결과 HTML이 화면에 남아있는 일이 없다.
 function _resetCareerLikeResultScreens() {
-  ['loveFortune', 'reunionFortune', 'jobHunting', 'promotion', 'jobChange', 'startup'].forEach(idPrefix => {
+  ['loveFortune', 'reunionFortune', 'jobHunting', 'promotion', 'jobChange', 'startup', 'business'].forEach(idPrefix => {
     const introCard  = _$(idPrefix + 'InputCard');
     const resultArea = _$(idPrefix + 'ResultArea');
     if (resultArea) { resultArea.style.display = 'none'; resultArea.innerHTML = ''; }
@@ -2168,6 +2168,36 @@ async function revealStartup() {
   });
 }
 
+// 5) 기업가·CEO 비즈니스운
+async function revealBusiness() {
+  await _revealCareerScreen({
+    inFlightFlagName: '_businessRevealInFlight',
+    idPrefix: 'business',
+    type: 'business',
+    errorLabel: '기업가·CEO 비즈니스운',
+    renderFn: _renderBusinessHtml,
+    buildExtraFields: (astroData) => {
+      const house6 = _findHouseOccupants(astroData, 6);
+      const house7 = _findHouseOccupants(astroData, 7);
+      const house6RulerKey = _SIGN_RULER[astroData.houses?.[5]?.sign];
+      const house7RulerKey = _SIGN_RULER[astroData.houses?.[6]?.sign];
+      const house6Ruler = house6RulerKey ? { key: house6RulerKey, label: _LOVE_PLANET_KR[house6RulerKey], ...astroData.natal[house6RulerKey] } : null;
+      const house7Ruler = house7RulerKey ? { key: house7RulerKey, label: _LOVE_PLANET_KR[house7RulerKey], ...astroData.natal[house7RulerKey] } : null;
+      return {
+        house6Sign: astroData.houses?.[5]?.sign,
+        house6Occupants: house6,
+        house6Ruler,
+        house7Sign: astroData.houses?.[6]?.sign,
+        house7Occupants: house7,
+        house7Ruler,
+        saturn: astroData.natal.saturn,
+        mars: astroData.natal.mars,
+        mercury: astroData.natal.mercury,
+      };
+    }
+  });
+}
+
 function _renderStartupHtml(payload, raw) {
   const sections = {};
   _careerPanelHtml(raw, sections);
@@ -2200,6 +2230,53 @@ function _renderStartupHtml(payload, raw) {
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 시기 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
+    </div>
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
+  `;
+}
+
+function _renderBusinessHtml(payload, raw) {
+  const sections = {};
+  _careerPanelHtml(raw, sections);
+  const ecl = payload.eclipseSignal;
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">經 營 之 運</div>
+      <div style="${_CAREER_TITLE_STYLE}">${payload.name || '나'}의 비즈니스 리더십 기질</div>
+      ${_signalRowsHtml([
+        { icon: '6H', k: '6하우스(조직·직원)', v: payload.house6Sign },
+        { icon: '7H', k: '7하우스(계약·파트너십)', v: payload.house7Sign },
+        { icon: 'MC', k: 'MC(명성)', v: payload.mcSign },
+      ])}
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 경영 스타일 해설</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.nature)}</div>
+    </div>
+
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
+      <div style="${_CAREER_TITLE_STYLE}">지금의 비즈니스 스케일업 타이밍</div>
+      ${_strengthBadgeHtml(sections.strength)}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
+      ${_signalRowsHtml([
+        { icon: '♃', k: '트랜짓 목성', v: payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : null },
+        { icon: '♄', k: '트랜짓 토성', v: payload.transitNow?.planets?.saturn?.house ? payload.transitNow.planets.saturn.house + '하우스' : null },
+        ecl ? { icon: ecl.type === '일식' ? '☉' : '☽', k: ecl.type + ' 근접', v: ecl.conjunctPoint } : null,
+      ])}
+    </div>
+
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 조직·직원 운</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.organization)}</div>
+    </div>
+    <div style="position:relative;padding:0 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 계약·파트너십 운</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.contract)}</div>
+    </div>
+    <div style="position:relative;padding:0 6px 24px 0;margin-bottom:4px;">
+      <div style="${_CAREER_AI_EYEBROW_STYLE}">— 브랜드·명성 운</div>
+      <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.reputation)}</div>
     </div>
     ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;

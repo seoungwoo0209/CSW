@@ -902,6 +902,20 @@
           <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
         </div>
 
+        <div class="home-card" onclick="enterScreen('business')">
+          <div class="home-card-badge">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 21l18 0"/><path d="M5 21l0 -13l6 -4l6 4l0 13"/><path d="M10 9l4 0"/><path d="M10 13l4 0"/>
+            </svg>
+          </div>
+          <div class="home-card-body">
+            <span class="home-card-num gold-text">05</span>
+            <strong class="home-card-title">기업가·CEO 비즈니스운</strong>
+            <span class="home-card-desc">조직·계약·명성의 흐름</span>
+          </div>
+          <svg class="home-card-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l14 0"/><path d="M15 16l4 -4"/><path d="M15 8l4 4"/></svg>
+        </div>
+
       </div>
     </div>
 
@@ -1122,6 +1136,61 @@
       </div>
 
       <div id="startupResultArea" style="display:none;"></div>
+
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════
+       기업가·CEO 비즈니스운 스크린
+       ══════════════════════════════════════ -->
+  <div id="screen-business" class="screen">
+
+    <div class="screen-topbar">
+      <button class="back-btn" onclick="enterScreen('job')">←</button>
+      <span class="screen-topbar-title">기업가·CEO 비즈니스운</span>
+      <div style="width:36px;"></div>
+    </div>
+
+    <div class="screen-body">
+
+      <div id="businessInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">기업가·CEO 비즈니스운</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          6·7하우스와 MC로 대표자의 경영 스타일을 읽고,<br>조직·계약·명성의 흐름을 짚어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          경영 스타일<span class="dot">·</span>조직·계약·명성<span class="dot">·</span>스케일업 타이밍
+        </p>
+
+        <div id="businessAlert" class="alert hidden" style="margin-top:12px;"></div>
+
+        <button onclick="revealBusiness()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">✨ 비즈니스운 보기</span>
+        </button>
+      </div>
+
+      <div id="businessLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">셀레스코드 고유 알고리즘을 토대로<br>AI가 비즈니스운을 정밀하게 해석 중입니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 화면을 새로고침해주세요.</div>
+      </div>
+
+      <div id="businessResultArea" style="display:none;"></div>
 
     </div>
 

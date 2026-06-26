@@ -652,6 +652,123 @@ ${eclipseStr(eclipseSignal)}
   return { prompt, monthlyStrength, conclusion };
 }
 
+/* =========================================================
+   5) 기업가·CEO 비즈니스운
+   ========================================================= */
+function businessScoreAt(m, ctx) {
+  const { transits, mcLon, house7RulerLon, eclipseMonth, mercuryRetroFlags } = ctx;
+  let s = 0;
+  if ([6, 7, 10].includes(monthlyHouse(transits, m, 'jupiter'))) s += 1;
+  if ([6, 7, 10].includes(monthlyHouse(transits, m, 'saturn'))) s -= 1;
+  if (mercuryRetroFlags?.[m]) s -= 1;
+  if (eclipseMonth === m) s += 1;
+  s += aspectScore(monthlyLon(transits, m, 'jupiter'), [mcLon, house7RulerLon]);
+  s += aspectScore(monthlyLon(transits, m, 'saturn'), [mcLon, house7RulerLon]);
+  return s;
+}
+function businessReasonAt(m, ctx) {
+  const { transits, eclipseMonth } = ctx;
+  if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  if ([6, 7, 10].includes(monthlyHouse(transits, m, 'jupiter'))) return '목성이 조직·계약·명성 핵심 영역(6·7·10하우스)을 지나는 시기';
+  return null;
+}
+
+function buildBusinessPrompt(body, sky) {
+  const {
+    name, gender, house6Sign, house6Occupants, house6Ruler,
+    house7Sign, house7Occupants, house7Ruler,
+    mcSign, mcRuler, saturn, mars, mercury, eclipseSignal,
+    jupiterTransitWindow, saturnTransitWindow, transits, houses, mcLon
+  } = body;
+
+  const displayName = name?.trim() || '당신';
+  const genderKr = gender === 'M' ? '남성' : '여성';
+
+  const house6Str = `${house6Sign}${house6Occupants?.length ? ` (${house6Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house6Ruler?.label || '?'}(${house6Ruler?.sign || '?'})`;
+  const house7Str = `${house7Sign}${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house7Ruler?.label || '?'}(${house7Ruler?.sign || '?'})`;
+  const mcStr = `${mcSign}, 지배행성 ${mcRuler?.label || '?'}(${mcRuler?.sign || '?'} ${mcRuler?.house || '?'}하우스)`;
+
+  const nowMonthIdx = new Date().getMonth();
+  const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
+  if (mercuryRetroFlags) mercuryRetroFlags[nowMonthIdx] = sky.mercuryRetro;
+  const ctx = {
+    transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
+    mcLon,
+    house7RulerLon: house7Ruler?.longitude,
+    eclipseMonth: eclipseMonthIndex(eclipseSignal),
+    mercuryRetroFlags,
+  };
+  const monthlyScores = Array.from({ length: 12 }, (_, m) => businessScoreAt(m, ctx));
+  const strengthScore = monthlyScores[nowMonthIdx];
+  const strengthFixed = strengthFromScore(strengthScore);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const conclusion = buildConclusion(monthlyStrength, strengthFixed, businessReasonAt, ctx);
+
+  const prompt = `
+너는 20년 경력의 서양 점성술 전문가야.
+아래 차트 데이터를 바탕으로 ${displayName}님(${genderKr})의 "기업가·CEO 비즈니스운" 리포트를 작성해.
+(일반 직장인의 직장운이 아니라, 대표·경영자 입장에서 "조직(직원) 관리·계약/파트너십·회사의 대외적 명성"의 흐름에 초점을 맞춰라.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[타고난 경영 스타일]
+6하우스(조직·직원 관리): ${house6Str}
+7하우스(계약·파트너십): ${house7Str}
+MC(회사의 대외적 정체성·명성): ${mcStr}
+토성(책임을 다루는 방식): ${saturn.sign} ${saturn.house}하우스
+화성(결단력·추진력): ${mars.sign} ${mars.house}하우스
+수성(협상·커뮤니케이션 스타일): ${mercury.sign} ${mercury.house}하우스
+
+[지금 시점의 비즈니스 타이밍 신호]
+${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (6·7·10하우스 근접 시 확장·계약·명성 상승기)
+${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (조직·계약이 시험받는 시기 여부)
+${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '나탈 MC')}
+${aspectStr(currentLongitude('saturn'), mcLon, '트랜짓 토성', '나탈 MC')}
+수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 계약·서류·협상에 불리하거나 재검토가 필요한 시기' : '순행 중'}
+${eclipseStr(eclipseSignal)}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+[글쓰기 스타일 — 반드시 따를 것]
+1. 점성술 용어를 그냥 나열하지 말고 반드시 실제 경영 의사결정의 느낌으로 번역해라(경영 컨설팅 보고서 톤).
+2. ${displayName}님의 관점에서 구체적으로 써라. 일반적인 상투어 금지.
+3. "~할 수 있습니다" 같은 모호한 표현 대신 단정적이고 생생한 문장을 써라.
+4. 단정적인 예언(예: "반드시 성공한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
+5. 마크다운 문법(#, **볼드**, 목록 기호, 이모지 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
+
+[섹션 구성 — 반드시 아래 6개 마커를 정확히 그대로 사용해서 구분할 것]
+마커 앞뒤로 다른 설명을 절대 덧붙이지 마라. 6개 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.
+
+===SECTION:nature===
+(타고난 CEO·경영자 기질 — 6·7하우스, MC, 토성·화성·수성이 보여주는 ${displayName}님만의 경영 스타일과 의사결정 방식)
+분량: 4~5문단, 각 문단 3~4문장
+
+===SECTION:organization===
+(조직·직원 운 — 6하우스 트랜짓 종합. 올해 손발이 맞는 직원이 들어오는 시기인지, 반대로 내부 소통/관리에 신경 써야 하는 시기인지)
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조가 그 강도와 어긋나지 않게 써라.
+분량: 2~3문단
+
+===SECTION:contract===
+(계약·파트너십 운 — 7하우스 트랜짓 종합. 투자 유치·대형 거래처 계약·협업이 성사되기 좋은 시기인지)
+분량: 2~3문단
+
+===SECTION:reputation===
+(브랜드 가치·명성 운 — MC/10하우스 트랜짓 종합. 회사가 시장에서 인정받고 신뢰도가 올라가는 타이밍인지)
+분량: 2~3문단
+
+===SECTION:strength===
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
+
+===SECTION:suggestion===
+(위에서 정해진 강도·흐름·시기 신호를 바탕으로 한 줄 제안. 직접적인 행동 지시("~하세요", "검토하세요", "진행하세요" 등 명령형)는 절대 쓰지 말고, 돌려서 말하는 부드러운 제안을 딱 한 문장으로 적어라.
+예시 톤: "서두르기보다 신호가 강해지는 시점에 맞춰 움직여보는 것도 방법입니다." 같은 느낌.
+이 SECTION:suggestion 섹션 안에서만 한 문장으로 끝내라(마크다운 금지). 이 규칙은 이 섹션 안에만 적용되는 것이고, 위의 nature·organization·contract·reputation·strength 섹션은 각각 요청한 분량과 형식을 그대로 지켜서 절대 줄이지 마라.)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━
+지금 바로 nature·organization·contract·reputation·strength·suggestion 6개 섹션을 마커와 함께 전부 작성해.
+`.trim();
+
+  return { prompt, monthlyStrength, conclusion };
+}
+
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
@@ -660,9 +777,9 @@ export default async function handler(req, res) {
 
   try {
     const { type, houses, jupiter } = req.body;
-    const VALID_TYPES = ['job-hunting', 'promotion', 'job-change', 'startup'];
+    const VALID_TYPES = ['job-hunting', 'promotion', 'job-change', 'startup', 'business'];
     if (!VALID_TYPES.includes(type)) {
-      return res.status(400).json({ error: 'type 값이 올바르지 않습니다. (job-hunting/promotion/job-change/startup)' });
+      return res.status(400).json({ error: 'type 값이 올바르지 않습니다. (job-hunting/promotion/job-change/startup/business)' });
     }
 
     let sky;
@@ -677,7 +794,8 @@ export default async function handler(req, res) {
       type === 'job-hunting' ? buildJobHuntingPrompt(req.body, sky)
     : type === 'promotion'   ? buildPromotionPrompt(req.body, sky)
     : type === 'job-change'  ? buildJobChangePrompt(req.body, sky)
-    : buildStartupPrompt(req.body, sky);
+    : type === 'startup'     ? buildStartupPrompt(req.body, sky)
+    : buildBusinessPrompt(req.body, sky);
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
@@ -721,7 +839,10 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
-    if (!reply.includes('===SECTION:nature===') || !reply.includes('===SECTION:timing===')) {
+    const requiredMarkers = type === 'business'
+      ? ['===SECTION:nature===', '===SECTION:organization===', '===SECTION:contract===', '===SECTION:reputation===']
+      : ['===SECTION:nature===', '===SECTION:timing==='];
+    if (requiredMarkers.some(marker => !reply.includes(marker))) {
       console.warn(`직업(${type}) AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:`, reply.slice(0, 300));
     }
 
