@@ -2183,6 +2183,7 @@ async function revealBusiness() {
       const house7RulerKey = _SIGN_RULER[astroData.houses?.[6]?.sign];
       const house6Ruler = house6RulerKey ? { key: house6RulerKey, label: _LOVE_PLANET_KR[house6RulerKey], ...astroData.natal[house6RulerKey] } : null;
       const house7Ruler = house7RulerKey ? { key: house7RulerKey, label: _LOVE_PLANET_KR[house7RulerKey], ...astroData.natal[house7RulerKey] } : null;
+      const jupiterRetroWindow = _retrogradeWindow(astroData.transits, 'jupiter', new Date().getMonth());
       return {
         house6Sign: astroData.houses?.[5]?.sign,
         house6Occupants: house6,
@@ -2193,6 +2194,7 @@ async function revealBusiness() {
         saturn: astroData.natal.saturn,
         mars: astroData.natal.mars,
         mercury: astroData.natal.mercury,
+        jupiterRetroWindow,
       };
     }
   });

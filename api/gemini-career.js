@@ -656,7 +656,7 @@ ${eclipseStr(eclipseSignal)}
    5) 기업가·CEO 비즈니스운
    ========================================================= */
 function businessScoreAt(m, ctx) {
-  const { transits, mcLon, house7RulerLon, eclipseMonth, mercuryRetroFlags } = ctx;
+  const { transits, mcLon, house7RulerLon, eclipseMonth, mercuryRetroFlags, natalJupiterLon } = ctx;
   let s = 0;
   if ([6, 7, 10].includes(monthlyHouse(transits, m, 'jupiter'))) s += 1;
   if ([6, 7, 10].includes(monthlyHouse(transits, m, 'saturn'))) s -= 1;
@@ -664,11 +664,15 @@ function businessScoreAt(m, ctx) {
   if (eclipseMonth === m) s += 1;
   s += aspectScore(monthlyLon(transits, m, 'jupiter'), [mcLon, house7RulerLon]);
   s += aspectScore(monthlyLon(transits, m, 'saturn'), [mcLon, house7RulerLon]);
+  const jLonM = monthlyLon(transits, m, 'jupiter');
+  if (natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5) s += 1;
   return s;
 }
 function businessReasonAt(m, ctx) {
-  const { transits, eclipseMonth } = ctx;
+  const { transits, eclipseMonth, natalJupiterLon } = ctx;
   if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  const jLonM = monthlyLon(transits, m, 'jupiter');
+  if (natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5) return '목성 회귀(약 12년 주기 확장기)';
   if ([6, 7, 10].includes(monthlyHouse(transits, m, 'jupiter'))) return '목성이 조직·계약·명성 핵심 영역(6·7·10하우스)을 지나는 시기';
   return null;
 }
@@ -677,8 +681,8 @@ function buildBusinessPrompt(body, sky) {
   const {
     name, gender, house6Sign, house6Occupants, house6Ruler,
     house7Sign, house7Occupants, house7Ruler,
-    mcSign, mcRuler, saturn, mars, mercury, eclipseSignal,
-    jupiterTransitWindow, saturnTransitWindow, transits, houses, mcLon
+    mcSign, mcRuler, saturn, mars, mercury, jupiter, eclipseSignal,
+    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow, transits, houses, mcLon
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -687,6 +691,7 @@ function buildBusinessPrompt(body, sky) {
   const house6Str = `${house6Sign}${house6Occupants?.length ? ` (${house6Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house6Ruler?.label || '?'}(${house6Ruler?.sign || '?'})`;
   const house7Str = `${house7Sign}${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house7Ruler?.label || '?'}(${house7Ruler?.sign || '?'})`;
   const mcStr = `${mcSign}, 지배행성 ${mcRuler?.label || '?'}(${mcRuler?.sign || '?'} ${mcRuler?.house || '?'}하우스)`;
+  const jupiterRetroStr = retroWindowStr(jupiterRetroWindow, '목성');
 
   const nowMonthIdx = new Date().getMonth();
   const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
@@ -697,6 +702,7 @@ function buildBusinessPrompt(body, sky) {
     house7RulerLon: house7Ruler?.longitude,
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
     mercuryRetroFlags,
+    natalJupiterLon: jupiter?.longitude,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => businessScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
@@ -724,6 +730,8 @@ ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (조직·계약이 
 ${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '나탈 MC')}
 ${aspectStr(currentLongitude('saturn'), mcLon, '트랜짓 토성', '나탈 MC')}
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 계약·서류·협상에 불리하거나 재검토가 필요한 시기' : '순행 중'}
+목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
+목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
