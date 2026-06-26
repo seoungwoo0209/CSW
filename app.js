@@ -46,6 +46,7 @@ function _resetCareerLikeResultScreens() {
 function _invalidateAstroResult() {
   window.AstroResult = null;
   window.TodayResult = null;
+  if (typeof _setLoveRelationshipStatus === 'function') _setLoveRelationshipStatus('solo');
   _resetCareerLikeResultScreens();
 }
 
@@ -783,6 +784,13 @@ async function revealSajuResults() {
    계산되어 있음)에서 연애 관련 포인트만 골라 AI에 전달
    ========================================================= */
 let _loveRevealInFlight = false;
+let _loveRelationshipStatus = 'solo'; // 'solo' | 'taken' — 연애운 timing 섹션 해석 관점 분기용 (계산 로직은 동일, 문구만 달라짐)
+function _setLoveRelationshipStatus(status) {
+  _loveRelationshipStatus = status;
+  const soloBtn = _$('loveStatusSolo'), takenBtn = _$('loveStatusTaken');
+  if (soloBtn)  soloBtn.classList.toggle('active', status === 'solo');
+  if (takenBtn) takenBtn.classList.toggle('active', status === 'taken');
+}
 
 const _LOVE_PLANET_KR = {
   sun:'태양', moon:'달', mercury:'수성', venus:'금성', mars:'화성',
@@ -886,6 +894,7 @@ async function revealLoveFortune() {
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
       ..._buildLoveEnhancedFields(astroData),
       eclipseSignal,
+      isInRelationship: _loveRelationshipStatus === 'taken',
     };
 
     const res = await fetch("/api/gemini-love", {

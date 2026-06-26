@@ -23,11 +23,20 @@ function buildLovePrompt(body) {
     transitNow, progMoonHouse, progMoonSign,
     ascSign, ascRuler, house5Ruler, house8Sign, house8Occupants,
     progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
-    jupiterVenusAspect, eclipseSignal, venusRetro
+    jupiterVenusAspect, eclipseSignal, venusRetro, isInRelationship
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr     = gender === 'M' ? '남성' : '여성';
+
+  // timing 섹션의 해석 관점만 분기 — 계산에 쓰는 천체 신호(트랜짓·프로그레션 등)는 솔로/연애 중 동일하게 공유
+  const timingFocus = isInRelationship
+    ? `(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍, ${displayName}님이 현재 연애 중인 상태를 전제로 해석)
+- 지금 관계에 어떤 변화(개선·갈등 해소·시험대 등)가 다가오는지
+- 그 변화에 ${displayName}님이 어떻게 대응하면 좋을지 실질적인 조언`
+    : `(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍, ${displayName}님이 현재 솔로인 상태를 전제로 해석)
+- 새로운 인연이 다가오는 시기인지, 어떤 계기·환경에서 만나게 될 가능성이 높은지
+- 구체적으로 어떻게 행동하면 좋을지 실질적인 조언`;
 
   const house5Str = `${house5Sign}${house5Occupants?.length ? ` (${house5Occupants.join(', ')} 위치)` : ''}`;
   const house7Str = `${house7Sign}${house7Occupants?.length ? ` (${house7Occupants.join(', ')} 위치)` : ''}`;
@@ -126,9 +135,7 @@ ${eclipseStr}
 - 분량: 3~4문단
 
 ===SECTION:timing===
-(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍)
-- 지금이 연애에 유리한 시기인지, 어떤 변화가 다가오는지
-- 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
+${timingFocus}
 - 분량: 3~4문단
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━

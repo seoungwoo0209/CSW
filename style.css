@@ -338,6 +338,19 @@ body{
 }
 .intro-card-tags .dot { color: #c8a860; margin: 0 8px; }
 .intro-card-section-label { position: relative; display: block; font-size: 10px; letter-spacing: .28em; color: #7d7257; margin-bottom: 10px; }
+
+.love-status-row { position: relative; display: flex; gap: 8px; margin: 0 0 22px; }
+.love-status-btn {
+  flex: 1; padding: 11px 8px; border-radius: 10px; cursor: pointer;
+  border: 1px solid rgba(200,168,96,.25); background: rgba(255,255,255,.02);
+  color: #9b8f74; font-size: 13px; font-weight: 500; font-family: Georgia, serif;
+  transition: all .15s ease;
+}
+.love-status-btn.active {
+  border-color: rgba(200,168,96,.55); color: #f4e6bd;
+  background: linear-gradient(165deg, rgba(248,237,198,.14), rgba(202,164,79,.1));
+  box-shadow: 0 0 0 1px rgba(200,168,96,.2) inset;
+}
 .intro-card-section {
   position: relative; text-align: center;
   border-top: 1px solid rgba(200,168,96,.2); border-bottom: 1px solid rgba(200,168,96,.2); padding: 13px 0;
