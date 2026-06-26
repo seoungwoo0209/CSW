@@ -4266,6 +4266,36 @@ async function calcTransitChart() {
 }
 
 /* =========================================================
+   연간 운세 — 솔라리턴 ASC/MC 계산용 "현재 거주 도시" 선택
+   (오늘의 운세와 같은 저장 키('today')를 공유해 서로 동기화됨)
+   ========================================================= */
+function filterAnnualCityList(val) {
+  const dropdown = _$('annualCityDropdown');
+  if (!dropdown) return;
+  const q = val.trim().toLowerCase();
+  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
+  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
+  dropdown.innerHTML = matched.map(c =>
+    '<div onclick="selectAnnualCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+  ).join('');
+  dropdown.style.display = 'block';
+}
+function showAnnualCityList() {
+  const input = _$('annualCityInput');
+  if (input) filterAnnualCityList(input.value);
+}
+function hideAnnualCityList() {
+  const d = _$('annualCityDropdown');
+  if (d) d.style.display = 'none';
+}
+function selectAnnualCity(cityName) {
+  const input = _$('annualCityInput');
+  if (input) input.value = cityName;
+  setScreenLocation('today', cityName);
+  hideAnnualCityList();
+}
+
+/* =========================================================
    연간 운세 패널 (🔮 연간 운세 탭 — lifeGraphPanel에 렌더)
    ========================================================= */
 function renderAnnualEventsPanel(astroData) {
@@ -4277,6 +4307,7 @@ function renderAnnualEventsPanel(astroData) {
   for (let y = curY - 1; y <= curY + 5; y++) {
     opts.push(`<option value="${y}"${y === curY ? ' selected' : ''}>${y}년</option>`);
   }
+  const annualCityName = getScreenLocation('today') || '';
 
   container.innerHTML = `
     <style>
@@ -4316,6 +4347,20 @@ function renderAnnualEventsPanel(astroData) {
             background-image:url(&quot;data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b39d63' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6l6 -6'/%3E%3C/svg%3E&quot;);
             background-repeat:no-repeat;background-position:right center;
           ">${opts.join('')}</select>
+        </div>
+
+        <span class="intro-card-section-label">현재 거주 도시</span>
+        <div style="position:relative;margin-bottom:14px;">
+          <input id="annualCityInput" type="text" value="${annualCityName}" placeholder="도시 검색..." autocomplete="off"
+            style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
+            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:14px;box-sizing:border-box;font-family:Georgia,serif;"
+            oninput="filterAnnualCityList(this.value)"
+            onfocus="showAnnualCityList()"
+            onblur="setTimeout(hideAnnualCityList,200)"
+          />
+          <div id="annualCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
+            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
+            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
         </div>
 
         <button onclick="generateAnnualReport()" id="annualReportBtn" class="intro-card-cta">
@@ -4531,6 +4576,11 @@ async function generateAnnualReport() {
   resultEl.innerHTML     = '';
   showAnnualLoader(null); // 엔진 계산 단계부터 바로 로더를 띄운다(개수는 아직 모르니 null)
 
+  // 솔라리턴 ASC/MC는 "지금 거주 도시" 기준이어야 함 — 이 화면에 바로 있는 도시 입력칸 값을 사용(없으면 출생지로 자동 대체)
+  const srCityName = _$('annualCityInput')?.value?.trim() || getScreenLocation('today');
+  if (srCityName) setScreenLocation('today', srCityName); // 직접 타이핑만 하고 드롭다운을 안 눌렀어도 다음에 기억하도록 저장
+  const { lat: srLat, lng: srLng } = srCityName ? getCityCoords(srCityName) : {};
+
   let engineData;
   try {
     const engRes = await fetch('/api/annual-events', {
@@ -4545,6 +4595,7 @@ async function generateAnnualReport() {
         targetYear:       year,
         natalAspectsFull: astroData.natalAspectsFull,
         progAspectsFull:  astroData.progression?.aspectsFull,
+        srLat, srLng,
       }),
     });
     engineData = await engRes.json();

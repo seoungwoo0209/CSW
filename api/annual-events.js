@@ -626,9 +626,12 @@ function commonPlanetEvent(year, cusps, planetName, lonAt, planetKR, baseCat) {
 }
 
 /* ─── 솔라리턴 사실 추출 — astro-solar-return.js의 findReturn 로직 포팅 ───
-   화면(차트)을 옮기는 게 아니라, 그 해 SR의 ASC 사인·태양 네이탈 하우스·
-   SR↔네이탈 타이트 에스펙트 top3 "사실"만 뽑아 연간 이벤트 스키마로 만든다. */
-function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses, targetYear) {
+   그 해 SR의 ASC 사인·태양 네이탈 하우스·SR↔네이탈 타이트 에스펙트 top3
+   "사실"만 뽑아 연간 이벤트 스키마로 만든다.
+   복귀 "시점"은 출생지 기준 경도 탐색(위치 영향 거의 없음)으로 찾고,
+   그 시점의 ASC/MC·행성 위치는 aLat/aLng(현재 거주 도시, 없으면 출생지로 대체) 기준으로 계산한다
+   — astro-extras.js의 handleSolarReturn과 동일한 방식. */
+function buildSolarReturnEvents(birthUTC, lng, lat, aLat, aLng, natal, angles, nodes, houses, targetYear) {
   const natalHouseLons = houses.map(h => h.longitude);
   const lonAt = makeLonAt(lng, lat);
   const natalSunLon = lonAt(birthUTC, 'sun');
@@ -654,11 +657,11 @@ function buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses
   const srHr = srDate.getUTCHours() + srDate.getUTCMinutes() / 60;
   const srJD = calcJulianDay(srY, srM, srD, srHr);
 
-  const srRaw = Ephemeris.getAllPlanets(srDate, lng, lat, 0);
+  const srRaw = Ephemeris.getAllPlanets(srDate, aLng, aLat, 0);
   const srPlanets = {};
   PLANET_KEYS.forEach(k => { srPlanets[k] = { lon: norm360(srRaw.observed[k].apparentLongitudeDd) }; });
 
-  const { asc: srAsc, mc: srMc } = calcHousesPlacidus(srJD, lat, lng);
+  const { asc: srAsc, mc: srMc } = calcHousesPlacidus(srJD, aLat, aLng);
   const { northLon: srNorth, southLon: srSouth } = calcLunarNodes(srJD);
 
   const srSunHouse = getHouseOf(srPlanets.sun.lon, natalHouseLons);
@@ -859,12 +862,15 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { meta, natal, angles, nodes, houses, targetYear, natalAspectsFull, progAspectsFull } = req.body;
+    const { meta, natal, angles, nodes, houses, targetYear, natalAspectsFull, progAspectsFull, srLat, srLng } = req.body;
     if (!meta?.birthDate || !natal || !angles || !nodes || !houses || !targetYear) {
       return res.status(400).json({ error: 'meta/natal/angles/nodes/houses/targetYear가 필요합니다.' });
     }
 
     const { birthDate, birthTime, lat, lng, utcOffset } = meta;
+    // 솔라리턴 ASC/MC는 "지금 거주 도시" 기준이 맞다 — 안 보내면 출생도시로 대체
+    const aLat = (srLat != null) ? srLat : lat;
+    const aLng = (srLng != null) ? srLng : lng;
     const [bY, bM, bD] = birthDate.split('-').map(Number);
     const [hh, mi]     = (birthTime || '12:00').split(':').map(Number);
     const offsetHours  = utcOffset != null ? utcOffset : (lng / 15);
@@ -881,7 +887,7 @@ export default async function handler(req, res) {
     const eclipses   = getEclipseEvents(targetYear, cusps);
     const jupEvt = commonPlanetEvent(targetYear, cusps, 'jupiter', lonAt, '목성', 'wealth');
     const satEvt = commonPlanetEvent(targetYear, cusps, 'saturn',  lonAt, '토성', 'career');
-    const srEvents = buildSolarReturnEvents(birthUTC, lng, lat, natal, angles, nodes, houses, targetYear);
+    const srEvents = buildSolarReturnEvents(birthUTC, lng, lat, aLat, aLng, natal, angles, nodes, houses, targetYear);
 
     const retrogrades = collectRetrogradeWindows(targetYear, lonAt);
     const common = [...eclipses, jupEvt, satEvt, ...srEvents, ...retrogrades];
