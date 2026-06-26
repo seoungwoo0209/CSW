@@ -426,6 +426,16 @@ input:focus,select:focus{ border-color: rgba(200,168,96,.55); }
   color: #f0d2cf;
   font-size: 13px;
 }
+.global-alert-toast{
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 9999;
+  width: calc(100% - 32px);
+  max-width: 420px;
+  box-shadow: 0 12px 32px -8px rgba(0,0,0,.6);
+}
 .hidden{ display:none !important; }
 
 .badge{
