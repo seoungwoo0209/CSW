@@ -4345,9 +4345,12 @@ function showAnnualLoader(numEvents) {
   const STEPS = [
     '당신의 출생 차트 천체 위치 확인 중...',
     '프로펙션 및 트랜짓 주기 계산 완료',
-    numEvents + '개의 주요 운명 전환점 분석 중...',
+    numEvents != null ? numEvents + '개의 주요 운명 전환점 분석 중...' : '주요 운명 전환점 분석 중...',
     '별의 언어를 삶의 조언으로 해석 중...',
   ];
+  // 엔진 호출이 끝나기 전(numEvents 모를 때) 로더를 먼저 띄운 경우, 나중에 개수를 알면
+  // updateAnnualLoaderEventCount()가 이 배열을 직접 갱신할 수 있도록 참조를 남겨둔다.
+  window._alSteps = STEPS;
 
   const stepsHtml = STEPS.map((txt, i) => {
     const on = i === 0;
@@ -4464,6 +4467,19 @@ function showAnnualLoader(numEvents) {
   });
 }
 
+// 로더를 numEvents 모르는 채로 먼저 띄운 뒤, 엔진 응답이 와서 개수를 알게 되면 호출.
+// 2번째 단계 문구가 이미 화면에 떠 있다면 즉시 갱신하고, 아직이면 다음에 활성화될 때 새 값이 반영된다.
+function updateAnnualLoaderEventCount(n) {
+  if (!window._alSteps) return;
+  window._alSteps[2] = n + '개의 주요 운명 전환점 분석 중...';
+  const curTxt = document.getElementById('alStepTxt2');
+  const stEl   = document.getElementById('alStatusText');
+  if (curTxt && curTxt.textContent) {
+    curTxt.textContent = window._alSteps[2];
+    if (stEl) stEl.textContent = window._alSteps[2];
+  }
+}
+
 function hideAnnualLoader() {
   clearInterval(window._alProgressInterval);
   (window._alStepTimeouts || []).forEach(clearTimeout);
@@ -4506,6 +4522,7 @@ async function generateAnnualReport() {
   if (btn) { btn.disabled = true; btn.style.opacity = '0.55'; }
   statusEl.style.display = 'none';
   resultEl.innerHTML     = '';
+  showAnnualLoader(null); // 엔진 계산 단계부터 바로 로더를 띄운다(개수는 아직 모르니 null)
 
   let engineData;
   try {
@@ -4526,13 +4543,14 @@ async function generateAnnualReport() {
     engineData = await engRes.json();
     if (!engRes.ok || engineData.error) throw new Error(engineData.error || '이벤트 계산 실패');
   } catch (e) {
+    hideAnnualLoader();
     statusEl.style.display = 'block';
     statusEl.textContent = '⚠️ 엔진 오류: ' + e.message;
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
     return;
   }
 
-  showAnnualLoader(engineData.events.filter(ev => ev.importance === 'major').length);
+  updateAnnualLoaderEventCount(engineData.events.filter(ev => ev.importance === 'major').length);
 
   try {
     const res = await fetch('/api/gemini-events', {
