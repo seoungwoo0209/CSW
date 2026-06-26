@@ -30,6 +30,25 @@ function _setInlineAlert(elId, msg) {
   else      { el.textContent = msg; el.classList.remove("hidden"); }
 }
 
+// 연애운/재회운/직업 4종 — 결과 화면을 인트로(버튼 누르는) 상태로 되돌림.
+// 출생 정보가 바뀌는 모든 지점(프로필 전환/수정/삭제, 생년월일 입력 변경 등)에서 호출해야
+// 이전 사람의 결과 HTML이 화면에 남아있는 일이 없다.
+function _resetCareerLikeResultScreens() {
+  ['loveFortune', 'reunionFortune', 'jobHunting', 'promotion', 'jobChange', 'startup'].forEach(idPrefix => {
+    const introCard  = _$(idPrefix + 'InputCard');
+    const resultArea = _$(idPrefix + 'ResultArea');
+    if (resultArea) { resultArea.style.display = 'none'; resultArea.innerHTML = ''; }
+    if (introCard)  introCard.style.display = '';
+    _setInlineAlert(idPrefix + 'Alert', '');
+  });
+}
+
+function _invalidateAstroResult() {
+  window.AstroResult = null;
+  window.TodayResult = null;
+  _resetCareerLikeResultScreens();
+}
+
 /* =========================================================
    다중 프로필 / 사람별·화면별 현재 위치 — localStorage 영구 저장
    - profiles: { id, name, gender, birthDate, calendarType, isLeapMonth,
@@ -257,8 +276,7 @@ function renderProfileListScreen() {
 function selectActiveProfile(id) {
   if (id === getActiveProfileId()) { goHome(); return; }
   setActiveProfileId(id);
-  window.AstroResult = null;
-  window.TodayResult = null;
+  _invalidateAstroResult();
   refreshLocationVars();
   const p = getProfile();
   if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
@@ -269,8 +287,7 @@ function selectActiveProfile(id) {
 function deleteProfileFromList(id) {
   if (!confirm("정말 삭제할까요?")) return;
   deleteProfile(id);
-  window.AstroResult = null;
-  window.TodayResult = null;
+  _invalidateAstroResult();
   refreshLocationVars();
   const p = getProfile();
   if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
@@ -317,8 +334,7 @@ function setCalendarType(type) {
     if (noteEl) noteEl.textContent = "";
   }
 
-  window.AstroResult = null;
-  window.TodayResult = null;
+  _invalidateAstroResult();
   runAll();
 }
 
@@ -511,8 +527,7 @@ function submitProfileSheet() {
 
   const p = getProfile();
   syncFormFromProfile(p);
-  window.AstroResult = null;
-  window.TodayResult = null;
+  _invalidateAstroResult();
   refreshLocationVars();
   setCalendarType("solar"); // 폼 토글 동기화 + 내부적으로 runAll() 실행
 
@@ -536,8 +551,7 @@ function deleteProfileFromSheet() {
   deleteProfile(_profileSheetContext.editingId);
   closeProfileSheet();
 
-  window.AstroResult = null;
-  window.TodayResult = null;
+  _invalidateAstroResult();
   refreshLocationVars();
   const p = getProfile();
   if (p) { syncFormFromProfile(p); setCalendarType("solar"); }
@@ -2118,7 +2132,7 @@ async function runAstroCalc() {
 
   } catch (err) {
     console.warn("astro-calc 미리계산 실패:", err.message);
-    window.AstroResult = null;
+    _invalidateAstroResult();
     if (statusEl) {
       statusEl.textContent = "⚠️ 차트 계산 실패 (배포 환경에서 다시 시도)";
       statusEl.style.color = "#fca5a5";
@@ -2439,7 +2453,7 @@ function selectCity(cityName) {
   const input  = _$('birthCityInput');
   const hidden = _$('birthCity');
   if (input)  input.value  = cityName;
-  if (hidden) { hidden.value = cityName; window.AstroResult = null; runAll(); }
+  if (hidden) { hidden.value = cityName; _invalidateAstroResult(); runAll(); }
   hideCityList();
 }
 function getCitySelectValue() {
@@ -5256,11 +5270,11 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!el) return;
       el.addEventListener("input",  () => {
         runAll();
-        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { _invalidateAstroResult(); }
       });
       el.addEventListener("change", () => {
         runAll();
-        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { window.AstroResult = null; window.TodayResult = null; }
+        if (["birthDate","birthTime","birthCity","gender","isLeapMonth"].includes(id)) { _invalidateAstroResult(); }
       });
     });
 
