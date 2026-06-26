@@ -272,7 +272,7 @@ ${question}
     }
     controllers.forEach(c => c.abort());
     if (!reply) {
-      console.error('Gemini API error (all parallel attempts failed):', lastError?.message || lastError);
+      console.error('Gemini API error (all parallel attempts failed):', lastError?.errors ? lastError.errors.map(e => e?.message || e).join(' | ') : (lastError?.message || lastError));
       return res.status(502).json({ error: '현재 접속자가 많습니다. 잠시 후 다시 시도해주세요.' });
     }
 
