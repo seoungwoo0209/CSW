@@ -2859,7 +2859,7 @@ function renderAstroNatal(astroData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'astroNatalAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      astroData.natalAspectsFull, '네이탈-네이탈 에스펙트', '🔯', '#dfba6b'
+      astroData.natalAspectsFull, '네이탈-네이탈 에스펙트', '✦', '#dfba6b'
     );
     panel.after(aspectPanel);
   }
@@ -2870,7 +2870,7 @@ function renderAstroNatal(astroData) {
    ========================================================= */
 function calcMidpoint(lonA, lonB) {
   if (lonA == null || lonB == null) return '-';
-  const SIGNS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
+  const SIGNS = ['♈︎','♉︎','♊︎','♋︎','♌︎','♍︎','♎︎','♏︎','♐︎','♑︎','♒︎','♓︎'];
   const a = ((lonA % 360) + 360) % 360;
   const b = ((lonB % 360) + 360) % 360;
   let diff = b - a;
@@ -2940,7 +2940,7 @@ function renderAstroProgression(astroData) {
       border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;">🔭 세컨더리 프로그레션</div>
+        <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;">◐ 세컨더리 프로그레션</div>
         <div style="font-size:11px;color:#7d7257;">
           기준일 ${prog.meta.progDate} · 나이 ${prog.meta.ageYears}세
         </div>
@@ -3019,7 +3019,7 @@ function renderAstroProgression(astroData) {
       </div>
 
       <!-- 에스펙트 -->
-      ${renderAspectAccordion(prog.aspectsFull, '네이탈-프로그레션 에스펙트', '🔭', '#dfba6b')}
+      ${renderAspectAccordion(prog.aspectsFull, '네이탈-프로그레션 에스펙트', '◐', '#dfba6b')}
     </div>
   `;
 
@@ -3228,7 +3228,7 @@ function renderProgTimeline(astroData) {
       border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
       border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🗺️ 프로그레션 태양 타임라인</div>
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">◈ 프로그레션 태양 타임라인</div>
       <div style="font-size:11px;color:#7d7257;margin-bottom:16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;">
