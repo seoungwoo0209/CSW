@@ -1756,6 +1756,19 @@ const _CAREER_TITLE_STYLE = `font-size:18px;font-weight:700;margin-bottom:14px;
 const _CAREER_AI_EYEBROW_STYLE = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
 const _CAREER_AI_TEXT_STYLE = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
 
+// 직업 4종 — "타이밍 강도(강함/보통/약함)" 배지
+function _strengthBadgeHtml(strength) {
+  const s = (strength || '').trim();
+  const colorMap = {
+    '강함': { c: '#bdeede', b: 'rgba(120,210,180,.5)', bg: 'rgba(60,180,140,.14)' },
+    '보통': { c: '#f6c177', b: 'rgba(246,193,119,.5)', bg: 'rgba(246,193,119,.12)' },
+    '약함': { c: '#e8a3a3', b: 'rgba(220,140,140,.5)', bg: 'rgba(200,110,110,.12)' },
+  };
+  const style = colorMap[s];
+  if (!style) return '';
+  return `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:${style.c};border:1px solid ${style.b};background:${style.bg};font-weight:600;">지금 시기 강도 · ${s}</span>`;
+}
+
 // 1) 취업·합격운
 async function revealJobHunting() {
   await _revealCareerScreen({
@@ -1807,6 +1820,7 @@ function _renderJobHuntingHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 합격·면접 타이밍</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${_strengthBadgeHtml(sections.strength)}
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
         ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
       </div>
@@ -1876,6 +1890,7 @@ function _renderPromotionHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 승진·협상 흐름</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${_strengthBadgeHtml(sections.strength)}
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 토성 · ${payload.transitNow?.planets?.saturn?.house ? payload.transitNow.planets.saturn.house + '하우스' : '정보 없음'}</span>
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
         ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
@@ -1933,6 +1948,7 @@ function _renderJobChangeHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금의 이직·스카웃 타이밍</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${_strengthBadgeHtml(sections.strength)}
         ${mcChanged ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">프로그레션 MC 전환 · ${payload.progMcSign}</span>` : ''}
         ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
       </div>
@@ -2001,6 +2017,7 @@ function _renderStartupHtml(payload, raw) {
       <div style="${_CAREER_EYEBROW_STYLE}">時 機</div>
       <div style="${_CAREER_TITLE_STYLE}">지금이 시작하기 좋은 시기인지</div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        ${_strengthBadgeHtml(sections.strength)}
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">트랜짓 목성 · ${payload.transitNow?.planets?.jupiter?.house ? payload.transitNow.planets.jupiter.house + '하우스' : '정보 없음'}</span>
         ${ecl ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${ecl.type} · ${ecl.conjunctPoint} 근접</span>` : ''}
       </div>
