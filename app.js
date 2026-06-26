@@ -1813,9 +1813,10 @@ function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
   const { scores, bestIndices } = monthlyStrength;
   const min = Math.min(...scores), max = Math.max(...scores);
-  const hasVariation = min !== max;
-  const bestSet = new Set(hasVariation ? (bestIndices || []) : []);
-  const heightOf = (s) => hasVariation ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
+  const hasRange = min !== max; // 막대 높이에 차이를 줄지 (점수가 1점이라도 다르면 true)
+  const hasBest = (bestIndices || []).length > 0; // 그중 진짜 "골든타임"이라 부를 만한 양(+)의 달이 있는지
+  const bestSet = new Set(hasBest ? bestIndices : []);
+  const heightOf = (s) => hasRange ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
 
   const bars = scores.map((s, i) => {
     const h = heightOf(s);
@@ -1832,11 +1833,16 @@ function _strengthTimelineHtml(monthlyStrength) {
     `<span style="flex:1;text-align:center;font-size:9px;color:#6b6253;">${i + 1}</span>`
   ).join('');
 
-  const callout = hasVariation
+  const callout = hasBest
     ? `
       <span style="font-size:15px;">🌕</span>
       <span style="font-size:11.5px;color:#857a60;">올해의 골든타임</span>
-      <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${(bestIndices || []).map(i => `${i + 1}월`).join('·')}</span>
+      <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${bestIndices.map(i => `${i + 1}월`).join('·')}</span>
+    `
+    : hasRange
+    ? `
+      <span style="font-size:15px;">🌓</span>
+      <span style="font-size:11.5px;color:#857a60;">올해는 특별히 두드러지게 좋은 달은 없어요</span>
     `
     : `
       <span style="font-size:15px;">🌓</span>

@@ -116,7 +116,12 @@ function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
 // scores(12개, 강도 점수 또는 호의신호 개수)와 현재월 인덱스로 타임라인 응답 객체 생성
 function buildMonthlyStrength(scores, nowIdx) {
   const max = Math.max(...scores);
-  const bestIndices = scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, []);
+  const min = Math.min(...scores);
+  // 골든타임은 "그 해 안에서 가장 나쁘지 않은 달"이 아니라 "실제로 양(+)의 신호가 있는 달"이어야 한다.
+  // 12개월이 전부 동점이거나(min===max), 최고점 자체가 0 이하(중립/부정적 신호뿐)면 강조할 달이 없는 게 맞다.
+  const bestIndices = (min !== max && max > 0)
+    ? scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, [])
+    : [];
   return { scores, nowIdx, bestIndices };
 }
 
@@ -158,13 +163,13 @@ function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
   const h1 = scores.slice(0, 6).reduce((a, b) => a + b, 0) / 6;
   const h2 = scores.slice(6).reduce((a, b) => a + b, 0) / 6;
   const halfTrend = h1 === h2 ? 'even' : (h2 > h1 ? 'h2' : 'h1');
-  const hasVariation = Math.min(...scores) !== Math.max(...scores);
+  const hasBest = bestIndices.length > 0;
   return {
     strengthFixed,
     halfTrend,
-    hasVariation,
-    bestMonths: hasVariation ? bestIndices.map(i => i + 1) : [],
-    reason: hasVariation ? reasonFn(bestIndices[0], ctx) : null,
+    hasVariation: hasBest,
+    bestMonths: hasBest ? bestIndices.map(i => i + 1) : [],
+    reason: hasBest ? reasonFn(bestIndices[0], ctx) : null,
   };
 }
 
