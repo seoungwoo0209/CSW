@@ -2369,7 +2369,7 @@ async function runAstroCalc() {
   const statusEl = _$("astroCalcStatus");
   if (statusEl) {
     statusEl.textContent = "⏳ 차트 계산 중...";
-    statusEl.style.color = "#94a3b8";
+    statusEl.style.color = "#9b8f74";
   }
 
   try {
@@ -2859,7 +2859,7 @@ function renderAstroNatal(astroData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'astroNatalAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      astroData.natalAspectsFull, '네이탈-네이탈 에스펙트', '🔯', '#c4b5fd'
+      astroData.natalAspectsFull, '네이탈-네이탈 에스펙트', '🔯', '#dfba6b'
     );
     panel.after(aspectPanel);
   }
@@ -2912,20 +2912,20 @@ function renderAstroProgression(astroData) {
       <div style="
         display:grid;grid-template-columns:1fr 1fr 1fr;
         gap:6px;align-items:center;
-        background:${changed ? 'rgba(165,180,252,.08)' : 'rgba(255,255,255,.03)'};
-        border:1px solid ${changed ? 'rgba(165,180,252,.25)' : 'rgba(255,255,255,.06)'};
+        background:${changed ? 'rgba(200,168,96,.1)' : 'rgba(255,255,255,.03)'};
+        border:1px solid ${changed ? 'rgba(200,168,96,.35)' : 'rgba(200,168,96,.1)'};
         border-radius:8px;padding:7px 10px;margin-bottom:4px;
       ">
-        <div style="color:#c4b5fd;font-size:11px;">${label}</div>
+        <div style="color:#dfba6b;font-size:11px;">${label}</div>
         <div>
-          <div style="color:#94a3b8;font-size:11px;">${n.sign}</div>
-          <div style="color:#64748b;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
+          <div style="color:#cabfa0;font-size:11px;">${n.sign}</div>
+          <div style="color:#8d8268;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
         </div>
         <div>
-          <div style="color:${changed ? '#a5b4fc' : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+          <div style="color:${changed ? '#f4e6bd' : '#f4ecd8'};font-size:11px;font-weight:${changed ? 700 : 400};">
             ${p.sign}${changed ? ' ✦' : ''}
           </div>
-          <div style="color:#64748b;font-size:10px;">${p.degree}°${p.minute}' · ${p.house}H</div>
+          <div style="color:#8d8268;font-size:10px;">${p.degree}°${p.minute}' · ${p.house}H</div>
         </div>
       </div>
     `;
@@ -2936,21 +2936,21 @@ function renderAstroProgression(astroData) {
   panel.style.cssText = "margin-top:12px;";
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;">🔭 세컨더리 프로그레션</div>
-        <div style="font-size:11px;color:#475569;">
+        <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;">🔭 세컨더리 프로그레션</div>
+        <div style="font-size:11px;color:#7d7257;">
           기준일 ${prog.meta.progDate} · 나이 ${prog.meta.ageYears}세
         </div>
       </div>
 
       <!-- 헤더 -->
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
-        <div style="font-size:10px;color:#475569;">행성</div>
-        <div style="font-size:10px;color:#475569;">네이탈</div>
-        <div style="font-size:10px;color:#a5b4fc;">프로그레션 ✦변화</div>
+        <div style="font-size:10px;color:#7d7257;">행성</div>
+        <div style="font-size:10px;color:#7d7257;">네이탈</div>
+        <div style="font-size:10px;color:#dfba6b;">프로그레션 ✦변화</div>
       </div>
 
       <!-- 행성 비교 -->
@@ -2973,53 +2973,53 @@ function renderAstroProgression(astroData) {
           const pText = pObj ? `${pObj.sign}${changed ? ' ✦' : ''}` : '-';
           const pSub  = pObj ? `${pObj.degree}°${pObj.minute}'` : '';
           const pH    = pObj?.house != null ? ` · ${pObj.house}H` : '';
-          return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;background:${changed?'rgba(165,180,252,.08)':'rgba(255,255,255,.03)'};border:1px solid ${changed?'rgba(165,180,252,.25)':'rgba(255,255,255,.06)'};border-radius:8px;padding:7px 10px;margin-bottom:4px;">
+          return `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;align-items:center;background:${changed?'rgba(200,168,96,.1)':'rgba(255,255,255,.03)'};border:1px solid ${changed?'rgba(200,168,96,.35)':'rgba(200,168,96,.1)'};border-radius:8px;padding:7px 10px;margin-bottom:4px;">
             <div style="color:${color};font-size:11px;">${icon} ${label}</div>
-            <div><div style="color:#94a3b8;font-size:11px;">${nText}</div><div style="color:#64748b;font-size:10px;">${nSub}${nH}</div></div>
-            <div><div style="color:${changed?'#a5b4fc':'#e2e8f0'};font-size:11px;font-weight:${changed?700:400};">${pText}</div><div style="color:#64748b;font-size:10px;">${pSub}${pH}</div></div>
+            <div><div style="color:#cabfa0;font-size:11px;">${nText}</div><div style="color:#8d8268;font-size:10px;">${nSub}${nH}</div></div>
+            <div><div style="color:${changed?'#f4e6bd':'#f4ecd8'};font-size:11px;font-weight:${changed?700:400};">${pText}</div><div style="color:#8d8268;font-size:10px;">${pSub}${pH}</div></div>
           </div>`;
         }
         const pNorth = prog.nodes?.north;
         const pSouth = prog.nodes?.south;
         const northChanged = north && pNorth && north.signIndex !== pNorth.signIndex;
         const southChanged = south && pSouth && south.signIndex !== pSouth.signIndex;
-        return row('↑','ASC',nAsc,pAsc,ascChanged,'#a78bfa')
-              +row('⊕','MC',nMc,pMc,mcChanged,'#a78bfa')
-              +row('☊','북노드',north,pNorth,northChanged,'#fcd34d')
-              +row('☋','릴리스',south,pSouth,southChanged,'#94a3b8');
+        return row('↑','ASC',nAsc,pAsc,ascChanged,'#dfba6b')
+              +row('⊕','MC',nMc,pMc,mcChanged,'#dfba6b')
+              +row('☊','북노드',north,pNorth,northChanged,'#f4e6bd')
+              +row('☋','릴리스',south,pSouth,southChanged,'#9b8f74');
       })()}
 
       <!-- 미드포인트 -->
       <div style="margin-top:12px;">
-        <div style="font-size:11px;color:#64748b;letter-spacing:1px;margin-bottom:8px;">미드 포인트</div>
+        <div style="font-size:11px;color:#7d7257;letter-spacing:1px;margin-bottom:8px;">미드 포인트</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
-          <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10px;color:#94a3b8;letter-spacing:1px;margin-bottom:8px;">네이탈 행성</div>
+          <div style="background:rgba(255,255,255,.03);border:1px solid rgba(200,168,96,.15);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#9b8f74;letter-spacing:1px;margin-bottom:8px;">네이탈 행성</div>
             <div style="margin-bottom:6px;">
-              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
-              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(astroData.angles?.asc?.longitude, astroData.angles?.mc?.longitude)}</div>
+              <div style="font-size:10px;color:#7d7257;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#f4ecd8;font-weight:600;">${calcMidpoint(astroData.angles?.asc?.longitude, astroData.angles?.mc?.longitude)}</div>
             </div>
             <div>
-              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
-              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(natal.sun?.longitude, natal.moon?.longitude)}</div>
+              <div style="font-size:10px;color:#7d7257;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#f4ecd8;font-weight:600;">${calcMidpoint(natal.sun?.longitude, natal.moon?.longitude)}</div>
             </div>
           </div>
-          <div style="background:rgba(167,139,250,.06);border:1px solid rgba(167,139,250,.18);border-radius:8px;padding:10px 12px;">
-            <div style="font-size:10px;color:#a78bfa;letter-spacing:1px;margin-bottom:8px;">프로그레션</div>
+          <div style="background:rgba(200,168,96,.1);border:1px solid rgba(200,168,96,.35);border-radius:8px;padding:10px 12px;">
+            <div style="font-size:10px;color:#dfba6b;letter-spacing:1px;margin-bottom:8px;">프로그레션</div>
             <div style="margin-bottom:6px;">
-              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">ASC/MC</div>
-              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.angles?.asc?.longitude, prog.angles?.mc?.longitude)}</div>
+              <div style="font-size:10px;color:#7d7257;margin-bottom:2px;">ASC/MC</div>
+              <div style="font-size:12px;color:#f4ecd8;font-weight:600;">${calcMidpoint(prog.angles?.asc?.longitude, prog.angles?.mc?.longitude)}</div>
             </div>
             <div>
-              <div style="font-size:10px;color:#64748b;margin-bottom:2px;">태양/달</div>
-              <div style="font-size:12px;color:#e2e8f0;font-weight:600;">${calcMidpoint(prog.planets?.sun?.longitude, prog.planets?.moon?.longitude)}</div>
+              <div style="font-size:10px;color:#7d7257;margin-bottom:2px;">태양/달</div>
+              <div style="font-size:12px;color:#f4ecd8;font-weight:600;">${calcMidpoint(prog.planets?.sun?.longitude, prog.planets?.moon?.longitude)}</div>
             </div>
           </div>
         </div>
       </div>
 
       <!-- 에스펙트 -->
-      ${renderAspectAccordion(prog.aspectsFull, '네이탈-프로그레션 에스펙트', '🔭', '#a5b4fc')}
+      ${renderAspectAccordion(prog.aspectsFull, '네이탈-프로그레션 에스펙트', '🔭', '#dfba6b')}
     </div>
   `;
 
@@ -3195,24 +3195,24 @@ function renderProgTimeline(astroData) {
     const chapterNum = i + 1;
     return `
       <tr style="
-        background:${isCur ? 'rgba(165,180,252,.12)' : 'transparent'};
-        border-bottom:1px solid rgba(255,255,255,.05);
+        background:${isCur ? 'rgba(200,168,96,.12)' : 'transparent'};
+        border-bottom:1px solid rgba(200,168,96,.08);
       ">
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#a5b4fc' : '#64748b'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
-          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(165,180,252,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
+          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startAge}~${c.endAge < 90 ? c.endAge : c.endAge + ''}세
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startYear}~${c.endYear}
         </td>
         <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
           <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
-          <span style="color:#475569;"> · </span>
-          <span style="color:${isCur ? '#a5b4fc' : '#64748b'};">${c.house}H</span>
+          <span style="color:#7d7257;"> · </span>
+          <span style="color:${isCur ? '#dfba6b' : '#7d7257'};">${c.house}H</span>
         </td>
-        <td style="padding:10px 12px;font-size:11px;color:#64748b;">
+        <td style="padding:10px 12px;font-size:11px;color:#7d7257;">
           ${theme.label}
         </td>
       </tr>
@@ -3224,28 +3224,28 @@ function renderProgTimeline(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:4px;">🗺️ 프로그레션 태양 타임라인</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:16px;">네이탈 하우스 기준 · A방식</div>
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🗺️ 프로그레션 태양 타임라인</div>
+      <div style="font-size:11px;color:#7d7257;margin-bottom:16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;">
         <table style="width:100%;border-collapse:collapse;min-width:420px;">
           <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.1);">
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;">챕터</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;">나이</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;">연도</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;">위치</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;">핵심 주제</th>
+            <tr style="border-bottom:1px solid rgba(200,168,96,.15);">
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">챕터</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">나이</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">연도</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">위치</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">핵심 주제</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
 
-      <div style="margin-top:12px;font-size:10px;color:#334155;text-align:right;">
+      <div style="margin-top:12px;font-size:10px;color:#5c5440;text-align:right;">
         프로그레스드 태양 1년 ≈ 1° 이동 · Placidus 네이탈 하우스 고정
       </div>
     </div>
@@ -3436,24 +3436,24 @@ function renderProgMoonTimeline(astroData) {
     const chapterNum = i + 1;
     return `
       <tr style="
-        background:${isCur ? 'rgba(165,180,252,.12)' : 'transparent'};
-        border-bottom:1px solid rgba(255,255,255,.05);
+        background:${isCur ? 'rgba(200,168,96,.12)' : 'transparent'};
+        border-bottom:1px solid rgba(200,168,96,.08);
       ">
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#a5b4fc' : '#64748b'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
-          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(165,180,252,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
+          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startAge}~${c.endAge}세
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#e2e8f0' : '#94a3b8'};white-space:nowrap;">
+        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startYear}~${c.endYear}
         </td>
         <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
           <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
-          <span style="color:#475569;"> · </span>
-          <span style="color:${isCur ? '#a5b4fc' : '#64748b'};">${c.house}H</span>
+          <span style="color:#7d7257;"> · </span>
+          <span style="color:${isCur ? '#dfba6b' : '#7d7257'};">${c.house}H</span>
         </td>
-        <td style="padding:10px 12px;font-size:11px;color:#64748b;">
+        <td style="padding:10px 12px;font-size:11px;color:#7d7257;">
           ${theme.label}
         </td>
       </tr>
@@ -3465,30 +3465,30 @@ function renderProgMoonTimeline(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <details style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <summary style="cursor:pointer;font-size:12px;color:#a5b4fc;letter-spacing:2px;">
+      <summary style="cursor:pointer;font-size:12px;color:#dfba6b;letter-spacing:2px;">
         🌙 프로그레션 달 타임라인 (${chapters.length}개) — 클릭하여 펼치기
       </summary>
-      <div style="font-size:11px;color:#475569;margin:8px 0 16px;">네이탈 하우스 기준 · A방식</div>
+      <div style="font-size:11px;color:#7d7257;margin:8px 0 16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;overflow-y:auto;max-height:420px;">
         <table style="width:100%;border-collapse:collapse;min-width:420px;">
           <thead>
-            <tr style="border-bottom:1px solid rgba(255,255,255,.1);">
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">챕터</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">나이</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">연도</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">위치</th>
-              <th style="padding:6px 12px;font-size:10px;color:#475569;text-align:left;font-weight:400;position:sticky;top:0;background:rgba(15,15,35,.95);">핵심 주제</th>
+            <tr style="border-bottom:1px solid rgba(200,168,96,.15);">
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">챕터</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">나이</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">연도</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">위치</th>
+              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">핵심 주제</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
         </table>
       </div>
 
-      <div style="margin-top:12px;font-size:10px;color:#334155;text-align:right;">
+      <div style="margin-top:12px;font-size:10px;color:#5c5440;text-align:right;">
         프로그레스드 달 1년 ≈ 13° 이동 · Placidus 네이탈 하우스 고정
       </div>
     </details>
@@ -3609,19 +3609,19 @@ function renderSaturnReturnPanel(astroData) {
     return `
       <div style="
         display:flex;justify-content:space-between;align-items:center;gap:12px;
-        background:${isCur ? 'rgba(251,191,36,.12)' : 'rgba(255,255,255,.03)'};
-        border:1px solid ${isCur ? 'rgba(251,191,36,.3)' : 'rgba(255,255,255,.06)'};
+        background:${isCur ? 'rgba(200,168,96,.12)' : 'rgba(255,255,255,.03)'};
+        border:1px solid ${isCur ? 'rgba(200,168,96,.35)' : 'rgba(200,168,96,.1)'};
         border-radius:8px;padding:10px 14px;margin-bottom:6px;
       ">
         <div>
-          <div style="font-size:12px;color:${isCur ? '#fbbf24' : '#e2e8f0'};font-weight:${isCur ? 700 : 600};">
-            ${i + 1}차 토성 리턴${isCur ? ' <span style="font-size:10px;background:rgba(251,191,36,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+          <div style="font-size:12px;color:${isCur ? '#dfba6b' : '#f4ecd8'};font-weight:${isCur ? 700 : 600};">
+            ${i + 1}차 토성 리턴${isCur ? ' <span style="font-size:10px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
           </div>
-          <div style="font-size:11px;color:#64748b;margin-top:2px;">${THEMES[i] || ''}</div>
+          <div style="font-size:11px;color:#8d8268;margin-top:2px;">${THEMES[i] || ''}</div>
         </div>
         <div style="text-align:right;white-space:nowrap;">
-          <div style="font-size:13px;color:#fbbf24;font-weight:700;">만 ${r.age}세</div>
-          <div style="font-size:11px;color:#64748b;">${r.year}년</div>
+          <div style="font-size:13px;color:#dfba6b;font-weight:700;">만 ${r.age}세</div>
+          <div style="font-size:11px;color:#8d8268;">${r.year}년</div>
         </div>
       </div>
     `;
@@ -3632,11 +3632,11 @@ function renderSaturnReturnPanel(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(251,191,36,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#fbbf24;letter-spacing:2px;margin-bottom:4px;">🪐 토성 리턴</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:14px;">
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🪐 토성 리턴</div>
+      <div style="font-size:11px;color:#7d7257;margin-bottom:14px;">
         트랜짓 토성이 네이탈 토성(${natalSaturn.sign} ${natalSaturn.degree}°${natalSaturn.minute}' · ${natalSaturn.house}H) 위치로 돌아오는 시기
       </div>
       ${rowsHtml}
@@ -3663,7 +3663,7 @@ function filterSolarCityList(val) {
   const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
   if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
   dropdown.innerHTML = matched.map(c =>
-    '<div onclick="selectSolarCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+    '<div onclick="selectSolarCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
   ).join('');
   dropdown.style.display = 'block';
 }
@@ -3690,7 +3690,7 @@ function selectSolarCity(cityName) {
    ========================================================= */
 function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
   const {
-    accentColor = '#fde047',
+    accentColor = '#dfba6b',
     headerLabel = '솔라리턴',
     aspectTitle1 = '솔라리턴-솔라리턴 에스펙트',
     aspectTitle2 = '솔라리턴-네이탈 에스펙트',
@@ -3717,16 +3717,16 @@ function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
     const changed = n.signIndex !== s.signIndex;
     return `
       <div style="${rowStyle(changed)}">
-        <div style="color:#c4b5fd;font-size:11px;">${plabel}</div>
+        <div style="color:#dfba6b;font-size:11px;">${plabel}</div>
         <div>
-          <div style="color:#94a3b8;font-size:11px;">${n.sign}</div>
-          <div style="color:#64748b;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
+          <div style="color:#cabfa0;font-size:11px;">${n.sign}</div>
+          <div style="color:#8d8268;font-size:10px;">${n.degree}°${n.minute}' · ${n.house}H</div>
         </div>
         <div>
-          <div style="color:${changed ? accentColor : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+          <div style="color:${changed ? accentColor : '#f4ecd8'};font-size:11px;font-weight:${changed ? 700 : 400};">
             ${s.sign}${changed ? ' ✦' : ''}
           </div>
-          <div style="color:#64748b;font-size:10px;">${s.degree}°${s.minute}' · ${s.house}H</div>
+          <div style="color:#8d8268;font-size:10px;">${s.degree}°${s.minute}' · ${s.house}H</div>
         </div>
       </div>
     `;
@@ -3740,24 +3740,24 @@ function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
       <div style="${rowStyle(changed)}">
         <div style="color:${color};font-size:11px;">${icon} ${rowLabel}</div>
         <div>
-          <div style="color:#94a3b8;font-size:11px;">${nObj ? nObj.sign : '-'}</div>
-          <div style="color:#64748b;font-size:10px;">${nObj ? `${nObj.degree}°${nObj.minute}'${nH}` : ''}</div>
+          <div style="color:#cabfa0;font-size:11px;">${nObj ? nObj.sign : '-'}</div>
+          <div style="color:#8d8268;font-size:10px;">${nObj ? `${nObj.degree}°${nObj.minute}'${nH}` : ''}</div>
         </div>
         <div>
-          <div style="color:${changed ? accentColor : '#e2e8f0'};font-size:11px;font-weight:${changed ? 700 : 400};">
+          <div style="color:${changed ? accentColor : '#f4ecd8'};font-size:11px;font-weight:${changed ? 700 : 400};">
             ${sObj ? sObj.sign : '-'}${changed ? ' ✦' : ''}
           </div>
-          <div style="color:#64748b;font-size:10px;">${sObj ? `${sObj.degree}°${sObj.minute}'${sH}` : ''}</div>
+          <div style="color:#8d8268;font-size:10px;">${sObj ? `${sObj.degree}°${sObj.minute}'${sH}` : ''}</div>
         </div>
       </div>
     `;
   }
 
   const anglesHtml =
-    angleRow('↑','ASC',   angles.asc,  item.angles.asc, '#fcd34d') +
-    angleRow('⊕','MC',    angles.mc,   item.angles.mc,  '#fcd34d') +
-    angleRow('☊','북노드', nodes.north, item.nodes.north, '#fcd34d') +
-    angleRow('☋','릴리스', nodes.south, item.nodes.south, '#94a3b8');
+    angleRow('↑','ASC',   angles.asc,  item.angles.asc, '#dfba6b') +
+    angleRow('⊕','MC',    angles.mc,   item.angles.mc,  '#dfba6b') +
+    angleRow('☊','북노드', nodes.north, item.nodes.north, '#f4e6bd') +
+    angleRow('☋','릴리스', nodes.south, item.nodes.south, '#9b8f74');
 
   const pad2 = n => String(n).padStart(2, '0');
   const d = new Date(item.dateLocal);
@@ -3774,8 +3774,8 @@ function renderReturnChart(item, natal, angles, nodes, label, tag, opts) {
       </summary>
       <div style="margin-top:12px;">
         <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px;padding:0 10px;">
-          <div style="font-size:10px;color:#475569;">행성</div>
-          <div style="font-size:10px;color:#475569;">네이탈</div>
+          <div style="font-size:10px;color:#7d7257;">행성</div>
+          <div style="font-size:10px;color:#7d7257;">네이탈</div>
           <div style="font-size:10px;color:${accentColor};">${headerLabel} ✦변화</div>
         </div>
         ${planetRowsHtml}
@@ -3802,29 +3802,29 @@ async function renderSolarReturnPanel(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(253,224,71,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#fde047;letter-spacing:2px;margin-bottom:4px;">☀️ 솔라리턴</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">☀️ 솔라리턴</div>
+      <div style="font-size:11px;color:#7d7257;margin-bottom:12px;">
         트랜짓 태양이 네이탈 태양 위치로 돌아오는 시점의 어센던트
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">솔라리턴에 적용할 도시</label>
+        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">솔라리턴에 적용할 도시</label>
         <div style="position:relative;">
           <input id="solarReturnCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
-            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
+            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;"
             oninput="filterSolarCityList(this.value)"
             onfocus="showSolarCityList()"
             onblur="setTimeout(hideSolarCityList,200)"
           />
           <div id="solarReturnCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
-            overflow-y:auto;background:#1e2340;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
             margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
         </div>
       </div>
-      <div id="astroSolarReturnRows" style="font-size:12px;color:#94a3b8;">⏳ 솔라리턴 계산 중...</div>
+      <div id="astroSolarReturnRows" style="font-size:12px;color:#9b8f74;">⏳ 솔라리턴 계산 중...</div>
     </div>
   `;
 
@@ -3859,7 +3859,7 @@ async function renderSolarReturnPanel(astroData) {
     if (!res.ok || data.error) throw new Error(data.error || "솔라리턴 계산 오류");
 
     const srOpts = {
-      accentColor: '#fde047',
+      accentColor: '#dfba6b',
       headerLabel: '솔라리턴',
       aspectTitle1: '솔라리턴-솔라리턴 에스펙트',
       aspectTitle2: '솔라리턴-네이탈 에스펙트',
@@ -3898,14 +3898,14 @@ async function renderLunarReturnPanel(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(165,180,252,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#a5b4fc;letter-spacing:2px;margin-bottom:4px;">🌙 루나리턴</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:12px;">
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🌙 루나리턴</div>
+      <div style="font-size:11px;color:#7d7257;margin-bottom:12px;">
         트랜짓 달이 네이탈 달 위치로 돌아오는 시점의 어센던트 (${cityName} 기준, 솔라리턴과 동일 도시)
       </div>
-      <div id="astroLunarReturnRows" style="font-size:12px;color:#94a3b8;">⏳ 루나리턴 계산 중...</div>
+      <div id="astroLunarReturnRows" style="font-size:12px;color:#9b8f74;">⏳ 루나리턴 계산 중...</div>
     </div>
   `;
 
@@ -3937,7 +3937,7 @@ async function renderLunarReturnPanel(astroData) {
     if (!res.ok || data.error) throw new Error(data.error || "루나리턴 계산 오류");
 
     const lrOpts = {
-      accentColor: '#a5b4fc',
+      accentColor: '#dfba6b',
       headerLabel: '루나리턴',
       aspectTitle1: '루나리턴-루나리턴 에스펙트',
       aspectTitle2: '루나리턴-네이탈 에스펙트',
@@ -3977,19 +3977,19 @@ function renderMoonPhaseEventRow(ev, astroData, opts) {
 
   const conjHtml = ev.conjunctions.length
     ? ev.conjunctions.map(c => `${c.point} ${c.degree}°${c.minute}'`).join(' · ')
-    : `<span style="color:#475569;">-</span>`;
+    : `<span style="color:#7d7257;">-</span>`;
 
   return `
     <div style="
-      background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+      background:rgba(255,255,255,.03);border:1px solid rgba(200,168,96,.1);
       border-radius:10px;padding:10px 12px;margin-bottom:8px;
     ">
       <div style="display:grid;grid-template-columns:auto 1.3fr 1.4fr;gap:8px;align-items:center;font-size:12px;">
         <div style="color:${meta.color};font-weight:700;white-space:nowrap;">${meta.icon} ${dateStr}</div>
-        <div style="color:#e2e8f0;">
-          ${meta.label} · ${moon.sign} ${moon.degree}°${moon.minute}' <span style="color:#64748b;font-size:10px;">${moon.house}H</span>
+        <div style="color:#f4ecd8;">
+          ${meta.label} · ${moon.sign} ${moon.degree}°${moon.minute}' <span style="color:#8d8268;font-size:10px;">${moon.house}H</span>
         </div>
-        <div style="color:#a5b4fc;font-size:11px;">${conjHtml}</div>
+        <div style="color:#dfba6b;font-size:11px;">${conjHtml}</div>
       </div>
       ${renderReturnChart(ev, astroData.natal, astroData.angles, astroData.nodes, dateStr, meta.label, opts)}
     </div>
@@ -4011,17 +4011,17 @@ async function renderMoonPhasesPanel(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <details style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(196,181,253,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <summary id="astroMoonPhasesTitle" style="cursor:pointer;font-size:12px;color:#c4b5fd;letter-spacing:2px;">
+      <summary id="astroMoonPhasesTitle" style="cursor:pointer;font-size:12px;color:#dfba6b;letter-spacing:2px;">
         🌑🌕 신월·만월 캘린더 — 클릭하여 펼치기
       </summary>
       <div style="margin-top:12px;">
-        <div id="astroMoonPhasesDesc" style="font-size:11px;color:#475569;margin-bottom:12px;">
+        <div id="astroMoonPhasesDesc" style="font-size:11px;color:#7d7257;margin-bottom:12px;">
           신월/만월(및 일식/월식) — 나의 네이탈 차트 기준 하우스 · 행성 애스펙트 (${cityName} 기준)
         </div>
-        <div id="astroMoonPhasesRows" style="font-size:12px;color:#94a3b8;">⏳ 신월/만월 계산 중...</div>
+        <div id="astroMoonPhasesRows" style="font-size:12px;color:#9b8f74;">⏳ 신월/만월 계산 중...</div>
       </div>
     </details>
   `;
@@ -4049,7 +4049,7 @@ async function renderMoonPhasesPanel(astroData) {
     if (!res.ok || data.error) throw new Error(data.error || "신월/만월 계산 오류");
 
     const mpOpts = {
-      accentColor: '#c4b5fd',
+      accentColor: '#dfba6b',
       headerLabel: '트랜짓',
       aspectTitle1: '트랜짓-트랜짓 에스펙트',
       aspectTitle2: '트랜짓-네이탈 에스펙트',
@@ -4085,7 +4085,7 @@ function filterTransitCityList(val) {
   const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
   if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
   dropdown.innerHTML = matched.map(c =>
-    '<div onclick="selectTransitCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#e2e8f0;cursor:pointer;border-bottom:1px solid rgba(255,255,255,.05);" onmouseover="this.style.background=\'rgba(255,255,255,.08)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+    '<div onclick="selectTransitCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
   ).join('');
   dropdown.style.display = 'block';
 }
@@ -4154,47 +4154,47 @@ async function renderTransitPanel(astroData) {
   panel.style.cssText = 'margin-top:12px;';
   panel.innerHTML = `
     <div style="
-      background:linear-gradient(135deg,rgba(10,15,40,.95),rgba(20,10,50,.90));
-      border:1px solid rgba(52,211,153,.2);border-radius:16px;padding:20px;
+      border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+      border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px;
     ">
-      <div style="font-size:12px;color:#34d399;letter-spacing:2px;margin-bottom:4px;">🪐 트랜짓 차트</div>
-      <div style="font-size:11px;color:#475569;margin-bottom:14px;">
+      <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🪐 트랜짓 차트</div>
+      <div style="font-size:11px;color:#7d7257;margin-bottom:14px;">
         특정 날짜/시각의 트랜짓 행성을 네이탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
-          <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 날짜</label>
+          <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">트랜짓 날짜</label>
           <input id="transitDateInput" type="date" value="${defaultDate}"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
-            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
+            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;" />
         </div>
         <div>
-          <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 시각</label>
+          <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">트랜짓 시각</label>
           <input id="transitTimeInput" type="time" value="${defaultTime}"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
-            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;" />
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
+            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;" />
         </div>
       </div>
       <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#94a3b8;display:block;margin-bottom:4px;">트랜짓 적용 도시</label>
+        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">트랜짓 적용 도시</label>
         <div style="position:relative;">
           <input id="transitCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.15);
-            background:rgba(255,255,255,.07);color:#e2e8f0;font-size:13px;box-sizing:border-box;"
+            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
+            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;"
             oninput="filterTransitCityList(this.value)"
             onfocus="showTransitCityList()"
             onblur="setTimeout(hideTransitCityList,200)"
           />
           <div id="transitCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
-            overflow-y:auto;background:#1e2340;border:1px solid rgba(255,255,255,.15);border-radius:8px;
+            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
             margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
         </div>
       </div>
-      <button onclick="calcTransitChart()" style="
-        background:rgba(52,211,153,.15);border:1px solid rgba(52,211,153,.4);color:#34d399;
-        border-radius:8px;padding:8px 18px;font-size:12px;cursor:pointer;margin-bottom:14px;letter-spacing:1px;
-      ">🪐 트랜짓 차트 계산하기</button>
-      <div id="astroTransitRows" style="font-size:12px;color:#94a3b8;">⏳ 트랜짓 계산 중...</div>
+      <button onclick="calcTransitChart()" class="intro-card-cta" style="padding:8px 18px;font-size:12px;margin-bottom:14px;">
+        <span class="cta-sheen"></span>
+        <span class="intro-card-cta-label" style="font-size:12px;letter-spacing:.1em;">🪐 트랜짓 차트 계산하기</span>
+      </button>
+      <div id="astroTransitRows" style="font-size:12px;color:#9b8f74;">⏳ 트랜짓 계산 중...</div>
     </div>
   `;
 
@@ -4241,7 +4241,7 @@ async function calcTransitChart() {
     if (!res.ok || data.error) throw new Error(data.error || '트랜짓 계산 오류');
 
     const trOpts = {
-      accentColor: '#34d399',
+      accentColor: '#dfba6b',
       headerLabel: '트랜짓',
       aspectTitle1: '트랜짓-트랜짓 에스펙트',
       aspectTitle2: '트랜짓-네이탈 에스펙트',
