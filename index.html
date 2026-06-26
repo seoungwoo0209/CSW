@@ -1208,31 +1208,57 @@
     </div>
 
     <div class="screen-body">
-      <div id="astroCalcStatus" style="font-size:12px;color:#94a3b8;padding:6px 2px;min-height:20px;"></div>
+      <div id="astroCalcStatus" style="font-size:12px;color:#8d8268;padding:6px 2px;min-height:20px;"></div>
 
-      <div id="astroNatalPanel" style="display:none;">
-        <div class="result-card">
-          <div class="card-title">🪐 네이탈 차트</div>
-          <div id="astroNatalGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"></div>
+      <div id="astroInputCard" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">점성술</span>
+          <span class="line r"></span>
         </div>
+
+        <p class="intro-card-headline">
+          별자리와 행성의 흐름으로 당신의 기질과 운명을 읽어드립니다.
+        </p>
+
+        <p class="intro-card-tags">
+          타고난 기질<span class="dot">·</span>끌림과 강점<span class="dot">·</span>삶의 방향
+        </p>
+
+        <div style="font-size:11px;color:#9b8f74;margin-bottom:4px;">※ 출생도시를 입력하면 정확한 하우스 계산이 가능합니다.</div>
+
+        <button id="astroBtn" onclick="requestAstroReading()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">⭐ 점성술 리딩 시작</span>
+        </button>
       </div>
 
-      <div class="result-card">
-        <div class="card-title">점성술 리딩</div>
-        <div style="font-size:13px;color:#94a3b8;margin-bottom:14px;line-height:1.6;">
-          별자리와 행성의 흐름으로 당신의 운명을 읽어드립니다.<br>
-          <span style="color:#a78bfa;font-size:11px;">※ 출생도시를 입력하면 정확한 하우스 계산이 가능합니다.</span>
+      <div id="astroLoading" style="display:none;margin:20px 0;text-align:center;">
+        <div style="font-size:13px;color:#dfba6b;animation:pulse 1.5s ease-in-out infinite;">셀레스코드 고유 알고리즘을 토대로<br>AI가 점성술 차트를 정밀하게 해석 중입니다...</div>
+        <div style="font-size:11px;color:#7d7257;margin-top:6px;">※ 응답이 없으면 다시 눌러주세요.</div>
+      </div>
+
+      <div id="astroResult" style="display:none;margin-top:16px;"></div>
+      <div id="astroError" style="display:none;margin-top:12px;color:#ff7a7a;font-size:13px;
+        background:rgba(255,122,122,.08);border:1px solid rgba(255,122,122,.25);border-radius:8px;padding:10px 14px;"></div>
+
+      <div id="astroNatalPanel" style="display:none;margin-top:16px;">
+        <div style="border-radius:20px;background:radial-gradient(120% 50% at 50% -6%, #1a1540 0%, #0e0b24 55%, #08060f 100%);
+          border:1px solid rgba(200,168,96,.2);box-shadow:0 24px 60px -30px rgba(0,0,0,.92);padding:20px 18px 16px;">
+          <div style="font-size:11px;letter-spacing:.26em;color:#9f93c0;margin-bottom:14px;">NATAL CHART</div>
+          <div style="font-size:18px;font-weight:700;margin-bottom:14px;
+            background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
+            -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">네이탈 차트</div>
+          <div id="astroNatalGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"></div>
         </div>
-        <button id="astroBtn" onclick="requestAstroReading()" class="action-btn" style="background:linear-gradient(135deg,#7c3aed,#4f46e5);">
-          ⭐ 점성술 리딩 시작
-        </button>
-        <div id="astroLoading" style="display:none;margin-top:14px;text-align:center;">
-          <div style="font-size:13px;color:#c4b5fd;animation:pulse 1.5s ease-in-out infinite;">🪐 셀레스코드 고유 알고리즘을 토대로<br>AI가 점성술 차트를 정밀하게 해석 중입니다...</div>
-          <div style="font-size:11px;color:#64748b;margin-top:6px;">※ 응답이 없으면 다시 눌러주세요.</div>
-        </div>
-        <div id="astroResult" style="display:none;margin-top:16px;"></div>
-        <div id="astroError" style="display:none;margin-top:12px;color:#ff7a7a;font-size:13px;
-          background:rgba(255,122,122,.08);border:1px solid rgba(255,122,122,.25);border-radius:8px;padding:10px 14px;"></div>
       </div>
     </div>
 

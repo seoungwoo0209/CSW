@@ -2796,30 +2796,30 @@ function renderAstroNatal(astroData) {
     if (!p) return "";
     return `
       <div style="
-        background:rgba(255,255,255,.04);border-radius:8px;padding:8px 10px;
-        border:1px solid rgba(200,170,255,.1);
+        background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(200,168,96,.18);
       ">
-        <div style="color:#c4b5fd;font-size:11px;margin-bottom:3px;">${label}</div>
-        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${p.sign}</div>
-        <div style="color:#94a3b8;font-size:11px;">${p.degree}°${p.minute}' · ${p.house}하우스</div>
+        <div style="color:#dfba6b;font-size:11px;margin-bottom:3px;">${label}</div>
+        <div style="color:#f4ecd8;font-size:12px;font-weight:600;">${p.sign}</div>
+        <div style="color:#8d8268;font-size:11px;">${p.degree}°${p.minute}' · ${p.house}하우스</div>
       </div>
     `;
   }).join("") + `
     <div style="
-      background:rgba(167,139,250,.1);border-radius:8px;padding:8px 10px;
-      border:1px solid rgba(167,139,250,.3);
+      background:rgba(200,168,96,.1);border-radius:8px;padding:8px 10px;
+      border:1px solid rgba(200,168,96,.35);
     ">
-      <div style="color:#c4b5fd;font-size:11px;margin-bottom:3px;">↑ ASC</div>
-      <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${astroData.angles.asc.sign}</div>
-      <div style="color:#94a3b8;font-size:11px;">${astroData.angles.asc.degree}°${astroData.angles.asc.minute}'</div>
+      <div style="color:#dfba6b;font-size:11px;margin-bottom:3px;">↑ ASC</div>
+      <div style="color:#f4ecd8;font-size:12px;font-weight:600;">${astroData.angles.asc.sign}</div>
+      <div style="color:#8d8268;font-size:11px;">${astroData.angles.asc.degree}°${astroData.angles.asc.minute}'</div>
     </div>
     <div style="
-      background:rgba(167,139,250,.1);border-radius:8px;padding:8px 10px;
-      border:1px solid rgba(167,139,250,.3);
+      background:rgba(200,168,96,.1);border-radius:8px;padding:8px 10px;
+      border:1px solid rgba(200,168,96,.35);
     ">
-      <div style="color:#c4b5fd;font-size:11px;margin-bottom:3px;">MC 천정</div>
-      <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${astroData.angles.mc.sign}</div>
-      <div style="color:#94a3b8;font-size:11px;">${astroData.angles.mc.degree}°${astroData.angles.mc.minute}'</div>
+      <div style="color:#dfba6b;font-size:11px;margin-bottom:3px;">MC 천정</div>
+      <div style="color:#f4ecd8;font-size:12px;font-weight:600;">${astroData.angles.mc.sign}</div>
+      <div style="color:#8d8268;font-size:11px;">${astroData.angles.mc.degree}°${astroData.angles.mc.minute}'</div>
     </div>
   `;
 
@@ -2828,20 +2828,20 @@ function renderAstroNatal(astroData) {
     const { north, south } = astroData.nodes;
     grid.innerHTML += `
       <div style="
-        background:rgba(251,191,36,.08);border-radius:8px;padding:8px 10px;
-        border:1px solid rgba(251,191,36,.3);
+        background:rgba(200,168,96,.12);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(200,168,96,.4);
       ">
-        <div style="color:#fcd34d;font-size:11px;margin-bottom:3px;">☊ 북노드 (카르마 방향)</div>
-        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${north.sign}</div>
-        <div style="color:#94a3b8;font-size:11px;">${north.degree}°${north.minute}'${north.house != null ? ' · '+north.house+'하우스' : ''}</div>
+        <div style="color:#f4e6bd;font-size:11px;margin-bottom:3px;">☊ 북노드 (카르마 방향)</div>
+        <div style="color:#f4ecd8;font-size:12px;font-weight:600;">${north.sign}</div>
+        <div style="color:#8d8268;font-size:11px;">${north.degree}°${north.minute}'${north.house != null ? ' · '+north.house+'하우스' : ''}</div>
       </div>
       <div style="
-        background:rgba(148,163,184,.08);border-radius:8px;padding:8px 10px;
-        border:1px solid rgba(148,163,184,.25);
+        background:rgba(255,255,255,.03);border-radius:8px;padding:8px 10px;
+        border:1px solid rgba(200,168,96,.15);
       ">
-        <div style="color:#94a3b8;font-size:11px;margin-bottom:3px;">☋ 릴리스 (전생 패턴)</div>
-        <div style="color:#e2e8f0;font-size:12px;font-weight:600;">${south.sign}</div>
-        <div style="color:#94a3b8;font-size:11px;">${south.degree}°${south.minute}'${south.house != null ? ' · '+south.house+'하우스' : ''}</div>
+        <div style="color:#9b8f74;font-size:11px;margin-bottom:3px;">☋ 릴리스 (전생 패턴)</div>
+        <div style="color:#f4ecd8;font-size:12px;font-weight:600;">${south.sign}</div>
+        <div style="color:#8d8268;font-size:11px;">${south.degree}°${south.minute}'${south.house != null ? ' · '+south.house+'하우스' : ''}</div>
       </div>
     `;
   }
