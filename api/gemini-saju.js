@@ -277,7 +277,7 @@ ${daeunStr}
 `.trim();
 
     // ═══════════════════════════════════════
-    // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
+    // Gemini API 호출 (시간차 이중 요청 — 1번이 실패/5초경과 시 2번 발사, 먼저 성공하는 응답 채택)
     // ═══════════════════════════════════════
     const controllers = [];
     const fireAttempt = () => {
@@ -306,9 +306,16 @@ ${daeunStr}
       });
     };
 
+    const attempt1 = fireAttempt();
+    let secondAttempt = null;
+    const fireSecond = () => { if (!secondAttempt) secondAttempt = fireAttempt(); return secondAttempt; };
+    const earlyTrigger = new Promise(resolve => { attempt1.catch(() => setTimeout(resolve, 700)); });
+    const timerTrigger = new Promise(resolve => setTimeout(resolve, 5000));
+    const staggeredAttempt = Promise.race([earlyTrigger, timerTrigger]).then(fireSecond);
+
     let reply, lastError;
     try {
-      reply = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
+      reply = await Promise.any([attempt1, staggeredAttempt]);
     } catch (aggErr) {
       lastError = aggErr;
     }

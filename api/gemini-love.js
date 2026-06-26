@@ -791,7 +791,9 @@ export default async function handler(req, res) {
     const maxOutputTokens = monthlyStrength ? 6500 : 4096;
 
     // ═══════════════════════════════════════
-    // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
+    // Gemini API 호출 (시간차 이중 요청 — 1번을 먼저 쏘고, 1번이 실패하거나 5초가 지나면 2번을 쏜다.
+    // 둘 중 먼저 성공하는 응답을 채택. 매 요청마다 무조건 3배를 쏘던 것보다 평소엔 요청량을 줄여
+    // Gemini 쪽 분당 한도에 덜 부담을 주면서도, 진짜 막혔을 때는 빠르게 백업이 붙는다.)
     // ═══════════════════════════════════════
     const controllers = [];
     const fireAttempt = () => {
@@ -820,9 +822,18 @@ export default async function handler(req, res) {
       });
     };
 
+    const attempt1 = fireAttempt();
+    let secondAttempt = null;
+    const fireSecond = () => { if (!secondAttempt) secondAttempt = fireAttempt(); return secondAttempt; };
+    // 1번이 한도초과(429) 등으로 즉시 실패하면, 0.7초만 숨 고르고 2번을 쏜다(0초 만에 바로 재시도하면
+    // 구글 쪽 분당 한도 윈도우가 아직 안 풀려 2번도 똑같이 막힐 확률이 높음).
+    const earlyTrigger = new Promise(resolve => { attempt1.catch(() => setTimeout(resolve, 700)); });
+    const timerTrigger = new Promise(resolve => setTimeout(resolve, 5000));
+    const staggeredAttempt = Promise.race([earlyTrigger, timerTrigger]).then(fireSecond);
+
     let reply, lastError;
     try {
-      reply = await Promise.any([fireAttempt(), fireAttempt(), fireAttempt()]);
+      reply = await Promise.any([attempt1, staggeredAttempt]);
     } catch (aggErr) {
       lastError = aggErr;
     }
