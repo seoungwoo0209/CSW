@@ -1682,6 +1682,8 @@ function _buildCareerCommonFields(astroData) {
     saturnTransitWindow,
     jupiter: astroData.natal.jupiter,
     transitNow,
+    mcLon:  astroData.angles.mc.longitude,
+    ascLon: astroData.angles.asc.longitude,
   };
 }
 

@@ -41,6 +41,40 @@ function angularDistance(a, b) {
   return diff > 180 ? 360 - diff : diff;
 }
 
+// 강도 점수에 쓰는 에스펙트 판정 — 하우스 위치만으론 못 잡는 신호를 보강
+const ASPECT_DEFS = [
+  { name: '합',     angle: 0,   orb: 6 },
+  { name: '섹스타일', angle: 60,  orb: 4 },
+  { name: '트라인',  angle: 120, orb: 6 },
+  { name: '스퀘어',  angle: 90,  orb: 6 },
+  { name: '어포지션', angle: 180, orb: 8 },
+];
+function aspectName(lon1, lon2) {
+  if (lon1 == null || lon2 == null) return null;
+  const dist = angularDistance(lon1, lon2);
+  for (const a of ASPECT_DEFS) {
+    if (Math.abs(dist - a.angle) <= a.orb) return a.name;
+  }
+  return null;
+}
+const _isHarmoniousAspect  = (name) => name === '트라인' || name === '섹스타일';
+const _isChallengingAspect = (name) => name === '스퀘어' || name === '어포지션';
+function aspectStr(transitLon, natalLon, transitLabel, natalLabel) {
+  const a = aspectName(transitLon, natalLon);
+  if (!a) return `${transitLabel}-${natalLabel} 에스펙트: 없음`;
+  const tone = _isHarmoniousAspect(a) ? '호의적' : _isChallengingAspect(a) ? '도전적' : '중립적';
+  return `${transitLabel}-${natalLabel} 에스펙트: ${a} (${tone})`;
+}
+// 둘 중 하나라도 트랜짓 행성과 호의적/도전적 에스펙트면 점수 반영 (점이 null이면 무시)
+function aspectScore(transitLon, natalLons) {
+  for (const lon of natalLons) {
+    const a = aspectName(transitLon, lon);
+    if (_isHarmoniousAspect(a)) return 1;
+    if (_isChallengingAspect(a)) return -1;
+  }
+  return 0;
+}
+
 // 직업 4종류 공통 — "지금 하늘" 시그널 한 번에 계산 (Ephemeris 호출, 새 계산 파일 불필요)
 function computeCareerSkySignals(houses, natalJupiterLon) {
   const uranusLon = currentLongitude('uranus');
@@ -112,6 +146,9 @@ function buildJobHuntingPrompt(body, sky) {
   if ([6, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([6, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
   if (sky.mercuryRetro) strengthScore -= 1;
+  // 하우스 위치만으론 못 잡는 신호 보강 — 트랜짓 목성/토성이 나탈 수성(서류·면접 소통력)과 에스펙트
+  strengthScore += aspectScore(currentLongitude('jupiter'), [mercury.longitude]);
+  strengthScore += aspectScore(currentLongitude('saturn'), [mercury.longitude]);
   const strengthFixed = strengthFromScore(strengthScore);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
@@ -134,6 +171,8 @@ MC 지배행성: ${mcRuler?.label || '?'} — ${mcRuler?.sign || '?'} ${mcRuler?
 [지금 시점의 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (채용 행운기 여부)
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (결과가 시험받는 시기 여부)
+${aspectStr(currentLongitude('jupiter'), mercury.longitude, '트랜짓 목성', '나탈 수성')}
+${aspectStr(currentLongitude('saturn'), mercury.longitude, '트랜짓 토성', '나탈 수성')}
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 면접·계약·서류에 불리하거나 재시도가 필요한 시기' : '순행 중'}
 프로그레션 MC: ${progMcSign || '정보 없음'} (나탈 MC ${mcSign}과 다르면 경력 테마 전환기)
 ${eclipseStr(eclipseSignal)}
@@ -175,7 +214,7 @@ function buildPromotionPrompt(body, sky) {
     name, gender, mcSign, mcRuler, house10Occupants,
     saturn, sun, mars, venus, house11Sign, house11Occupants, house12Sign,
     house2Sign, house2Occupants, house2Ruler, jupiterSign,
-    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow
+    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow, mcLon
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -189,6 +228,9 @@ function buildPromotionPrompt(body, sky) {
   let strengthScore = 0;
   if ([2, 10, 11].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([10, 12].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  // 트랜짓 목성/토성이 나탈 MC·태양(인정받기·가시성)과 에스펙트인지 추가 반영
+  strengthScore += aspectScore(currentLongitude('jupiter'), [mcLon, sun.longitude]);
+  strengthScore += aspectScore(currentLongitude('saturn'), [mcLon, sun.longitude]);
   if (sky.marsRetro) strengthScore -= 1;
   const strengthFixed = strengthFromScore(strengthScore);
 
@@ -212,6 +254,8 @@ function buildPromotionPrompt(body, sky) {
 [지금 시점의 승진·협상 타이밍 신호]
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (전통적 "승진 시험" 시그널 — MC/10하우스 근접 시 강함)
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (확장·인정기 여부)
+${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '나탈 MC')}
+${aspectStr(currentLongitude('saturn'), sun.longitude, '트랜짓 토성', '나탈 태양')}
 화성 역행 여부: ${sky.marsRetro ? (marsRetroStr || '역행 중') + ' — 협상·assertive한 행동을 서두르면 역효과 가능' : '순행 중'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -250,19 +294,27 @@ ${eclipseStr(eclipseSignal)}
 function buildJobChangePrompt(body, sky) {
   const {
     name, gender, mcSign, progMcSign, uranus, northNodeSign, northNodeHouse,
-    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign
+    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign, mcLon, ascLon
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr = gender === 'M' ? '남성' : '여성';
   const mcChanged = progMcSign && progMcSign !== mcSign;
 
+  // 트랜짓 천왕성이 나탈 MC·ASC(정체성·출발점)와 합/트라인/섹스타일이면 "급작스런 좋은 기회" 호의신호로 추가
+  const uranusLonNow = currentLongitude('uranus');
+  const uranusAspectFav = [mcLon, ascLon].some(lon => {
+    const a = aspectName(uranusLonNow, lon);
+    return a === '합' || _isHarmoniousAspect(a);
+  });
+
   const favorableCount = [
     [1, 10].includes(uranusTransitWindow?.house),
     !!mcChanged,
     !!sky.jupiterReturnActive,
+    uranusAspectFav,
   ].filter(Boolean).length;
-  const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 1 ? '보통' : '약함';
+  const strengthFixed = favorableCount >= 3 ? '강함' : favorableCount === 0 ? '약함' : '보통';
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -279,6 +331,8 @@ function buildJobChangePrompt(body, sky) {
 
 [지금 시점의 이직 타이밍 신호]
 ${transitWindowStr(uranusTransitWindow, '트랜짓 천왕성')} (MC·태양·10하우스 근접 시 급작스런 제안/변화 가능성 강함)
+${aspectStr(uranusLonNow, mcLon, '트랜짓 천왕성', '나탈 MC')}
+${aspectStr(uranusLonNow, ascLon, '트랜짓 천왕성', '나탈 ASC')}
 프로그레션 MC: ${progMcSign || '정보 없음'}${mcChanged ? ' — 나탈 MC와 달라짐 (경력 테마 전환기, 떠날 준비가 된 시기로 해석 가능)' : ' — 나탈 MC와 동일 (아직 전환기 아님)'}
 목성 회귀 진행 중인가(나탈 목성 위치로 트랜짓 목성이 돌아옴, ~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
@@ -334,6 +388,9 @@ function buildStartupPrompt(body, sky) {
   let strengthScore = 0;
   if ([2, 8, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([2, 8, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  // 트랜짓 목성/토성이 나탈 화성(추진력)과 에스펙트인지 추가 반영
+  strengthScore += aspectScore(currentLongitude('jupiter'), [mars.longitude]);
+  strengthScore += aspectScore(currentLongitude('saturn'), [mars.longitude]);
   if (sky.jupiterRetro) strengthScore -= 1;
   if (sky.jupiterReturnActive) strengthScore += 1;
   const strengthFixed = strengthFromScore(strengthScore);
@@ -357,6 +414,8 @@ MC(나만의 사업 정체성): ${mcSign}, 지배행성 ${mcRuler?.label || '?'}
 [지금 시점의 창업 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (2/8/10하우스 근접 시 재정 확장기)
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (아직 다져야 할 시기인지 신호)
+${aspectStr(currentLongitude('jupiter'), mars.longitude, '트랜짓 목성', '나탈 화성')}
+${aspectStr(currentLongitude('saturn'), mars.longitude, '트랜짓 토성', '나탈 화성')}
 목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
