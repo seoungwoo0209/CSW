@@ -380,24 +380,33 @@ function collectImpacts(year, lonAt, natal, cusps) {
 
       for (const asp of ASPECTS_TIGHT) {
         const hits = findClosestApproaches(year, calcLon, nLon, asp.angle, asp.orb);
-        for (const hit of hits) {
-          const tpLon   = calcLon(hit.date);
-          const tpHouse = getHouseOf(tpLon, cusps);
-          const valence   = resolveValence(tp.name, asp.angle);
-          const category  = resolveCategory(np.key);
-          const important = ['sun','moon','asc','mc'].includes(np.key) && [0, 90, 180].includes(asp.angle);
-          const hStr  = ` (${tpHouse}하우스)`;
-          const vStr  = { supportive:'기회·상승', challenging:'긴장·도전', double_edged:'양면 에너지', neutral:'중립' }[valence] || '';
-          const whenStr = fmtWhen(hit.date);
-          events.push({
-            id: `tr_${tp.name}_${asp.angle}_${np.key}_${whenStr}`,
-            when: whenStr, layer:'impact', tier: tp.tier, category,
-            technique: `Transit ${tp.name} ${asp.name} natal ${np.key}`,
-            bodies: [tp.kr], house: tpHouse, orb: hit.orb, valence,
-            fact: `${whenStr} · 트랜짓 ${tp.kr} ${asp.sym} 나탈 ${np.kr}${hStr}. 오브 ${hit.orb}° — ${vStr}.`,
-            importance: important ? 'major' : 'minor',
-          });
-        }
+        if (!hits.length) continue;
+
+        // 같은 (트랜짓 행성·어스펙트·나탈 포인트) 조합이 한 해에 여러 번 잡히면(주로 외행성
+        // 역행으로 같은 지점을 다시 지나갈 때) 별개 사건이 아니라 "한 흐름이 여러 번 정점을
+        // 찍는다"는 하나의 사건으로 합친다 — 따로 두면 같은 이야기가 사건 개수만큼 반복된다.
+        const sortedByDate = [...hits].sort((a, b) => a.date - b.date);
+        const tightest     = [...hits].sort((a, b) => a.orb - b.orb)[0];
+        const tpHouse       = getHouseOf(calcLon(tightest.date), cusps);
+        const valence   = resolveValence(tp.name, asp.angle);
+        const category  = resolveCategory(np.key);
+        const important = ['sun','moon','asc','mc'].includes(np.key) && [0, 90, 180].includes(asp.angle);
+        const vStr  = { supportive:'기회·상승', challenging:'긴장·도전', double_edged:'양면 에너지', neutral:'중립' }[valence] || '';
+        const whenStr = fmtWhen(tightest.date);
+
+        const factStr = sortedByDate.length === 1
+          ? `${whenStr} · 트랜짓 ${tp.kr} ${asp.sym} 나탈 ${np.kr} (${tpHouse}하우스). 오브 ${tightest.orb}° — ${vStr}.`
+          : `${sortedByDate.map(h => fmtWhen(h.date)).join(', ')} · 트랜짓 ${tp.kr} ${asp.sym} 나탈 ${np.kr} (${tpHouse}하우스)이 한 해 동안 ${sortedByDate.length}번 정점을 찍는 하나의 흐름(역행으로 같은 지점을 반복해서 지나감). 가장 타이트한 시점은 ${whenStr}, 오브 ${tightest.orb}° — ${vStr}.`;
+
+        events.push({
+          id: `tr_${tp.name}_${asp.angle}_${np.key}_${whenStr}`,
+          when: whenStr, layer:'impact', tier: tp.tier, category,
+          technique: `Transit ${tp.name} ${asp.name} natal ${np.key}`,
+          bodies: [tp.kr], house: tpHouse, orb: tightest.orb, valence,
+          fact: factStr,
+          importance: important ? 'major' : 'minor',
+          peakDates: sortedByDate.map(h => fmtWhen(h.date)),
+        });
       }
     }
   }
