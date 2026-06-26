@@ -1915,7 +1915,7 @@ function _conclusionHtml(conclusion, suggestion) {
 function _signalRowsHtml(items) {
   const rows = items.filter(it => it && it.v);
   if (!rows.length) return '';
-  return `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px 8px;">` +
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px 8px;">` +
     rows.map(it => `
       <div style="display:flex;align-items:center;gap:7px;min-width:0;">
         <div style="flex-shrink:0;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:rgba(200,168,96,.07);border:1px solid rgba(200,168,96,.28);color:#e0c684;">${it.icon}</div>
