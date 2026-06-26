@@ -284,6 +284,12 @@ body{
   50% { opacity: .5; }
 }
 
+/* 직업운 강도 달 아이콘 — 둥둥 뜨는 효과 */
+@keyframes moon-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+
 /* 골드 CTA 버튼 반짝임(sheen) — 여러 화면에서 재사용 */
 @keyframes cta-sheen-move { 0% { background-position: -130% 0; } 100% { background-position: 230% 0; } }
 .cta-sheen {
