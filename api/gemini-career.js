@@ -125,6 +125,13 @@ function strengthFromScore(score) {
   if (score <= -1) return '약함';
   return '보통';
 }
+// 직장·승진운은 +1 신호(목성 하우스/일식)가 -1 신호보다 구조적으로 더 자주 나와서
+// 일반 임계값(>=1)을 쓰면 "강함"이 과대 표집됨 — 실제 데이터 시뮬레이션으로 확인 후 기준을 높임
+function strengthFromScoreStrict(score) {
+  if (score >= 2) return '강함';
+  if (score <= -1) return '약함';
+  return '보통';
+}
 
 /* =========================================================
    1) 취업·합격운
@@ -234,7 +241,7 @@ function buildPromotionPrompt(body, sky) {
   strengthScore += aspectScore(currentLongitude('jupiter'), [mcLon, sun.longitude]);
   strengthScore += aspectScore(currentLongitude('saturn'), [mcLon, sun.longitude]);
   if (sky.marsRetro) strengthScore -= 1;
-  const strengthFixed = strengthFromScore(strengthScore);
+  const strengthFixed = strengthFromScoreStrict(strengthScore);
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -317,7 +324,8 @@ function buildJobChangePrompt(body, sky) {
     uranusAspectFav,
     !!eclipseSignal, // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
   ].filter(Boolean).length;
-  const strengthFixed = favorableCount >= 3 ? '강함' : favorableCount === 0 ? '약함' : '보통';
+  // 5개 항목 중 호의신호가 3개 이상이어야 "강함"인 기준은 시뮬레이션 결과 너무 엄격해서(강함이 거의 안 나옴) 2개로 완화
+  const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
