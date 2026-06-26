@@ -1863,34 +1863,42 @@ function _strengthTimelineHtml(monthlyStrength) {
 // 직업 4종 — "이번 리포트 결론" 요약 박스. AI 호출 없이, 서버가 이미 계산해둔 monthlyStrength/conclusion
 // 데이터만으로 만든다 — 추가 지연 없음. "~해라/하지마라" 같은 행동 지시나 근거 없는 비교는 절대 넣지 않고,
 // 실제로 계산된 사실(지금 강도·상반기·하반기 흐름·골든타임과 그 이유)만 단정적으로 적는다.
-function _conclusionHtml(conclusion) {
+function _conclusionHtml(conclusion, suggestion) {
   if (!conclusion) return '';
   const bullets = [];
   const moon = _STRENGTH_MOON[(conclusion.strengthFixed || '').trim()];
   if (moon) bullets.push(`지금은 ${moon.label} 시기예요`);
 
-  if (conclusion.halfTrend === 'h2') bullets.push('하반기에 흐름이 더 좋아져요');
-  else if (conclusion.halfTrend === 'h1') bullets.push('상반기에 흐름이 더 좋아요');
+  if (conclusion.halfTrend === 'h2') bullets.push('하반기 전체적으로 흐름이 더 안정적이에요');
+  else if (conclusion.halfTrend === 'h1') bullets.push('상반기 전체적으로 흐름이 더 안정적이에요');
 
   if (conclusion.hasVariation && conclusion.bestMonths?.length) {
     const months = conclusion.bestMonths.join('·');
     bullets.push(`특히 ${months}월에 신호가 집중돼요${conclusion.reason ? ` — ${conclusion.reason}` : ''}`);
   }
 
-  if (!bullets.length) return '';
+  if (!bullets.length && !suggestion) return '';
 
   const rows = bullets.map(b => `
-    <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:9px;">
-      <span style="flex-shrink:0;color:#9f93c0;font-size:13px;line-height:1.5;">✦</span>
-      <span style="font-size:13.5px;color:#ddd5e8;line-height:1.5;font-weight:600;">${b}</span>
+    <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
+      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(159,147,192,.14);border:1px solid rgba(159,147,192,.3);color:#b8acd6;font-size:10px;line-height:1;margin-top:1px;">✦</span>
+      <span style="font-size:13.5px;color:#e7e1f0;line-height:1.65;font-weight:600;">${b}</span>
     </div>
   `).join('');
+
+  const suggestionHtml = suggestion ? `
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid rgba(159,147,192,.18);display:flex;align-items:flex-start;gap:10px;">
+      <span style="flex-shrink:0;font-size:15px;color:#caa74e;line-height:1.7;">✧</span>
+      <span style="font-size:13px;color:#cfc6a8;line-height:1.75;font-style:italic;">${suggestion}</span>
+    </div>
+  ` : '';
 
   return `
     <div style="${_CAREER_PANEL_STYLE}">
       <div style="${_CAREER_EYEBROW_STYLE}">結 論</div>
       <div style="${_CAREER_TITLE_STYLE}">이번 리포트 결론</div>
       ${rows}
+      ${suggestionHtml}
     </div>
   `;
 }
@@ -1973,7 +1981,7 @@ function _renderJobHuntingHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
-    ${_conclusionHtml(payload.conclusion)}
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;
 }
 
@@ -2046,7 +2054,7 @@ function _renderPromotionHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 흐름 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
-    ${_conclusionHtml(payload.conclusion)}
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;
 }
 
@@ -2105,7 +2113,7 @@ function _renderJobChangeHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
-    ${_conclusionHtml(payload.conclusion)}
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;
 }
 
@@ -2176,7 +2184,7 @@ function _renderStartupHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 시기 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
-    ${_conclusionHtml(payload.conclusion)}
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;
 }
 
