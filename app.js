@@ -4291,6 +4291,7 @@ function hideAnnualCityList() {
 function selectAnnualCity(cityName) {
   const input = _$('annualCityInput');
   if (input) input.value = cityName;
+  _todayCity = cityName; // 오늘의 운세가 쓰는 캐시 변수도 같이 갱신(안 하면 같은 세션 안에서 오늘의 운세가 옛 도시로 계산됨)
   setScreenLocation('today', cityName);
   hideAnnualCityList();
 }
@@ -4349,19 +4350,24 @@ function renderAnnualEventsPanel(astroData) {
           ">${opts.join('')}</select>
         </div>
 
-        <span class="intro-card-section-label">현재 거주 도시</span>
-        <div style="position:relative;margin-bottom:14px;">
-          <input id="annualCityInput" type="text" value="${annualCityName}" placeholder="도시 검색..." autocomplete="off"
-            style="width:100%;padding:8px 12px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
-            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:14px;box-sizing:border-box;font-family:Georgia,serif;"
-            oninput="filterAnnualCityList(this.value)"
-            onfocus="showAnnualCityList()"
-            onblur="setTimeout(hideAnnualCityList,200)"
-          />
-          <div id="annualCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
-            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
-            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
+        <span class="intro-card-section-label" style="font-size:13px;">현재 위치</span>
+        <div class="intro-card-section" style="position:relative;">
+          <div style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7d7257" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+              <path d="M3 10a7 7 0 1 0 14 0a7 7 0 0 0 -14 0"/><path d="M21 21l-6 -6"/>
+            </svg>
+            <input id="annualCityInput" type="text" value="${annualCityName}" placeholder="도시 검색..." autocomplete="off"
+              oninput="filterAnnualCityList(this.value)"
+              onfocus="showAnnualCityList()"
+              onblur="setTimeout(hideAnnualCityList,200)"
+              style="flex:1;min-width:0;background:transparent;border:none;outline:none;font-family:inherit;font-size:14px;color:#efe8d6;text-align:center;" />
+          </div>
+          <div id="annualCityDropdown" style="
+            position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:100;
+            background:#1a1530;border:1px solid rgba(200,168,96,.25);border-radius:8px;
+            max-height:200px;overflow-y:auto;display:none;text-align:left;"></div>
         </div>
+        <p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#a89c7e;">현재 도시가 출생지와 다를 경우 입력하세요.</p>
 
         <button onclick="generateAnnualReport()" id="annualReportBtn" class="intro-card-cta">
           <span class="cta-sheen"></span>
@@ -4578,7 +4584,10 @@ async function generateAnnualReport() {
 
   // 솔라리턴 ASC/MC는 "지금 거주 도시" 기준이어야 함 — 이 화면에 바로 있는 도시 입력칸 값을 사용(없으면 출생지로 자동 대체)
   const srCityName = _$('annualCityInput')?.value?.trim() || getScreenLocation('today');
-  if (srCityName) setScreenLocation('today', srCityName); // 직접 타이핑만 하고 드롭다운을 안 눌렀어도 다음에 기억하도록 저장
+  if (srCityName) {
+    _todayCity = srCityName; // 오늘의 운세 캐시 변수도 동기화(같은 세션에서 옛 도시로 계산되는 것 방지)
+    setScreenLocation('today', srCityName); // 직접 타이핑만 하고 드롭다운을 안 눌렀어도 다음에 기억하도록 저장
+  }
   const { lat: srLat, lng: srLng } = srCityName ? getCityCoords(srCityName) : {};
 
   let engineData;
