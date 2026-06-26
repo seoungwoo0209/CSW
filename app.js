@@ -1799,7 +1799,7 @@ const _CAREER_EYEBROW_STYLE = `font-size:11px;letter-spacing:.26em;color:#9f93c0
 const _CAREER_TITLE_STYLE = `font-size:18px;font-weight:700;margin-bottom:14px;
   background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
-const _CAREER_AI_EYEBROW_STYLE = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
+const _CAREER_AI_EYEBROW_STYLE = `font-size:10.5px;font-weight:700;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
 const _CAREER_AI_TEXT_STYLE = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
 
 // 직업 4종 — "타이밍 강도(강함/보통/약함)" → 달 모양 배지
