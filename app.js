@@ -1590,6 +1590,54 @@ function _findNearestEclipseSignal(events, targetPoints) {
   };
 }
 
+// ── 직업 4종 공통 — "지금 머무는/진행 중인 구간이 몇 월부터 몇 월까지인지" 찾기 ──
+// values: 12개월 치 비교 가능한 값 배열(하우스 번호, 역행 여부 등), nowIdx: 0~11(현재월 인덱스)
+function _findContiguousMonthRange(values, nowIdx) {
+  const cur = values[nowIdx];
+  let start = nowIdx;
+  while (start > 0 && values[start - 1] === cur) start--;
+  let end = nowIdx;
+  while (end < values.length - 1 && values[end + 1] === cur) end++;
+  return { value: cur, startIdx: start, endIdx: end, knownStart: start > 0, knownEnd: end < values.length - 1 };
+}
+
+// 목성·토성처럼 느린 행성이 "지금 하우스"에 몇 월부터 머물렀고 몇 월까지 머무는지
+function _houseTransitWindow(transits, planetKey, nowMonthIdx) {
+  if (!Array.isArray(transits) || transits.length !== 12) return null;
+  const houses = transits.map(t => t.planets?.[planetKey]?.house);
+  if (houses[nowMonthIdx] == null) return null;
+  const range = _findContiguousMonthRange(houses, nowMonthIdx);
+  return {
+    house: range.value,
+    enterMonthLabel: range.knownStart ? transits[range.startIdx].month : null,
+    exitMonthLabel:  range.knownEnd   ? transits[range.endIdx + 1].month : null,
+    monthsInSoFar: nowMonthIdx - range.startIdx + 1,
+    enterKnown: range.knownStart,
+    exitKnown: range.knownEnd,
+  };
+}
+
+// 화성·목성처럼 역행 구간이 있는 행성이 "지금" 역행 중이면, 그 구간이 몇 월부터 몇 월까지인지
+function _retrogradeWindow(transits, planetKey, nowMonthIdx) {
+  if (!Array.isArray(transits) || transits.length !== 12) return null;
+  const lons = transits.map(t => t.planets?.[planetKey]?.longitude);
+  if (lons.some(l => l == null)) return null;
+  const flags = lons.map((lon, i) => {
+    const a = i === 0 ? lons[0] : lons[i - 1];
+    const b = i === 0 ? lons[1] : lons[i];
+    let diff = b - a;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return diff < 0;
+  });
+  if (!flags[nowMonthIdx]) return null; // 지금 역행 중이 아니면 구간 정보 불필요
+  const range = _findContiguousMonthRange(flags, nowMonthIdx);
+  return {
+    enterMonthLabel: range.knownStart ? transits[range.startIdx].month : null,
+    exitMonthLabel:  range.knownEnd   ? transits[range.endIdx + 1].month : null,
+  };
+}
+
 async function _getEclipseCareerSignal(astroData) {
   const events = await _fetchMoonPhaseEventsCached(astroData);
   return _findNearestEclipseSignal(events, ['MC', 'IC', 'ASC', 'DSC', '태양']);
@@ -1608,6 +1656,8 @@ function _buildCareerCommonFields(astroData) {
 
   const nowMonthIdx = new Date().getMonth();
   const transitNow  = astroData.transits?.[nowMonthIdx] || null;
+  const jupiterTransitWindow = _houseTransitWindow(astroData.transits, 'jupiter', nowMonthIdx);
+  const saturnTransitWindow  = _houseTransitWindow(astroData.transits, 'saturn', nowMonthIdx);
 
   return {
     name:   window.SajuResult?.name || '',
@@ -1618,6 +1668,8 @@ function _buildCareerCommonFields(astroData) {
     mcRuler,
     progMcSign: astroData.progression?.angles?.mc?.sign,
     houses: astroData.houses,
+    jupiterTransitWindow,
+    saturnTransitWindow,
     jupiter: astroData.natal.jupiter,
     transitNow,
   };
@@ -1777,6 +1829,7 @@ async function revealPromotion() {
     buildExtraFields: (astroData) => {
       const house10 = _findHouseOccupants(astroData, 10);
       const house11 = _findHouseOccupants(astroData, 11);
+      const marsRetroWindow = _retrogradeWindow(astroData.transits, 'mars', new Date().getMonth());
       return {
         house10Sign: astroData.angles.mc.sign,
         house10Occupants: house10,
@@ -1787,6 +1840,7 @@ async function revealPromotion() {
         house11Sign: astroData.houses?.[10]?.sign,
         house11Occupants: house11,
         house12Sign: astroData.houses?.[11]?.sign,
+        marsRetroWindow,
       };
     }
   });
@@ -1895,6 +1949,7 @@ async function revealStartup() {
       const house8RulerKey = _SIGN_RULER[astroData.houses?.[7]?.sign];
       const house2Ruler = house2RulerKey ? { key: house2RulerKey, label: _LOVE_PLANET_KR[house2RulerKey], ...astroData.natal[house2RulerKey] } : null;
       const house8Ruler = house8RulerKey ? { key: house8RulerKey, label: _LOVE_PLANET_KR[house8RulerKey], ...astroData.natal[house8RulerKey] } : null;
+      const jupiterRetroWindow = _retrogradeWindow(astroData.transits, 'jupiter', new Date().getMonth());
       return {
         house2Sign: astroData.houses?.[1]?.sign,
         house2Occupants: house2,
@@ -1906,6 +1961,7 @@ async function revealStartup() {
         jupiterSign: astroData.natal.jupiter.sign,
         sun: astroData.natal.sun,
         house5Sign: astroData.houses?.[4]?.sign,
+        jupiterRetroWindow,
       };
     }
   });

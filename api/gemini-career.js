@@ -68,6 +68,22 @@ function eclipseStr(eclipseSignal) {
   return `${dateStr} ${eclipseSignal.type}이 ${eclipseSignal.conjunctPoint}에 근접 — 경력의 중요한 전환점으로 해석 가능`;
 }
 
+// 목성·토성처럼 느린 행성의 하우스 체류 구간을 "몇 월부터 몇 월까지"로 문장화
+function transitWindowStr(win, label) {
+  if (!win) return `${label}: 정보 없음`;
+  const enter = win.enterKnown ? `${win.enterMonthLabel}부터` : '올해 시작 전부터 이미';
+  const exit  = win.exitKnown  ? `${win.exitMonthLabel}에 다음 하우스로 이동` : '연말까지 이 흐름 유지';
+  return `${label} ${win.house}하우스 — ${enter} 머무는 중(현재 ${win.monthsInSoFar}개월째), ${exit}`;
+}
+
+// 화성·목성 역행이 지금 진행 중이면 그 구간을 "몇 월부터 몇 월까지"로 문장화 (역행 아니면 null)
+function retroWindowStr(win, label) {
+  if (!win) return null;
+  const enter = win.enterKnown ? `${win.enterMonthLabel}부터` : '올해 시작 전부터';
+  const exit  = win.exitKnown  ? `${win.exitMonthLabel}에 순행으로 전환` : '연말까지 역행 지속';
+  return `${label} 역행 — ${enter} ${exit}`;
+}
+
 /* =========================================================
    1) 취업·합격운
    ========================================================= */
@@ -75,7 +91,8 @@ function buildJobHuntingPrompt(body, sky) {
   const {
     name, gender, ascSign, ascRuler, mcSign, mcRuler, progMcSign,
     house6Sign, house6Occupants, house6Ruler, house10Sign, house10Occupants,
-    mercury, mars, jupiterSign, saturn, transitNow, eclipseSignal
+    mercury, mars, jupiterSign, saturn, eclipseSignal,
+    jupiterTransitWindow, saturnTransitWindow
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -83,9 +100,6 @@ function buildJobHuntingPrompt(body, sky) {
 
   const house6Str = `${house6Sign}${house6Occupants?.length ? ` (${house6Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house6Ruler?.label || '?'}(${house6Ruler?.sign || '?'})`;
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
-
-  const transitJupiterHouse = transitNow?.planets?.jupiter?.house;
-  const transitSaturnHouse  = transitNow?.planets?.saturn?.house;
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -104,8 +118,8 @@ MC 지배행성: ${mcRuler?.label || '?'} — ${mcRuler?.sign || '?'} ${mcRuler?
 토성(인내·끈기): ${saturn.sign} ${saturn.house}하우스
 
 [지금 시점의 타이밍 신호]
-트랜짓 목성이 닿은 하우스: ${transitJupiterHouse ? transitJupiterHouse + '하우스' : '정보 없음'} (채용 행운기 여부)
-트랜짓 토성이 닿은 하우스: ${transitSaturnHouse ? transitSaturnHouse + '하우스' : '정보 없음'} (결과가 시험받는 시기 여부)
+${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (채용 행운기 여부)
+${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (결과가 시험받는 시기 여부)
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 면접·계약·서류에 불리하거나 재시도가 필요한 시기' : '순행 중'}
 프로그레션 MC: ${progMcSign || '정보 없음'} (나탈 MC ${mcSign}과 다르면 경력 테마 전환기)
 ${eclipseStr(eclipseSignal)}
@@ -142,7 +156,7 @@ function buildPromotionPrompt(body, sky) {
   const {
     name, gender, mcSign, mcRuler, house10Occupants,
     saturn, sun, mars, venus, house11Sign, house11Occupants, house12Sign,
-    transitNow, eclipseSignal
+    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -150,9 +164,7 @@ function buildPromotionPrompt(body, sky) {
 
   const house10Str = `${mcSign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}, 지배행성 ${mcRuler?.label || '?'}(${mcRuler?.sign || '?'} ${mcRuler?.house || '?'}하우스)`;
   const house11Str = `${house11Sign}${house11Occupants?.length ? ` (${house11Occupants.join(', ')} 위치)` : ''}`;
-
-  const transitSaturnHouse  = transitNow?.planets?.saturn?.house;
-  const transitJupiterHouse = transitNow?.planets?.jupiter?.house;
+  const marsRetroStr = retroWindowStr(marsRetroWindow, '화성');
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -170,9 +182,9 @@ function buildPromotionPrompt(body, sky) {
 12하우스(숨은 정치·견제): ${house12Sign}
 
 [지금 시점의 승진·협상 타이밍 신호]
-트랜짓 토성이 닿은 하우스: ${transitSaturnHouse ? transitSaturnHouse + '하우스' : '정보 없음'} (전통적 "승진 시험" 시그널 — MC/10하우스 근접 시 강함)
-트랜짓 목성이 닿은 하우스: ${transitJupiterHouse ? transitJupiterHouse + '하우스' : '정보 없음'} (확장·인정기 여부)
-화성 역행 여부: ${sky.marsRetro ? '역행 중 — 협상·assertive한 행동을 서두르면 역효과 가능' : '순행 중'}
+${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (전통적 "승진 시험" 시그널 — MC/10하우스 근접 시 강함)
+${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (확장·인정기 여부)
+화성 역행 여부: ${sky.marsRetro ? (marsRetroStr || '역행 중') + ' — 협상·assertive한 행동을 서두르면 역효과 가능' : '순행 중'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -263,7 +275,8 @@ function buildStartupPrompt(body, sky) {
   const {
     name, gender, house2Sign, house2Occupants, house2Ruler,
     house8Sign, house8Occupants, house8Ruler,
-    mars, jupiterSign, sun, house5Sign, transitNow, eclipseSignal
+    mars, jupiterSign, sun, house5Sign, eclipseSignal,
+    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -271,9 +284,7 @@ function buildStartupPrompt(body, sky) {
 
   const house2Str = `${house2Sign}${house2Occupants?.length ? ` (${house2Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house2Ruler?.label || '?'}(${house2Ruler?.sign || '?'})`;
   const house8Str = `${house8Sign}${house8Occupants?.length ? ` (${house8Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house8Ruler?.label || '?'}(${house8Ruler?.sign || '?'})`;
-
-  const transitJupiterHouse = transitNow?.planets?.jupiter?.house;
-  const transitSaturnHouse  = transitNow?.planets?.saturn?.house;
+  const jupiterRetroStr = retroWindowStr(jupiterRetroWindow, '목성');
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -290,9 +301,9 @@ function buildStartupPrompt(body, sky) {
 5하우스(투기·창의적 사업): ${house5Sign}
 
 [지금 시점의 창업 타이밍 신호]
-트랜짓 목성이 닿은 하우스: ${transitJupiterHouse ? transitJupiterHouse + '하우스' : '정보 없음'} (2/8/10하우스 근접 시 재정 확장기)
-트랜짓 토성이 닿은 하우스: ${transitSaturnHouse ? transitSaturnHouse + '하우스' : '정보 없음'} (아직 다져야 할 시기인지 신호)
-목성 역행 여부: ${sky.jupiterRetro ? '역행 중 — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
+${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (2/8/10하우스 근접 시 재정 확장기)
+${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (아직 다져야 할 시기인지 신호)
+목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
