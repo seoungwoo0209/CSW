@@ -1768,6 +1768,13 @@ function _careerPanelHtml(raw, sections) {
     const end = i + 1 < hits.length ? hits[i + 1].markerStart : raw.length;
     sections[hit.key] = raw.slice(hit.contentStart, end).trim();
   });
+  // AI가 마커 형식을 안 지켜서 마커가 하나도 안 잡힌 경우 — "해설을 불러오지 못했습니다"로 빈 화면을 보여주는
+  // 대신, AI가 실제로 쓴 원문 전체를 그대로 보여준다(구조는 깨졌어도 내용은 사라지지 않게).
+  if (hits.length === 0 && raw && raw.trim()) {
+    console.warn('직업 AI 응답에서 섹션 마커를 찾지 못함 — 원문 그대로 표시:', raw.slice(0, 200));
+    sections.nature = raw.trim();
+    sections.timing = raw.trim();
+  }
 }
 
 function _careerToParas(text) {

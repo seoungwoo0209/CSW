@@ -721,6 +721,10 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
+    if (!reply.includes('===SECTION:nature===') || !reply.includes('===SECTION:timing===')) {
+      console.warn(`직업(${type}) AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:`, reply.slice(0, 300));
+    }
+
     return res.status(200).json({ result: reply, monthlyStrength, conclusion });
 
   } catch (error) {
