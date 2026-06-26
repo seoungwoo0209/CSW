@@ -169,8 +169,10 @@ function houseOverlayBonus(houseOverlay, partnerTimeUnknown, planetKeys, targetH
 }
 // 하우스 오버레이는 +1만 있는 비대칭 신호라(상응하는 -1 신호가 없음) 행성·하우스 1개로 좁혀서
 // 강함 쪽으로 과하게 치우치지 않게 한다(시뮬레이션으로 확인).
+// "속궁합"(육체적 끌림)이 핵심이라 화성-화성(원초적 욕망 매칭)·태양-화성(매그너틱 케미)을 포함하고,
+// 하우스도 5하우스(설렘)보다 8하우스(육체적·성적 친밀감)가 더 정확한 신호.
 function romanticSparkScore(aspects, houseOverlay, partnerTimeUnknown) {
-  return aspectPairScore(aspects, [['금성', '화성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [5]);
+  return aspectPairScore(aspects, [['금성', '화성'], ['화성', '화성'], ['태양', '화성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [8]);
 }
 function communicationScore(aspects, houseOverlay, partnerTimeUnknown) {
   return aspectPairScore(aspects, [['수성', '수성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mercury'], [3]);
