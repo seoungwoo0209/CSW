@@ -157,6 +157,23 @@ function reunionReasonAt(monthIdx, ctx) {
   if ([7, 8].includes(monthlyHouse(transits, monthIdx, 'saturn'))) return '토성이 관계·유대의 영역(7·8하우스)을 지나며 재시험·재정비를 요구하는 시기';
   return null;
 }
+// 골든타임(가장 점수 높은 달)을 AI 본문이 "지금"만 보고 쓰지 않도록, 지금/미래/과거 중 어디에 있는지에 따라 다른 지침을 만든다.
+function reunionBestMonthsInstruction(bestIndices, nowMonthIdx, ctx) {
+  if (!bestIndices?.length) return '';
+  const nowMonth = nowMonthIdx + 1;
+  const bestMonths = bestIndices.map(i => i + 1);
+  if (bestMonths.includes(nowMonth)) {
+    const reason = reunionReasonAt(nowMonthIdx, ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 재회 흐름이 가장 강하게 열리는 시기가 바로 지금(${nowMonth}월)이다(${reason}). 이 점을 적극적으로 강조해서 써라.`;
+  }
+  const futureIndices = bestIndices.filter(i => i + 1 > nowMonth);
+  if (futureIndices.length) {
+    const reason = reunionReasonAt(futureIndices[0], ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 재회 흐름이 가장 강하게 열리는 달은 ${futureIndices.map(i => i + 1).join('·')}월이다(${reason}). 지금의 흐름을 설명한 뒤, 다가올 그 달들도 함께 언급해서 글을 마무리해라.`;
+  }
+  const reason = reunionReasonAt(bestIndices[0], ctx) || '여러 신호가 겹치는 시기';
+  return `올해 중 재회 흐름이 가장 강했던 시기는 이미 지나간 ${bestMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 회고적으로 짚어준 뒤 올해 남은 기간은 차분한 흐름이 이어진다는 걸 솔직하게 써라.`;
+}
 
 /* =========================================================
    궁합 — 6가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
@@ -387,11 +404,11 @@ function buildReunionPrompt(body) {
   } = body;
 
   const nowMonthIdx = new Date().getMonth();
-  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  let monthlyStrength = null, conclusion = null, strengthFixed = null, ctx = null, bestMonthsInstr = '';
   if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
-    const ctx = {
+    ctx = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
       natalVenusLon: venus?.longitude,
       natalSaturnLon: saturn?.longitude,
@@ -402,6 +419,7 @@ function buildReunionPrompt(body) {
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
     monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
+    bestMonthsInstr = reunionBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
   }
 
   const displayName = name?.trim() || '당신';
@@ -429,12 +447,17 @@ function buildReunionPrompt(body) {
     ? `북노드: ${northNodeSign} ${northNodeHouse}하우스 — 전통적으로 "운명적·카르마적 재회"를 가리키는 핵심 지표`
     : '';
 
-  const transitSaturnHouse = transitNow?.planets?.saturn?.house ?? null;
+  // "지금 토성이 몇 하우스인가"는 점수 계산에 쓴 라이브 패치 값을 단일 출처로 사용 — 이번 달 15일 샘플과 어긋나지 않게 한다.
+  const liveSaturn = ctx?.transits?.[nowMonthIdx]?.planets?.saturn;
+  const liveVenus  = ctx?.transits?.[nowMonthIdx]?.planets?.venus;
+  const transitSaturnHouse = liveSaturn?.house ?? (transitNow?.planets?.saturn?.house ?? null);
   const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
 
   let transitStr = '트랜짓 정보 없음';
   if (transitNow) {
-    transitStr = `이번 달 트랜짓 — 금성: ${transitNow.planets.venus.sign}, 토성: ${transitNow.planets.saturn.sign} (${transitSaturnHouse}하우스)`;
+    const venusSignStr  = liveVenus?.sign  || transitNow.planets.venus.sign;
+    const saturnSignStr = liveSaturn?.sign || transitNow.planets.saturn.sign;
+    transitStr = `이번 달 트랜짓 — 금성: ${venusSignStr}, 토성: ${saturnSignStr} (${transitSaturnHouse}하우스)`;
   }
   const progMoonStr = progMoonSign ? `프로그레션 달: ${progMoonSign} ${progMoonHouse}하우스` : '프로그레션 정보 없음';
   const progVenusStr = progVenusSign ? `프로그레션 금성: ${progVenusSign} ${progVenusHouse}하우스` : '프로그레션 금성 정보 없음';
@@ -497,6 +520,7 @@ ${monthlyStrength ? '4개 섹션 전부 빠짐없이, 각자 요청된 분량을
 ===SECTION:timing===
 (지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓·프로그레션이 보여주는 타이밍)
 ${monthlyStrength ? `지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 신중론으로, 보통이면 균형있게).` : ''}
+${bestMonthsInstr}
 - 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
 - 분량: 3~4문단
@@ -513,7 +537,7 @@ ${monthlyStrength ? `
 지금 바로 ${monthlyStrength ? 'pattern, timing, strength, suggestion 네' : 'pattern과 timing 두'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength, conclusion };
+  return { prompt, monthlyStrength, conclusion, liveSaturnHouse: transitSaturnHouse };
 }
 
 function buildCompatibilityPrompt(body) {
@@ -627,7 +651,6 @@ function buildReunionKnownPrompt(body) {
     : '하우스 오버레이 정보 없음';
 
   const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함)` : '';
-  const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
   const eclipseStr = eclipseSignal
     ? (() => {
         const d = new Date(eclipseSignal.dateLocal);
@@ -636,11 +659,11 @@ function buildReunionKnownPrompt(body) {
     : '올해 재회 관련 일식/월식 시그널 없음';
 
   const nowMonthIdx = new Date().getMonth();
-  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  let monthlyStrength = null, conclusion = null, strengthFixed = null, ctx = null, bestMonthsInstr = '';
   if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
-    const ctx = {
+    ctx = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
       natalVenusLon: myPlanets?.venus?.longitude,
       natalSaturnLon: myPlanets?.saturn?.longitude,
@@ -651,7 +674,12 @@ function buildReunionKnownPrompt(body) {
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
     monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
+    bestMonthsInstr = reunionBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
   }
+
+  // "지금 토성이 몇 하우스인가"는 점수 계산에 쓴 라이브 패치 값을 단일 출처로 사용 — 클라이언트가 보낸 15일 샘플 값과 어긋나지 않게 한다.
+  const liveSaturnHouse = ctx?.transits?.[nowMonthIdx]?.planets?.saturn?.house ?? transitSaturnHouse ?? null;
+  const saturnIn78 = liveSaturnHouse === 7 || liveSaturnHouse === 8;
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -677,7 +705,7 @@ ${overlayStr}${timeNote}
 
 [지금 시점의 재회 타이밍 신호]
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
-${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${transitSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
+${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${liveSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
 ${eclipseStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -701,6 +729,7 @@ ${monthlyStrength ? '4개 섹션 전부 빠짐없이, 각자 요청된 분량을
 ===SECTION:timing===
 (지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓이 보여주는 타이밍)
 ${monthlyStrength ? `지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 신중론으로, 보통이면 균형있게).` : ''}
+${bestMonthsInstr}
 - 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
 - 분량: 3~4문단
@@ -717,7 +746,7 @@ ${monthlyStrength ? `
 지금 바로 ${monthlyStrength ? 'bond, timing, strength, suggestion 네' : 'bond와 timing 두'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength, conclusion };
+  return { prompt, monthlyStrength, conclusion, liveSaturnHouse };
 }
 
 export default async function handler(req, res) {
@@ -757,6 +786,7 @@ export default async function handler(req, res) {
     const monthlyStrength = (isLove || isReunion || isReunionKnown) ? built.monthlyStrength : null;
     const conclusion = (isLove || isReunion || isReunionKnown) ? built.conclusion : null;
     const categoryGrades = isCompatibility ? built.categoryGrades : null;
+    const liveSaturnHouse = (isReunion || isReunionKnown) ? built.liveSaturnHouse : null;
     // strength·suggestion 2개 섹션이 추가될 때만(연애 솔로, 재회 타이밍 신호 확보 시) 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
     const maxOutputTokens = monthlyStrength ? 6500 : 4096;
 
@@ -833,6 +863,7 @@ export default async function handler(req, res) {
     const responseBody = { result: reply };
     if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
     if (isLove || isReunion || isReunionKnown) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
+    if (isReunion || isReunionKnown) { responseBody.liveSaturnHouse = liveSaturnHouse; }
     if (isCompatibility) { responseBody.categoryGrades = categoryGrades; }
     return res.status(200).json(responseBody);
 

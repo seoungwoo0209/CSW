@@ -1095,6 +1095,7 @@ async function revealReunionFortune() {
 
     payload.monthlyStrength = data.monthlyStrength || null;
     payload.conclusion = data.conclusion || null;
+    payload.liveSaturnHouse = data.liveSaturnHouse ?? null;
     if (resultArea) resultArea.innerHTML = _renderReunionFortuneHtml(payload, data.result || '', data.venusRetrograde);
     succeeded = true;
 
@@ -1141,7 +1142,7 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
   const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
   const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
 
-  const transitSaturnHouse = payload.transitNow?.planets?.saturn?.house;
+  const transitSaturnHouse = payload.liveSaturnHouse ?? payload.transitNow?.planets?.saturn?.house;
   const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
 
   return `
@@ -1473,6 +1474,7 @@ async function revealCompatibility() {
     aiPayload.categoryGrades = aiData.categoryGrades || null;
     aiPayload.monthlyStrength = aiData.monthlyStrength || null;
     aiPayload.conclusion = aiData.conclusion || null;
+    if (isReunionMode && aiData.liveSaturnHouse != null) aiPayload.transitSaturnHouse = aiData.liveSaturnHouse;
     if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '', aiData.venusRetrograde);
     succeeded = true;
 
