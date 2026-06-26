@@ -1479,10 +1479,12 @@ async function revealCompatibility() {
 }
 
 const _COMPAT_CATEGORY_LABELS = {
-  romanticSpark:   { title: '로맨틱 스파크', sub: '매력·속궁합' },
-  communication:   { title: '소통·가치관 싱크', sub: '지적 교감' },
-  emotionalSafety: { title: '정서적 안전지대', sub: '마음의 편안함' },
-  longTerm:        { title: '장기적 미래 시너지', sub: '결혼·지속 궁합' },
+  firstImpression:    { title: '첫인상 끌림', sub: '매력·시각적 끌림' },
+  physicalAttraction: { title: '육체적 끌림', sub: '속궁합' },
+  communication:       { title: '소통·가치관 싱크', sub: '지적 교감' },
+  emotionalSafety:     { title: '정서적 안전지대', sub: '마음의 편안함' },
+  longTerm:            { title: '장기 안정성', sub: '결혼·지속 궁합' },
+  destinyConnection:   { title: '운명적 인연', sub: '카르마적 연결' },
 };
 function _compatGradeRowsHtml(grades) {
   if (!grades) return '';

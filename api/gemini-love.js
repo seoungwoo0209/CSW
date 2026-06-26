@@ -139,7 +139,7 @@ function loveReasonAt(monthIdx, ctx) {
 }
 
 /* =========================================================
-   궁합 — 4가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
+   궁합 — 6가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
    ========================================================= */
 // topAspects의 point1/point2는 항상 "나 X" / "상대 Y" 형태 (calcAllAspects가 그렇게 라벨링)
 function findAspectsBetweenPlanets(aspects, planetA, planetB) {
@@ -169,9 +169,12 @@ function houseOverlayBonus(houseOverlay, partnerTimeUnknown, planetKeys, targetH
 }
 // 하우스 오버레이는 +1만 있는 비대칭 신호라(상응하는 -1 신호가 없음) 행성·하우스 1개로 좁혀서
 // 강함 쪽으로 과하게 치우치지 않게 한다(시뮬레이션으로 확인).
-// "속궁합"(육체적 끌림)이 핵심이라 화성-화성(원초적 욕망 매칭)·태양-화성(매그너틱 케미)을 포함하고,
-// 하우스도 5하우스(설렘)보다 8하우스(육체적·성적 친밀감)가 더 정확한 신호.
-function romanticSparkScore(aspects, houseOverlay, partnerTimeUnknown) {
+// 첫인상 끌림 — ASC(겉모습·첫 느낌)↔금성, 금성↔금성(서로의 미적 취향), 1하우스(첫인상의 집) 오버레이
+function firstImpressionScore(aspects, houseOverlay, partnerTimeUnknown) {
+  return aspectPairScore(aspects, [['ASC', '금성'], ['금성', '금성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['venus'], [1]);
+}
+// 육체적 끌림(속궁합) — 화성-화성(원초적 욕망 매칭)·태양-화성(매그너틱 케미)·금성-화성, 8하우스(육체적·성적 친밀감)
+function physicalAttractionScore(aspects, houseOverlay, partnerTimeUnknown) {
   return aspectPairScore(aspects, [['금성', '화성'], ['화성', '화성'], ['태양', '화성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [8]);
 }
 function communicationScore(aspects, houseOverlay, partnerTimeUnknown) {
@@ -183,6 +186,10 @@ function emotionalSafetyScore(aspects, houseOverlay, partnerTimeUnknown) {
 function longTermSynergyScore(aspects, houseOverlay, partnerTimeUnknown) {
   return aspectPairScore(aspects, [['토성', '토성'], ['토성', '태양'], ['토성', '달'], ['토성', '금성']])
     + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['saturn'], [7]);
+}
+// 운명적 인연 — 북노드(인생 방향·운명)↔태양/달/금성. 하우스 오버레이는 안 씀(내 북노드 하우스가 가변적이라 단순화)
+function destinyConnectionScore(aspects) {
+  return aspectPairScore(aspects, [['북노드(☊)', '태양'], ['북노드(☊)', '달'], ['북노드(☊)', '금성']]);
 }
 
 function buildLovePrompt(body) {
@@ -483,12 +490,14 @@ function buildCompatibilityPrompt(body) {
   const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함 — 하우스 오버레이는 참고용일 뿐 정밀하지 않음)` : '';
 
   const categoryGrades = {
-    romanticSpark:   strengthFromScore(romanticSparkScore(topAspects, houseOverlay, partnerTimeUnknown)),
-    communication:   strengthFromScore(communicationScore(topAspects, houseOverlay, partnerTimeUnknown)),
-    emotionalSafety: strengthFromScore(emotionalSafetyScore(topAspects, houseOverlay, partnerTimeUnknown)),
-    longTerm:        strengthFromScore(longTermSynergyScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    firstImpression:    strengthFromScore(firstImpressionScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    physicalAttraction: strengthFromScore(physicalAttractionScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    communication:      strengthFromScore(communicationScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    emotionalSafety:    strengthFromScore(emotionalSafetyScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    longTerm:           strengthFromScore(longTermSynergyScore(topAspects, houseOverlay, partnerTimeUnknown)),
+    destinyConnection:  strengthFromScore(destinyConnectionScore(topAspects)),
   };
-  const gradesStr = `로맨틱 스파크(매력·속궁합): ${categoryGrades.romanticSpark} / 소통·가치관 싱크: ${categoryGrades.communication} / 정서적 안전지대: ${categoryGrades.emotionalSafety} / 장기적 미래 시너지: ${categoryGrades.longTerm}`;
+  const gradesStr = `첫인상 끌림: ${categoryGrades.firstImpression} / 육체적 끌림(속궁합): ${categoryGrades.physicalAttraction} / 소통·가치관 싱크: ${categoryGrades.communication} / 정서적 안전지대: ${categoryGrades.emotionalSafety} / 장기 안정성: ${categoryGrades.longTerm} / 운명적 인연: ${categoryGrades.destinyConnection}`;
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -522,19 +531,19 @@ ${gradesStr}
 3. "~할 수 있습니다" 같은 모호한 표현 대신 단정적이고 생생한 문장을 써라.
 4. 좋은 점만 나열하지 말고, 마찰이 생길 수 있는 지점도 솔직하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
-6. 위 "4가지 핵심 시너지 등급"은 이미 확정된 값이다. chemistry·dynamics 해설의 어조와 결론이 그 등급들과 어긋나지 않게 써라(예: 로맨틱 스파크가 약함인데 "불꽃 같은 매력"이라고 쓰면 안 됨).
+6. 위 "6가지 핵심 시너지 등급"은 이미 확정된 값이다. chemistry·dynamics 해설의 어조와 결론이 그 등급들과 어긋나지 않게 써라(예: 육체적 끌림이 약함인데 "불꽃 같은 매력"이라고 쓰면 안 됨).
 
 [섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:chemistry===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
 ===SECTION:chemistry===
-(끌림과 케미 — 두 사람의 핵심 행성과 시너지 어스펙트가 보여주는 매력의 지점. 로맨틱 스파크·소통·정서적 안전지대 등급을 자연스럽게 반영)
+(끌림과 케미 — 두 사람의 핵심 행성과 시너지 어스펙트가 보여주는 매력의 지점. 첫인상 끌림·육체적 끌림·소통·정서적 안전지대 등급을 자연스럽게 반영)
 - 서로 어디에 끌리는지, 어떤 마찰 지점이 있을 수 있는지
 - 분량: 4~5문단, 각 문단 3~4문장
 
 ===SECTION:dynamics===
-(관계의 결 — 컴포지트 차트가 보여주는 이 관계 자체의 성격. 장기적 미래 시너지 등급을 자연스럽게 반영)
+(관계의 결 — 컴포지트 차트가 보여주는 이 관계 자체의 성격. 장기 안정성·운명적 인연 등급을 자연스럽게 반영)
 - 이 관계가 어떤 목적/성격을 가지는지, 오래 갈 수 있는 구조인지
 - 분량: 3~4문단
 
