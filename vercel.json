@@ -1,5 +1,8 @@
 {
   "regions": ["icn1"],
+  "functions": {
+    "api/gemini-*.js": { "maxDuration": 60 }
+  },
   "redirects": [
     {
       "source": "/:path*",
