@@ -84,6 +84,14 @@ function retroWindowStr(win, label) {
   return `${label} 역행 — ${enter} ${exit}`;
 }
 
+// AI가 매번 "강함"으로만 판정하는 긍정 편향을 막기 위해, 강도를 AI 판단이 아니라
+// 실제 신호 점수로 코드에서 먼저 확정한다. AI는 이 결과를 설명만 한다.
+function strengthFromScore(score) {
+  if (score >= 1) return '강함';
+  if (score <= -1) return '약함';
+  return '보통';
+}
+
 /* =========================================================
    1) 취업·합격운
    ========================================================= */
@@ -99,6 +107,12 @@ function buildJobHuntingPrompt(body, sky) {
   const genderKr = gender === 'M' ? '남성' : '여성';
 
   const house6Str = `${house6Sign}${house6Occupants?.length ? ` (${house6Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house6Ruler?.label || '?'}(${house6Ruler?.sign || '?'})`;
+
+  let strengthScore = 0;
+  if ([6, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
+  if ([6, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  if (sky.mercuryRetro) strengthScore -= 1;
+  const strengthFixed = strengthFromScore(strengthScore);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
   return `
@@ -141,11 +155,12 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 합격·면접에 유리한 시기인지 — 트랜짓 목성/토성, 수성 역행, 프로그레션 MC, 일식/월식 종합)
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
 구체적으로 어떻게 준비/행동하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
 ===SECTION:strength===
-(위 [지금 시점의 타이밍 신호]를 전부 종합했을 때 지금이 취업·합격에 얼마나 유리한 시기인지 강도를 판단해서 "강함", "보통", "약함" 중 정확히 한 단어만 출력. 다른 말 절대 덧붙이지 마라.)
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
@@ -170,6 +185,12 @@ function buildPromotionPrompt(body, sky) {
   const house11Str = `${house11Sign}${house11Occupants?.length ? ` (${house11Occupants.join(', ')} 위치)` : ''}`;
   const house2Str  = `${house2Sign}${house2Occupants?.length ? ` (${house2Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house2Ruler?.label || '?'}(${house2Ruler?.sign || '?'})`;
   const marsRetroStr = retroWindowStr(marsRetroWindow, '화성');
+
+  let strengthScore = 0;
+  if ([2, 10, 11].includes(jupiterTransitWindow?.house)) strengthScore += 1;
+  if ([10, 12].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  if (sky.marsRetro) strengthScore -= 1;
+  const strengthFixed = strengthFromScore(strengthScore);
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -211,11 +232,12 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 승진·연봉협상에 유리한 시기인지 — 트랜짓 토성/목성, 화성 역행, 일식/월식 종합)
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
 구체적인 협상 타이밍·행동 조언 포함
 분량: 3~4문단
 
 ===SECTION:strength===
-(위 [지금 시점의 승진·협상 타이밍 신호]를 전부 종합했을 때 지금이 승진·연봉협상에 얼마나 유리한 시기인지 강도를 판단해서 "강함", "보통", "약함" 중 정확히 한 단어만 출력. 다른 말 절대 덧붙이지 마라.)
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
@@ -234,6 +256,13 @@ function buildJobChangePrompt(body, sky) {
   const displayName = name?.trim() || '당신';
   const genderKr = gender === 'M' ? '남성' : '여성';
   const mcChanged = progMcSign && progMcSign !== mcSign;
+
+  const favorableCount = [
+    [1, 10].includes(uranusTransitWindow?.house),
+    !!mcChanged,
+    !!sky.jupiterReturnActive,
+  ].filter(Boolean).length;
+  const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 1 ? '보통' : '약함';
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -271,11 +300,12 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 이직·스카웃 제안을 받아들이기 좋은 시기인지 — 트랜짓 천왕성, 프로그레션 MC 전환, 목성 회귀, 일식/월식 종합)
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
 오퍼를 받았을 때 어떻게 판단하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
 ===SECTION:strength===
-(위 [지금 시점의 이직 타이밍 신호]를 전부 종합했을 때 지금이 이직·스카웃 제안을 받아들이기에 얼마나 유리한 시기인지 강도를 판단해서 "강함", "보통", "약함" 중 정확히 한 단어만 출력. 다른 말 절대 덧붙이지 마라.)
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
@@ -300,6 +330,13 @@ function buildStartupPrompt(body, sky) {
   const house2Str = `${house2Sign}${house2Occupants?.length ? ` (${house2Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house2Ruler?.label || '?'}(${house2Ruler?.sign || '?'})`;
   const house8Str = `${house8Sign}${house8Occupants?.length ? ` (${house8Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house8Ruler?.label || '?'}(${house8Ruler?.sign || '?'})`;
   const jupiterRetroStr = retroWindowStr(jupiterRetroWindow, '목성');
+
+  let strengthScore = 0;
+  if ([2, 8, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
+  if ([2, 8, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  if (sky.jupiterRetro) strengthScore -= 1;
+  if (sky.jupiterReturnActive) strengthScore += 1;
+  const strengthFixed = strengthFromScore(strengthScore);
 
   return `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -341,11 +378,12 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 시작하기 좋은 시기인지 — 트랜짓 목성/토성, 목성 역행, 목성 회귀, 일식/월식 종합)
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
 구체적으로 어떻게 준비하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
 ===SECTION:strength===
-(위 [지금 시점의 창업 타이밍 신호]를 전부 종합했을 때 지금이 창업·부업을 시작하기에 얼마나 유리한 시기인지 강도를 판단해서 "강함", "보통", "약함" 중 정확히 한 단어만 출력. 다른 말 절대 덧붙이지 마라.)
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
