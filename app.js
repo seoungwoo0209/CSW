@@ -1810,13 +1810,14 @@ function _strengthBadgeHtml(strength) {
 // 상대적으로(min~max) 정규화한 값이다 — 숫자·퍼센트는 절대 텍스트로 노출하지 않는다(법적 리스크 회피).
 function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
-  const { scores, bestIdx } = monthlyStrength;
+  const { scores, bestIndices } = monthlyStrength;
+  const bestSet = new Set(bestIndices || []);
   const min = Math.min(...scores), max = Math.max(...scores);
   const heightOf = (s) => min === max ? 55 : Math.round(((s - min) / (max - min)) * 70 + 20);
 
   const bars = scores.map((s, i) => {
     const h = heightOf(s);
-    const barStyle = i === bestIdx
+    const barStyle = bestSet.has(i)
       ? 'background:linear-gradient(180deg,#f6e9c1,#caa74e);box-shadow:0 0 10px rgba(232,196,120,.5);'
       : 'background:rgba(200,168,96,.18);';
     return `
@@ -1828,6 +1829,7 @@ function _strengthTimelineHtml(monthlyStrength) {
   const labels = scores.map((_, i) =>
     `<span style="flex:1;text-align:center;font-size:9px;color:#6b6253;">${i + 1}</span>`
   ).join('');
+  const bestMonthsStr = (bestIndices || []).map(i => `${i + 1}월`).join('·');
 
   return `
     <div style="margin-bottom:16px;">
@@ -1836,7 +1838,7 @@ function _strengthTimelineHtml(monthlyStrength) {
       <div style="display:flex;align-items:center;gap:8px;background:rgba(200,168,96,.08);border:1px solid rgba(200,168,96,.3);border-radius:12px;padding:8px 12px;">
         <span style="font-size:15px;">🌕</span>
         <span style="font-size:11.5px;color:#857a60;">올해의 골든타임</span>
-        <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${bestIdx + 1}월</span>
+        <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${bestMonthsStr}</span>
       </div>
     </div>
   `;

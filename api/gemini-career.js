@@ -115,9 +115,9 @@ function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
 }
 // scores(12개, 강도 점수 또는 호의신호 개수)와 현재월 인덱스로 타임라인 응답 객체 생성
 function buildMonthlyStrength(scores, nowIdx) {
-  let bestIdx = 0;
-  for (let i = 1; i < scores.length; i++) if (scores[i] > scores[bestIdx]) bestIdx = i;
-  return { scores, nowIdx, bestIdx };
+  const max = Math.max(...scores);
+  const bestIndices = scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, []);
+  return { scores, nowIdx, bestIndices };
 }
 
 // 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
