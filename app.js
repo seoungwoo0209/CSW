@@ -1867,22 +1867,25 @@ function _conclusionHtml(conclusion, suggestion) {
   if (!conclusion) return '';
   const bullets = [];
   const moon = _STRENGTH_MOON[(conclusion.strengthFixed || '').trim()];
-  if (moon) bullets.push(`지금은 ${moon.label} 시기예요`);
+  const GOLD = { color: '#e8c878', bg: 'rgba(200,168,96,.14)', border: 'rgba(200,168,96,.4)' };
+  const BLUE = { color: '#a9bce0', bg: 'rgba(138,160,214,.14)', border: 'rgba(138,160,214,.38)' };
 
-  if (conclusion.halfTrend === 'h2') bullets.push('하반기 전체적으로 흐름이 더 안정적이에요');
-  else if (conclusion.halfTrend === 'h1') bullets.push('상반기 전체적으로 흐름이 더 안정적이에요');
+  if (moon) bullets.push({ icon: moon.icon, ...GOLD, text: `지금은 ${moon.label} 시기예요` });
+
+  if (conclusion.halfTrend === 'h2') bullets.push({ icon: '〜', ...BLUE, text: '하반기 전체적으로 흐름이 더 안정적이에요' });
+  else if (conclusion.halfTrend === 'h1') bullets.push({ icon: '〜', ...BLUE, text: '상반기 전체적으로 흐름이 더 안정적이에요' });
 
   if (conclusion.hasVariation && conclusion.bestMonths?.length) {
     const months = conclusion.bestMonths.join('·');
-    bullets.push(`특히 ${months}월에 신호가 집중돼요${conclusion.reason ? ` — ${conclusion.reason}` : ''}`);
+    bullets.push({ icon: '✨', ...GOLD, text: `특히 ${months}월에 신호가 집중돼요${conclusion.reason ? ` — ${conclusion.reason}` : ''}` });
   }
 
   if (!bullets.length && !suggestion) return '';
 
   const rows = bullets.map(b => `
     <div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:12px;">
-      <span style="flex-shrink:0;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(159,147,192,.14);border:1px solid rgba(159,147,192,.3);color:#b8acd6;font-size:10px;line-height:1;margin-top:1px;">✦</span>
-      <span style="font-size:13.5px;color:#e7e1f0;line-height:1.65;font-weight:600;">${b}</span>
+      <span style="flex-shrink:0;width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:${b.bg};border:1px solid ${b.border};color:${b.color};font-size:11px;line-height:1;margin-top:1px;">${b.icon}</span>
+      <span style="font-size:13.5px;color:#e7e1f0;line-height:1.65;font-weight:600;">${b.text}</span>
     </div>
   `).join('');
 
