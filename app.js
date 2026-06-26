@@ -1739,6 +1739,7 @@ async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtr
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
     payload.monthlyStrength = data.monthlyStrength || null;
+    payload.conclusion = data.conclusion || null;
     if (resultArea) resultArea.innerHTML = renderFn(payload, data.result || '');
     succeeded = true;
 
@@ -1811,9 +1812,10 @@ function _strengthBadgeHtml(strength) {
 function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
   const { scores, bestIndices } = monthlyStrength;
-  const bestSet = new Set(bestIndices || []);
   const min = Math.min(...scores), max = Math.max(...scores);
-  const heightOf = (s) => min === max ? 55 : Math.round(((s - min) / (max - min)) * 70 + 20);
+  const hasVariation = min !== max;
+  const bestSet = new Set(hasVariation ? (bestIndices || []) : []);
+  const heightOf = (s) => hasVariation ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
 
   const bars = scores.map((s, i) => {
     const h = heightOf(s);
@@ -1829,17 +1831,60 @@ function _strengthTimelineHtml(monthlyStrength) {
   const labels = scores.map((_, i) =>
     `<span style="flex:1;text-align:center;font-size:9px;color:#6b6253;">${i + 1}</span>`
   ).join('');
-  const bestMonthsStr = (bestIndices || []).map(i => `${i + 1}월`).join('·');
+
+  const callout = hasVariation
+    ? `
+      <span style="font-size:15px;">🌕</span>
+      <span style="font-size:11.5px;color:#857a60;">올해의 골든타임</span>
+      <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${(bestIndices || []).map(i => `${i + 1}월`).join('·')}</span>
+    `
+    : `
+      <span style="font-size:15px;">🌓</span>
+      <span style="font-size:11.5px;color:#857a60;">올해는 달마다 큰 차이 없이 흐름이 비슷해요</span>
+    `;
 
   return `
     <div style="margin-bottom:16px;">
       <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:4px;">${bars}</div>
       <div style="display:flex;gap:4px;margin-bottom:10px;">${labels}</div>
       <div style="display:flex;align-items:center;gap:8px;background:rgba(200,168,96,.08);border:1px solid rgba(200,168,96,.3);border-radius:12px;padding:8px 12px;">
-        <span style="font-size:15px;">🌕</span>
-        <span style="font-size:11.5px;color:#857a60;">올해의 골든타임</span>
-        <span style="font-size:13px;font-weight:700;color:#f0e6cc;">${bestMonthsStr}</span>
+        ${callout}
       </div>
+    </div>
+  `;
+}
+
+// 직업 4종 — "이번 리포트 결론" 요약 박스. AI 호출 없이, 서버가 이미 계산해둔 monthlyStrength/conclusion
+// 데이터만으로 만든다 — 추가 지연 없음. "~해라/하지마라" 같은 행동 지시나 근거 없는 비교는 절대 넣지 않고,
+// 실제로 계산된 사실(지금 강도·상반기·하반기 흐름·골든타임과 그 이유)만 단정적으로 적는다.
+function _conclusionHtml(conclusion) {
+  if (!conclusion) return '';
+  const bullets = [];
+  const moon = _STRENGTH_MOON[(conclusion.strengthFixed || '').trim()];
+  if (moon) bullets.push(`지금은 ${moon.label} 시기예요`);
+
+  if (conclusion.halfTrend === 'h2') bullets.push('하반기에 흐름이 더 좋아져요');
+  else if (conclusion.halfTrend === 'h1') bullets.push('상반기에 흐름이 더 좋아요');
+
+  if (conclusion.hasVariation && conclusion.bestMonths?.length) {
+    const months = conclusion.bestMonths.join('·');
+    bullets.push(`특히 ${months}월에 신호가 집중돼요${conclusion.reason ? ` — ${conclusion.reason}` : ''}`);
+  }
+
+  if (!bullets.length) return '';
+
+  const rows = bullets.map(b => `
+    <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:9px;">
+      <span style="flex-shrink:0;color:#9f93c0;font-size:13px;line-height:1.5;">✦</span>
+      <span style="font-size:13.5px;color:#ddd5e8;line-height:1.5;font-weight:600;">${b}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div style="${_CAREER_PANEL_STYLE}">
+      <div style="${_CAREER_EYEBROW_STYLE}">結 論</div>
+      <div style="${_CAREER_TITLE_STYLE}">이번 리포트 결론</div>
+      ${rows}
     </div>
   `;
 }
@@ -1922,6 +1967,7 @@ function _renderJobHuntingHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
+    ${_conclusionHtml(payload.conclusion)}
   `;
 }
 
@@ -1994,6 +2040,7 @@ function _renderPromotionHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 흐름 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
+    ${_conclusionHtml(payload.conclusion)}
   `;
 }
 
@@ -2052,6 +2099,7 @@ function _renderJobChangeHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 타이밍 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
+    ${_conclusionHtml(payload.conclusion)}
   `;
 }
 
@@ -2122,6 +2170,7 @@ function _renderStartupHtml(payload, raw) {
       <div style="${_CAREER_AI_EYEBROW_STYLE}">— 지금의 시기 해설</div>
       <div style="${_CAREER_AI_TEXT_STYLE}">${_careerToParas(sections.timing)}</div>
     </div>
+    ${_conclusionHtml(payload.conclusion)}
   `;
 }
 

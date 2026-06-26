@@ -120,6 +120,54 @@ function buildMonthlyStrength(scores, nowIdx) {
   return { scores, nowIdx, bestIndices };
 }
 
+// 골든타임(가장 점수 높은 달)이 "왜" 좋은지 — 실제로 그 달 점수에 기여한 신호 중 하나를 우선순위대로 골라 설명.
+// 근거 없는 추측은 절대 만들지 않고, 해당 신호가 진짜로 그 달에 켜져 있을 때만 문구를 반환한다.
+function jobHuntingReasonAt(m, ctx) {
+  const { transits, eclipseMonth } = ctx;
+  if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  if ([6, 10].includes(monthlyHouse(transits, m, 'jupiter'))) return '목성이 취업·직장 영역(6·10하우스)을 지나는 시기';
+  return null;
+}
+function promotionReasonAt(m, ctx) {
+  const { transits, eclipseMonth } = ctx;
+  if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  if ([2, 10, 11].includes(monthlyHouse(transits, m, 'jupiter'))) return '목성이 승진·인정 영역(2·10·11하우스)을 지나는 시기';
+  return null;
+}
+function startupReasonAt(m, ctx) {
+  const { transits, eclipseMonth, natalJupiterLon } = ctx;
+  if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  const jLonM = monthlyLon(transits, m, 'jupiter');
+  if (natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5) return '목성 회귀(약 12년 주기 확장기)';
+  if ([2, 8, 10].includes(monthlyHouse(transits, m, 'jupiter'))) return '목성이 창업·수익 영역(2·8·10하우스)을 지나는 시기';
+  return null;
+}
+function jobChangeReasonAt(m, ctx) {
+  const { transits, eclipseMonth, mcChanged, natalJupiterLon } = ctx;
+  if (eclipseMonth === m) return '일식·월식이 가까운 시기';
+  const jLonM = monthlyLon(transits, m, 'jupiter');
+  if (natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5) return '목성 회귀(약 12년 주기 확장기)';
+  if (mcChanged) return '진행 MC가 전환되는 시기(경력 테마 전환기)';
+  if ([1, 10].includes(monthlyHouse(transits, m, 'uranus'))) return '천왕성이 정체성·경력 영역(1·10하우스)을 지나는 시기';
+  return null;
+}
+
+// AI 호출과 무관하게(추가 비용·지연 없이) 이미 계산된 monthlyStrength로부터 "결론" 데이터를 만든다.
+function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
+  const { scores, bestIndices } = monthlyStrength;
+  const h1 = scores.slice(0, 6).reduce((a, b) => a + b, 0) / 6;
+  const h2 = scores.slice(6).reduce((a, b) => a + b, 0) / 6;
+  const halfTrend = h1 === h2 ? 'even' : (h2 > h1 ? 'h2' : 'h1');
+  const hasVariation = Math.min(...scores) !== Math.max(...scores);
+  return {
+    strengthFixed,
+    halfTrend,
+    hasVariation,
+    bestMonths: hasVariation ? bestIndices.map(i => i + 1) : [],
+    reason: hasVariation ? reasonFn(bestIndices[0], ctx) : null,
+  };
+}
+
 // 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
 // "지금" 강도도 이 함수에 nowMonthIdx를 넣어 호출하므로, 배지 값과 타임라인의 이번달 막대가 항상 일치한다.
 function jobHuntingScoreAt(monthIdx, ctx) {
@@ -257,6 +305,7 @@ function buildJobHuntingPrompt(body, sky) {
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobHuntingReasonAt, ctx);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
   const prompt = `
@@ -312,7 +361,7 @@ ${eclipseStr(eclipseSignal)}
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength };
+  return { prompt, monthlyStrength, conclusion };
 }
 
 /* =========================================================
@@ -347,6 +396,7 @@ function buildPromotionPrompt(body, sky) {
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScoreStrict(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const conclusion = buildConclusion(monthlyStrength, strengthFixed, promotionReasonAt, ctx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -401,7 +451,7 @@ ${eclipseStr(eclipseSignal)}
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength };
+  return { prompt, monthlyStrength, conclusion };
 }
 
 /* =========================================================
@@ -432,6 +482,7 @@ function buildJobChangePrompt(body, sky) {
   // 5개 항목 중 호의신호가 3개 이상이어야 "강함"인 기준은 시뮬레이션 결과 너무 엄격해서(강함이 거의 안 나옴) 2개로 완화
   const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobChangeReasonAt, ctx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -482,7 +533,7 @@ ${eclipseStr(eclipseSignal)}
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength };
+  return { prompt, monthlyStrength, conclusion };
 }
 
 /* =========================================================
@@ -518,6 +569,7 @@ function buildStartupPrompt(body, sky) {
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const conclusion = buildConclusion(monthlyStrength, strengthFixed, startupReasonAt, ctx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -572,7 +624,7 @@ ${eclipseStr(eclipseSignal)}
 지금 바로 nature·timing·strength 3개 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength };
+  return { prompt, monthlyStrength, conclusion };
 }
 
 export default async function handler(req, res) {
@@ -596,7 +648,7 @@ export default async function handler(req, res) {
       sky = { mercuryRetro: false, marsRetro: false, jupiterRetro: false, uranusHouse: null, jupiterReturnActive: false };
     }
 
-    const { prompt, monthlyStrength } =
+    const { prompt, monthlyStrength, conclusion } =
       type === 'job-hunting' ? buildJobHuntingPrompt(req.body, sky)
     : type === 'promotion'   ? buildPromotionPrompt(req.body, sky)
     : type === 'job-change'  ? buildJobChangePrompt(req.body, sky)
@@ -644,7 +696,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
-    return res.status(200).json({ result: reply, monthlyStrength });
+    return res.status(200).json({ result: reply, monthlyStrength, conclusion });
 
   } catch (error) {
     console.error('handler error:', error);
