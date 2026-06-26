@@ -15,6 +15,129 @@ function isVenusRetrogradeNow() {
   return diff < 0;
 }
 
+/* =========================================================
+   솔로 "올해의 연애 타이밍" 점수/타임라인 — api/gemini-career.js와 동일한 패턴
+   ========================================================= */
+function currentLongitude(planetKey) {
+  return norm360(Ephemeris.getAllPlanets(new Date(), 0, 0, 0).observed[planetKey].apparentLongitudeDd);
+}
+function getHouseOf(lon, houses) {
+  const n = norm360(lon);
+  for (let i = 0; i < 12; i++) {
+    const s = houses[i]?.longitude, e = houses[(i + 1) % 12]?.longitude;
+    if (s == null || e == null) continue;
+    if (s > e) { if (n >= s || n < e) return i + 1; }
+    else       { if (n >= s && n < e) return i + 1; }
+  }
+  return 12;
+}
+function angularDistance(a, b) {
+  const diff = Math.abs(norm360(a) - norm360(b));
+  return diff > 180 ? 360 - diff : diff;
+}
+const ASPECT_DEFS = [
+  { name: '합',     angle: 0,   orb: 6 },
+  { name: '섹스타일', angle: 60,  orb: 4 },
+  { name: '트라인',  angle: 120, orb: 6 },
+  { name: '스퀘어',  angle: 90,  orb: 6 },
+  { name: '어포지션', angle: 180, orb: 8 },
+];
+function aspectName(lon1, lon2) {
+  if (lon1 == null || lon2 == null) return null;
+  const dist = angularDistance(lon1, lon2);
+  for (const a of ASPECT_DEFS) {
+    if (Math.abs(dist - a.angle) <= a.orb) return a.name;
+  }
+  return null;
+}
+const _isHarmoniousAspect  = (name) => name === '트라인' || name === '섹스타일';
+const _isChallengingAspect = (name) => name === '스퀘어' || name === '어포지션';
+function aspectScore(transitLon, natalLons) {
+  for (const lon of natalLons) {
+    const a = aspectName(transitLon, lon);
+    if (_isHarmoniousAspect(a)) return 1;
+    if (_isChallengingAspect(a)) return -1;
+  }
+  return 0;
+}
+function monthlyLon(transits, monthIdx, planetKey) {
+  return transits?.[monthIdx]?.planets?.[planetKey]?.longitude ?? null;
+}
+function monthlyHouse(transits, monthIdx, planetKey) {
+  return transits?.[monthIdx]?.planets?.[planetKey]?.house ?? null;
+}
+function monthlyRetroFlags(transits, planetKey) {
+  if (!Array.isArray(transits) || transits.length !== 12) return null;
+  const lons = transits.map(t => t.planets?.[planetKey]?.longitude);
+  if (lons.some(l => l == null)) return null;
+  return lons.map((lon, i) => {
+    const a = i === 0 ? lons[0] : lons[i - 1];
+    const b = i === 0 ? lons[1] : lons[i];
+    let diff = b - a;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    return diff < 0;
+  });
+}
+function eclipseMonthIndex(eclipseSignal) {
+  if (!eclipseSignal) return null;
+  return new Date(eclipseSignal.dateLocal).getMonth();
+}
+function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
+  if (!Array.isArray(transits) || transits.length !== 12) return transits;
+  const patched = transits.map((t, i) => i === nowMonthIdx ? { ...t, planets: { ...t.planets } } : t);
+  for (const key of planetKeys) {
+    const lon = currentLongitude(key);
+    const house = (houses && houses.length === 12) ? getHouseOf(lon, houses) : patched[nowMonthIdx].planets[key]?.house;
+    patched[nowMonthIdx].planets[key] = { ...patched[nowMonthIdx].planets[key], longitude: lon, house };
+  }
+  return patched;
+}
+function buildMonthlyStrength(scores, nowIdx) {
+  const max = Math.max(...scores);
+  const min = Math.min(...scores);
+  const bestIndices = (min !== max && max > 0)
+    ? scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, [])
+    : [];
+  return { scores, nowIdx, bestIndices };
+}
+function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
+  const { scores, bestIndices } = monthlyStrength;
+  const h1 = scores.slice(0, 6).reduce((a, b) => a + b, 0) / 6;
+  const h2 = scores.slice(6).reduce((a, b) => a + b, 0) / 6;
+  const halfTrend = h1 === h2 ? 'even' : (h2 > h1 ? 'h2' : 'h1');
+  const hasBest = bestIndices.length > 0;
+  return {
+    strengthFixed,
+    halfTrend,
+    hasVariation: hasBest,
+    bestMonths: hasBest ? bestIndices.map(i => i + 1) : [],
+    reason: hasBest ? reasonFn(bestIndices[0], ctx) : null,
+  };
+}
+function strengthFromScore(score) {
+  if (score >= 1) return '강함';
+  if (score <= -1) return '약함';
+  return '보통';
+}
+function loveScoreAt(monthIdx, ctx) {
+  const { transits, venusLon, house7RulerLon, eclipseMonth, venusRetroFlags } = ctx;
+  let s = 0;
+  if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
+  if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
+  if (venusRetroFlags?.[monthIdx]) s -= 1;
+  if (eclipseMonth === monthIdx) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [venusLon, house7RulerLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [venusLon, house7RulerLon]);
+  return s;
+}
+function loveReasonAt(monthIdx, ctx) {
+  const { transits, eclipseMonth } = ctx;
+  if (eclipseMonth === monthIdx) return '일식·월식이 가까운 시기';
+  if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) return '목성이 연애·관계 영역(5·7하우스)을 지나는 시기';
+  return null;
+}
+
 function buildLovePrompt(body) {
   const {
     name, gender, venus, mars, moon, saturn,
@@ -23,11 +146,32 @@ function buildLovePrompt(body) {
     transitNow, progMoonHouse, progMoonSign,
     ascSign, ascRuler, house5Ruler, house8Sign, house8Occupants,
     progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
-    jupiterVenusAspect, eclipseSignal, venusRetro, isInRelationship
+    jupiterVenusAspect, eclipseSignal, venusRetro, isInRelationship,
+    transits, houses
   } = body;
 
   const displayName = name?.trim() || '당신';
   const genderKr     = gender === 'M' ? '남성' : '여성';
+  const isSolo = !isInRelationship;
+
+  // 솔로일 때만 "올해의 만남 타이밍" 점수·타임라인 계산 (연애 중인 사람에겐 의미 없는 질문이라 스킵)
+  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  if (isSolo && Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
+    const nowMonthIdx = new Date().getMonth();
+    const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
+    if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const ctx = {
+      transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
+      venusLon: venus?.longitude,
+      house7RulerLon: house7Ruler?.longitude,
+      eclipseMonth: eclipseMonthIndex(eclipseSignal),
+      venusRetroFlags,
+    };
+    const monthlyScores = Array.from({ length: 12 }, (_, m) => loveScoreAt(m, ctx));
+    strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    conclusion = buildConclusion(monthlyStrength, strengthFixed, loveReasonAt, ctx);
+  }
 
   // timing 섹션의 해석 관점만 분기 — 계산에 쓰는 천체 신호(트랜짓·프로그레션 등)는 솔로/연애 중 동일하게 공유
   const timingFocus = isInRelationship
@@ -35,7 +179,9 @@ function buildLovePrompt(body) {
 - 지금 관계에 어떤 변화(개선·갈등 해소·시험대 등)가 다가오는지
 - 그 변화에 ${displayName}님이 어떻게 대응하면 좋을지 실질적인 조언`
     : `(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍, ${displayName}님이 현재 솔로인 상태를 전제로 해석)
-- 새로운 인연이 다가오는 시기인지, 어떤 계기·환경에서 만나게 될 가능성이 높은지
+- 새로운 인연이 다가오는 시기인지를, 지금 강도는 이미 "${strengthFixed}"로 확정되어 있으니 그 흐름과 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 차분히 기반을 다지는 시기로, 보통이면 균형있게)
+- 어떤 계기·환경에서 만나게 될 가능성이 높은지를 5하우스(취미·모임·사교 자리)/11하우스(친구 소개·동호회·커뮤니티)/9하우스(여행·낯선 환경·새로운 분야 공부) 중 ${displayName}님 차트에 부합하는 쪽으로 구체적으로 짚어라. 금성 별자리 기질도 반영해라(불 원소면 활동적인 자리, 흙 원소면 일상·업무 관련 자리, 공기 원소면 대화·온라인 중심, 물 원소면 소규모 친밀한 자리)
+- 구체적인 동네·장소명 같은 건 절대 언급하지 마라 — 어떤 "맥락·상황"인지만 짚어라
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언`;
 
   const house5Str = `${house5Sign}${house5Occupants?.length ? ` (${house5Occupants.join(', ')} 위치)` : ''}`;
@@ -76,7 +222,7 @@ function buildLovePrompt(body) {
       })()
     : '올해 연애 관련 일식/월식 시그널 없음';
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님만을 위한 연애운 리포트를 작성해.
 
@@ -118,9 +264,10 @@ ${eclipseStr}
 4. 단정적인 길흉 예언(예: "올해 반드시 결혼한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
 
-[섹션 구성 — 반드시 아래 3개 마커를 정확히 그대로 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 ${isSolo ? '5개' : '3개'} 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:nature===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
+${isSolo ? `${'5개'} 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.` : ''}
 
 ===SECTION:nature===
 (타고난 연애 기질 — 금성·화성·달·5/7하우스가 만드는 ${displayName}님의 연애 패턴)
@@ -137,10 +284,20 @@ ${eclipseStr}
 ===SECTION:timing===
 ${timingFocus}
 - 분량: 3~4문단
+${isSolo ? `
+===SECTION:strength===
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
+
+===SECTION:suggestion===
+(위에서 정해진 강도·흐름·시기 신호를 바탕으로 한 줄 제안. 직접적인 행동 지시("~하세요", "나가보세요" 등 명령형)는 절대 쓰지 말고, 돌려서 말하는 부드러운 제안을 딱 한 문장으로 적어라.
+예시 톤: "서두르기보다 신호가 강해지는 시점에 맞춰 움직여보는 것도 방법입니다." 같은 느낌.
+이 SECTION:suggestion 섹션 안에서만 한 문장으로 끝내라(마크다운 금지). 이 규칙은 이 섹션 안에만 적용되는 것이고, 위의 nature·marriage·timing·strength 섹션은 각각 요청한 분량과 형식을 그대로 지켜서 절대 줄이지 마라.)` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-지금 바로 nature, marriage, timing 세 섹션을 마커와 함께 전부 작성해.
+지금 바로 ${isSolo ? 'nature, marriage, timing, strength, suggestion 다섯' : 'nature, marriage, timing 세'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength, conclusion };
 }
 
 function buildReunionPrompt(body) {
@@ -431,13 +588,19 @@ export default async function handler(req, res) {
       try { venusRetro = isVenusRetrogradeNow(); } catch (e) { console.warn('금성 역행 계산 실패:', e.message); }
     }
 
-    const prompt = isReunionKnown
+    const isLove = !isReunionKnown && !isCompatibility && !isReunion;
+    const built = isReunionKnown
       ? buildReunionKnownPrompt({ ...req.body, venusRetro })
       : isCompatibility
         ? buildCompatibilityPrompt(req.body)
         : isReunion
           ? buildReunionPrompt({ ...req.body, venusRetro })
           : buildLovePrompt({ ...req.body, venusRetro });
+    const prompt = isLove ? built.prompt : built;
+    const monthlyStrength = isLove ? built.monthlyStrength : null;
+    const conclusion = isLove ? built.conclusion : null;
+    // 솔로일 때만 strength·suggestion 2개 섹션이 추가돼 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
+    const maxOutputTokens = (isLove && monthlyStrength) ? 6500 : 4096;
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
@@ -456,7 +619,7 @@ export default async function handler(req, res) {
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.9,
-              maxOutputTokens: 4096,
+              maxOutputTokens,
             }
           })
         }
@@ -481,8 +644,18 @@ export default async function handler(req, res) {
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
+    if (isLove) {
+      const requiredMarkers = monthlyStrength
+        ? ['===SECTION:nature===', '===SECTION:marriage===', '===SECTION:timing===', '===SECTION:strength===', '===SECTION:suggestion===']
+        : ['===SECTION:nature===', '===SECTION:marriage===', '===SECTION:timing==='];
+      if (requiredMarkers.some(marker => !reply.includes(marker))) {
+        console.warn('연애운 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
+      }
+    }
+
     const responseBody = { result: reply };
     if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
+    if (isLove) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
     return res.status(200).json(responseBody);
 
   } catch (error) {

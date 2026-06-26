@@ -895,6 +895,8 @@ async function revealLoveFortune() {
       ..._buildLoveEnhancedFields(astroData),
       eclipseSignal,
       isInRelationship: _loveRelationshipStatus === 'taken',
+      transits: astroData.transits,
+      houses: astroData.houses,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -905,6 +907,8 @@ async function revealLoveFortune() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
+    payload.monthlyStrength = data.monthlyStrength || null;
+    payload.conclusion = data.conclusion || null;
     if (resultArea) resultArea.innerHTML = _renderLoveFortuneHtml(payload, data.result || '', data.venusRetrograde);
     succeeded = true;
 
@@ -1007,11 +1011,14 @@ function _renderLoveFortuneHtml(payload, raw, venusRetrograde) {
         <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
         ${payload.eclipseSignal ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${payload.eclipseSignal.type} · ${payload.eclipseSignal.conjunctPoint} 근접</span>` : ''}
       </div>
+      ${!payload.isInRelationship && sections.strength ? _strengthBadgeHtml(sections.strength) : ''}
+      ${!payload.isInRelationship ? _strengthTimelineHtml(payload.monthlyStrength) : ''}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 올해 흐름 해설</div>
       <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
     </div>
+    ${!payload.isInRelationship ? _conclusionHtml(payload.conclusion, sections.suggestion) : ''}
   `;
 }
 
