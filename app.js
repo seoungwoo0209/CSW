@@ -22,6 +22,14 @@ function setAlert(msg) {
   else      { el.textContent = msg; el.classList.remove("hidden"); }
 }
 
+// 화면별 전용 알림창(예: jobHuntingAlert) — 실제 백엔드 오류 메시지를 그대로 보여줌
+function _setInlineAlert(elId, msg) {
+  const el = _$(elId);
+  if (!el) return;
+  if (!msg) { el.textContent = ""; el.classList.add("hidden"); }
+  else      { el.textContent = msg; el.classList.remove("hidden"); }
+}
+
 /* =========================================================
    다중 프로필 / 사람별·화면별 현재 위치 — localStorage 영구 저장
    - profiles: { id, name, gender, birthDate, calendarType, isLeapMonth,
@@ -819,6 +827,7 @@ async function revealLoveFortune() {
   const introCard  = _$('loveFortuneInputCard');
   const loading    = _$('loveFortuneLoading');
   const resultArea = _$('loveFortuneResultArea');
+  _setInlineAlert('loveFortuneAlert', '');
   if (resultArea) resultArea.style.display = 'none';
   if (loading)    loading.style.display = 'block';
   if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
@@ -878,7 +887,7 @@ async function revealLoveFortune() {
 
   } catch (err) {
     console.error("연애운 분석 중 오류:", err);
-    setAlert("연애운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    _setInlineAlert('loveFortuneAlert', err.message || "연애운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
   } finally {
     _loveRevealInFlight = false;
     if (loading)   loading.style.display = 'none';
@@ -1001,6 +1010,7 @@ async function revealReunionFortune() {
   const introCard  = _$('reunionFortuneInputCard');
   const loading    = _$('reunionFortuneLoading');
   const resultArea = _$('reunionFortuneResultArea');
+  _setInlineAlert('reunionFortuneAlert', '');
   if (resultArea) resultArea.style.display = 'none';
   if (loading)    loading.style.display = 'block';
   if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
@@ -1056,7 +1066,7 @@ async function revealReunionFortune() {
 
   } catch (err) {
     console.error("재회운 분석 중 오류:", err);
-    setAlert("재회운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    _setInlineAlert('reunionFortuneAlert', err.message || "재회운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
   } finally {
     _reunionRevealInFlight = false;
     if (loading)   loading.style.display = 'none';
@@ -1686,6 +1696,7 @@ async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtr
   const introCard  = _$(idPrefix + 'InputCard');
   const loading    = _$(idPrefix + 'Loading');
   const resultArea = _$(idPrefix + 'ResultArea');
+  _setInlineAlert(idPrefix + 'Alert', '');
   if (resultArea) resultArea.style.display = 'none';
   if (loading)    loading.style.display = 'block';
   if (introCard)  introCard.querySelectorAll('button').forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
@@ -1715,7 +1726,7 @@ async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtr
 
   } catch (err) {
     console.error(errorLabel + " 분석 중 오류:", err);
-    setAlert(errorLabel + " 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    _setInlineAlert(idPrefix + 'Alert', err.message || (errorLabel + " 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
   } finally {
     window[inFlightFlagName] = false;
     if (loading)   loading.style.display = 'none';
@@ -5238,7 +5249,7 @@ document.addEventListener("DOMContentLoaded", () => {
     renderHomeProfileStatus();
   } catch (e) {
     console.error("앱 초기화 오류:", e);
-    try { setAlert("오류 발생: " + (e?.message || e)); } catch (_) {}
+    try { alert("초기화 중 오류가 발생했습니다: " + (e?.message || e)); } catch (_) {}
   }
 });
 

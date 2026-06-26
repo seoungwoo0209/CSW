@@ -288,6 +288,7 @@
             </div>
           </label>
         </div>
+        <div id="alert" class="alert hidden" style="margin-top:12px;"></div>
         <button class="run-btn" id="runAllBtn" onclick="revealSajuResults()">
           <span class="cta-sheen"></span>
           <span style="position:relative;">✨ 사주 분석 시작</span>
@@ -576,6 +577,8 @@
           끌림의 코드<span class="dot">·</span>올해의 흐름<span class="dot">·</span>다가올 시기
         </p>
 
+        <div id="loveFortuneAlert" class="alert hidden" style="margin-top:12px;"></div>
+
         <button onclick="revealLoveFortune()" class="intro-card-cta">
           <span class="cta-sheen"></span>
           <span class="intro-card-cta-label">✨ 연애운 보기</span>
@@ -640,6 +643,8 @@
         <p class="intro-card-tags">
           재회의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>다가올 흐름
         </p>
+
+        <div id="reunionFortuneAlert" class="alert hidden" style="margin-top:12px;"></div>
 
         <button onclick="revealReunionFortune()" class="intro-card-cta">
           <span class="cta-sheen"></span>
@@ -933,6 +938,8 @@
           나의 취업 기질<span class="dot">·</span>지금의 시기<span class="dot">·</span>면접·시험 타이밍
         </p>
 
+        <div id="jobHuntingAlert" class="alert hidden" style="margin-top:12px;"></div>
+
         <button onclick="revealJobHunting()" class="intro-card-cta">
           <span class="cta-sheen"></span>
           <span class="intro-card-cta-label">✨ 취업·합격운 보기</span>
@@ -985,6 +992,8 @@
         <p class="intro-card-tags">
           나의 직장 스타일<span class="dot">·</span>인간관계<span class="dot">·</span>승진의 시기
         </p>
+
+        <div id="promotionAlert" class="alert hidden" style="margin-top:12px;"></div>
 
         <button onclick="revealPromotion()" class="intro-card-cta">
           <span class="cta-sheen"></span>
@@ -1039,6 +1048,8 @@
           이직의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>오퍼 수락 여부
         </p>
 
+        <div id="jobChangeAlert" class="alert hidden" style="margin-top:12px;"></div>
+
         <button onclick="revealJobChange()" class="intro-card-cta">
           <span class="cta-sheen"></span>
           <span class="intro-card-cta-label">✨ 이직·스카웃운 보기</span>
@@ -1091,6 +1102,8 @@
         <p class="intro-card-tags">
           사업가 기질<span class="dot">·</span>재정의 흐름<span class="dot">·</span>시작의 시기
         </p>
+
+        <div id="startupAlert" class="alert hidden" style="margin-top:12px;"></div>
 
         <button onclick="revealStartup()" class="intro-card-cta">
           <span class="cta-sheen"></span>
@@ -1247,8 +1260,6 @@
         color:#c98a7a;font-size:13px;font-weight:600;cursor:pointer;">이 프로필 삭제</button>
     </div>
   </div>
-
-  <div id="alert" class="alert hidden global-alert-toast"></div>
 
   <script src="./lunar-calendar.js?v=1"></script>
   <script src="./saju_data.js?v=3"></script>
