@@ -1200,6 +1200,38 @@ function selectPartnerCity(cityName) {
   hidePartnerCityList();
 }
 
+// 궁합/재회운 화면 진입 시, 활성 프로필을 제외한 저장된 프로필 목록으로 "상대방 불러오기" 드롭다운을 채운다.
+function _populatePartnerProfileSelect() {
+  const select = _$('partnerProfileSelect');
+  if (!select) return;
+  const activeId = getActiveProfileId();
+  const others = getProfiles().filter(p => p.id !== activeId);
+  select.innerHTML = '<option value="">직접 입력</option>' + others.map(p => {
+    const parts   = (p.birthDate || '').split('-');
+    const dateStr = parts.length === 3 ? `${parts[0]}.${Number(parts[1])}.${Number(parts[2])}` : '';
+    return `<option value="${p.id}">${p.name || '이름 없음'}${dateStr ? ' (' + dateStr + ')' : ''}</option>`;
+  }).join('');
+}
+
+// 드롭다운에서 저장된 프로필을 선택하면 상대방 입력 필드를 자동으로 채운다.
+function loadPartnerFromProfile(id) {
+  if (!id) return;
+  const p = getProfiles().find(x => x.id === id);
+  if (!p) return;
+
+  if (_$('partnerName')) _$('partnerName').value = p.name || '';
+  setPartnerCalType(p.calendarType || 'solar');
+  if (_$('partnerBirthDate'))   _$('partnerBirthDate').value   = p.birthDate || '';
+  if (_$('partnerIsLeapMonth')) _$('partnerIsLeapMonth').checked = !!p.isLeapMonth;
+  if (_$('partnerBirthTime'))   _$('partnerBirthTime').value   = p.timeUnknown ? '' : (p.birthTime || '');
+  if (_$('partnerTimeUnknown')) _$('partnerTimeUnknown').checked = !!p.timeUnknown;
+  togglePartnerTimeUnknown();
+  if (_$('partnerGender')) _$('partnerGender').value = p.gender || 'M';
+  if (_$('partnerCityInput')) _$('partnerCityInput').value = p.birthPlace || '';
+  if (_$('partnerCity'))      _$('partnerCity').value      = p.birthPlace || '';
+  if (_$('partnerSaveAsProfile')) _$('partnerSaveAsProfile').checked = false;
+}
+
 let _compatRevealInFlight = false;
 let _compatMode = 'compatibility'; // 'compatibility' | 'reunion'
 
@@ -1233,6 +1265,7 @@ function goToReunionPartnerForm() {
   if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 시너지를 보고,<br>금성 역행·토성 흐름까지 더해 재회 타이밍을 짚어드립니다.';
   if (tagsEl)     tagsEl.innerHTML      = '관계의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>재회 가능성';
   if (ctaEl)      ctaEl.textContent     = '✨ 재회운 보기';
+  _populatePartnerProfileSelect();
   enterScreen('compatibility');
 }
 
@@ -1249,6 +1282,7 @@ function enterCompatibilityFresh() {
   if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 끌림과 어긋남의 지점을 찾고,<br>이 관계가 어떤 결을 가지고 있는지 풀어드립니다.';
   if (tagsEl)     tagsEl.innerHTML      = '끌림과 케미<span class="dot">·</span>관계의 결<span class="dot">·</span>오래 갈 수 있는지';
   if (ctaEl)      ctaEl.textContent     = '✨ 궁합 보기';
+  _populatePartnerProfileSelect();
   enterScreen('compatibility');
 }
 

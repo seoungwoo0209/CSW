@@ -724,6 +724,12 @@
 
         <div class="form-grid" style="margin-top:18px;">
           <label>
+            <span>저장된 프로필에서 불러오기(선택)</span>
+            <select id="partnerProfileSelect" onchange="loadPartnerFromProfile(this.value)">
+              <option value="">직접 입력</option>
+            </select>
+          </label>
+          <label>
             <span>상대방 이름(옵션)</span>
             <input id="partnerName" type="text" placeholder="상대방 이름" />
           </label>
