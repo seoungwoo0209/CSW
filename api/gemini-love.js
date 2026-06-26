@@ -817,7 +817,7 @@ export default async function handler(req, res) {
         if (!r.ok) throw new Error(`status ${r.status}`);
         const json = await r.json();
         const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!reply) throw new Error('빈 응답');
+        if (!reply) throw new Error(`빈 응답 (finishReason: ${json?.candidates?.[0]?.finishReason || '알수없음'})`);
         return reply;
       });
     };
