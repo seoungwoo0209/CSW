@@ -139,6 +139,26 @@ function loveReasonAt(monthIdx, ctx) {
 }
 
 /* =========================================================
+   재회운 — 올해의 재회 타이밍 점수·타임라인 (①단독·②상대방 있음 둘 다 동일 공식, 내 차트 기준 트랜짓)
+   ========================================================= */
+function reunionScoreAt(monthIdx, ctx) {
+  const { transits, natalVenusLon, natalSaturnLon, eclipseMonth, venusRetroFlags } = ctx;
+  let s = 0;
+  if ([7, 8].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s += 1;
+  if (venusRetroFlags?.[monthIdx]) s += 1;
+  if (eclipseMonth === monthIdx) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [natalVenusLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'venus'), [natalSaturnLon]);
+  return s;
+}
+function reunionReasonAt(monthIdx, ctx) {
+  const { transits, eclipseMonth } = ctx;
+  if (eclipseMonth === monthIdx) return '일식·월식이 가까운 시기';
+  if ([7, 8].includes(monthlyHouse(transits, monthIdx, 'saturn'))) return '토성이 관계·유대의 영역(7·8하우스)을 지나며 재시험·재정비를 요구하는 시기';
+  return null;
+}
+
+/* =========================================================
    궁합 — 6가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
    ========================================================= */
 // topAspects의 point1/point2는 항상 "나 X" / "상대 Y" 형태 (calcAllAspects가 그렇게 라벨링)
@@ -363,8 +383,26 @@ function buildReunionPrompt(body) {
     venusRetro,
     ascSign, ascRuler, house8Sign, house8Occupants,
     progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
-    jupiterVenusAspect, eclipseSignal
+    jupiterVenusAspect, eclipseSignal, transits, houses
   } = body;
+
+  const nowMonthIdx = new Date().getMonth();
+  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
+    const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
+    if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const ctx = {
+      transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
+      natalVenusLon: venus?.longitude,
+      natalSaturnLon: saturn?.longitude,
+      eclipseMonth: eclipseMonthIndex(eclipseSignal),
+      venusRetroFlags,
+    };
+    const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionScoreAt(m, ctx));
+    strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
+  }
 
   const displayName = name?.trim() || '당신';
   const genderKr     = gender === 'M' ? '남성' : '여성';
@@ -407,7 +445,7 @@ function buildReunionPrompt(body) {
       })()
     : '올해 연애 관련 일식/월식 시그널 없음';
 
-  return `
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 차트 데이터를 바탕으로 ${displayName}님만을 위한 재회운 리포트를 작성해.
 ("재회운"은 과거 연인과 다시 만날 가능성/타이밍을 보는 것으로, 일반적인 연애운과는 다른 영역이야.)
@@ -446,9 +484,10 @@ ${eclipseStr}
 4. 단정적인 예언(예: "반드시 재회한다", "이 사람과 다시 만난다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
 
-[섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 ${monthlyStrength ? '4개' : '2개'} 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:pattern===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
+${monthlyStrength ? '4개 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.' : ''}
 
 ===SECTION:pattern===
 (재회와 관련된 ${displayName}님의 패턴 — 금성·화성·달·토성·7하우스가 보여주는 과거 인연에 대한 애착과 미련의 방식)
@@ -457,13 +496,24 @@ ${eclipseStr}
 
 ===SECTION:timing===
 (지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓·프로그레션이 보여주는 타이밍)
+${monthlyStrength ? `지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 신중론으로, 보통이면 균형있게).` : ''}
 - 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
 - 분량: 3~4문단
+${monthlyStrength ? `
+===SECTION:strength===
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
+
+===SECTION:suggestion===
+(위에서 정해진 강도·흐름·시기 신호를 바탕으로 한 줄 제안. 직접적인 행동 지시("~하세요", "연락하세요" 등 명령형)는 절대 쓰지 말고, 돌려서 말하는 부드러운 제안을 딱 한 문장으로 적어라.
+예시 톤: "서두르기보다 신호가 강해지는 시점에 맞춰 움직여보는 것도 방법입니다." 같은 느낌.
+이 SECTION:suggestion 섹션 안에서만 한 문장으로 끝내라(마크다운 금지). 이 규칙은 이 섹션 안에만 적용되는 것이고, 위의 pattern·timing·strength 섹션은 각각 요청한 분량과 형식을 그대로 지켜서 절대 줄이지 마라.)` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-지금 바로 pattern과 timing 두 섹션을 마커와 함께 전부 작성해.
+지금 바로 ${monthlyStrength ? 'pattern, timing, strength, suggestion 네' : 'pattern과 timing 두'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength, conclusion };
 }
 
 function buildCompatibilityPrompt(body) {
@@ -559,7 +609,7 @@ function buildReunionKnownPrompt(body) {
     myName, myGender, partnerName, partnerGender,
     myPlanets, partnerPlanets, partnerTimeUnknown,
     topAspects, houseOverlay, composite,
-    transitSaturnHouse, venusRetro
+    transitSaturnHouse, venusRetro, eclipseSignal, transits, houses
   } = body;
 
   const myLabel      = myName?.trim() || '나';
@@ -578,8 +628,32 @@ function buildReunionKnownPrompt(body) {
 
   const timeNote = partnerTimeUnknown ? `\n(주의: ${partnerLabel}의 출생시각이 불명확해 정오로 가정함)` : '';
   const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
+  const eclipseStr = eclipseSignal
+    ? (() => {
+        const d = new Date(eclipseSignal.dateLocal);
+        return `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일 ${eclipseSignal.type}이 ${eclipseSignal.conjunctPoint}에 근접 — 관계의 중요한 전환점으로 해석 가능`;
+      })()
+    : '올해 재회 관련 일식/월식 시그널 없음';
 
-  return `
+  const nowMonthIdx = new Date().getMonth();
+  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
+    const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
+    if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const ctx = {
+      transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
+      natalVenusLon: myPlanets?.venus?.longitude,
+      natalSaturnLon: myPlanets?.saturn?.longitude,
+      eclipseMonth: eclipseMonthIndex(eclipseSignal),
+      venusRetroFlags,
+    };
+    const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionScoreAt(m, ctx));
+    strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
+  }
+
+  const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
 아래 두 사람의 차트 데이터를 바탕으로 ${myLabel}님과 ${partnerLabel}님의 재회운 리포트를 작성해.
 ("재회운"은 과거 연인과 다시 만날 가능성/타이밍을 보는 것으로, 단순 궁합과는 다르게 "재회"라는 맥락에 초점을 맞춰야 해.)
@@ -604,6 +678,7 @@ ${overlayStr}${timeNote}
 [지금 시점의 재회 타이밍 신호]
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
 ${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${transitSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
+${eclipseStr}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -613,9 +688,10 @@ ${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnI
 4. 단정적인 예언(예: "반드시 재회한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
 
-[섹션 구성 — 반드시 아래 2개 마커를 정확히 그대로 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 ${monthlyStrength ? '4개' : '2개'} 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:bond===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
+${monthlyStrength ? '4개 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.' : ''}
 
 ===SECTION:bond===
 (관계 패턴 — 시너지 어스펙트와 컴포지트 차트가 보여주는 두 사람의 관계 자체의 성격, 재회와 관련된 맥락에서)
@@ -624,13 +700,24 @@ ${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnI
 
 ===SECTION:timing===
 (지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓이 보여주는 타이밍)
+${monthlyStrength ? `지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 신중론으로, 보통이면 균형있게).` : ''}
 - 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
 - 분량: 3~4문단
+${monthlyStrength ? `
+===SECTION:strength===
+(아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
+
+===SECTION:suggestion===
+(위에서 정해진 강도·흐름·시기 신호를 바탕으로 한 줄 제안. 직접적인 행동 지시("~하세요", "연락하세요" 등 명령형)는 절대 쓰지 말고, 돌려서 말하는 부드러운 제안을 딱 한 문장으로 적어라.
+예시 톤: "서두르기보다 신호가 강해지는 시점에 맞춰 움직여보는 것도 방법입니다." 같은 느낌.
+이 SECTION:suggestion 섹션 안에서만 한 문장으로 끝내라(마크다운 금지). 이 규칙은 이 섹션 안에만 적용되는 것이고, 위의 bond·timing·strength 섹션은 각각 요청한 분량과 형식을 그대로 지켜서 절대 줄이지 마라.)` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-지금 바로 bond와 timing 두 섹션을 마커와 함께 전부 작성해.
+지금 바로 ${monthlyStrength ? 'bond, timing, strength, suggestion 네' : 'bond와 timing 두'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
+
+  return { prompt, monthlyStrength, conclusion };
 }
 
 export default async function handler(req, res) {
@@ -666,12 +753,12 @@ export default async function handler(req, res) {
         : isReunion
           ? buildReunionPrompt({ ...req.body, venusRetro })
           : buildLovePrompt({ ...req.body, venusRetro });
-    const prompt = (isLove || isCompatibility) ? built.prompt : built;
-    const monthlyStrength = isLove ? built.monthlyStrength : null;
-    const conclusion = isLove ? built.conclusion : null;
+    const prompt = (isLove || isCompatibility || isReunion || isReunionKnown) ? built.prompt : built;
+    const monthlyStrength = (isLove || isReunion || isReunionKnown) ? built.monthlyStrength : null;
+    const conclusion = (isLove || isReunion || isReunionKnown) ? built.conclusion : null;
     const categoryGrades = isCompatibility ? built.categoryGrades : null;
-    // 솔로일 때만 strength·suggestion 2개 섹션이 추가돼 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
-    const maxOutputTokens = (isLove && monthlyStrength) ? 6500 : 4096;
+    // strength·suggestion 2개 섹션이 추가될 때만(연애 솔로, 재회 타이밍 신호 확보 시) 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
+    const maxOutputTokens = monthlyStrength ? 6500 : 4096;
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (3개 동시 요청 → 가장 먼저 성공하는 것 사용)
@@ -726,10 +813,26 @@ export default async function handler(req, res) {
     if (isCompatibility && (!reply.includes('===SECTION:chemistry===') || !reply.includes('===SECTION:dynamics==='))) {
       console.warn('궁합 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
     }
+    if (isReunion) {
+      const requiredMarkers = monthlyStrength
+        ? ['===SECTION:pattern===', '===SECTION:timing===', '===SECTION:strength===', '===SECTION:suggestion===']
+        : ['===SECTION:pattern===', '===SECTION:timing==='];
+      if (requiredMarkers.some(marker => !reply.includes(marker))) {
+        console.warn('재회운 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
+      }
+    }
+    if (isReunionKnown) {
+      const requiredMarkers = monthlyStrength
+        ? ['===SECTION:bond===', '===SECTION:timing===', '===SECTION:strength===', '===SECTION:suggestion===']
+        : ['===SECTION:bond===', '===SECTION:timing==='];
+      if (requiredMarkers.some(marker => !reply.includes(marker))) {
+        console.warn('재회운(상대방 있음) AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
+      }
+    }
 
     const responseBody = { result: reply };
     if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
-    if (isLove) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
+    if (isLove || isReunion || isReunionKnown) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
     if (isCompatibility) { responseBody.categoryGrades = categoryGrades; }
     return res.status(200).json(responseBody);
 

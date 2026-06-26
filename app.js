@@ -1061,7 +1061,7 @@ async function revealReunionFortune() {
     const satRulerAspect = (house7Ruler && house7RulerKey !== 'saturn')
       ? _findAspectBetween(astroData.natalAspectsFull, '토성', house7Ruler.label)
       : null;
-    const eclipseSignal = await _getEclipseLoveSignal(astroData);
+    const eclipseSignal = await _getEclipseReunionSignal(astroData);
 
     const payload = {
       type:   'reunion',
@@ -1081,6 +1081,8 @@ async function revealReunionFortune() {
       progMoonSign:  astroData.progression?.planets?.moon?.sign,
       ..._buildLoveEnhancedFields(astroData),
       eclipseSignal,
+      transits: astroData.transits,
+      houses: astroData.houses,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -1091,6 +1093,8 @@ async function revealReunionFortune() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || "서버 오류가 발생했습니다.");
 
+    payload.monthlyStrength = data.monthlyStrength || null;
+    payload.conclusion = data.conclusion || null;
     if (resultArea) resultArea.innerHTML = _renderReunionFortuneHtml(payload, data.result || '', data.venusRetrograde);
     succeeded = true;
 
@@ -1173,11 +1177,14 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
         ${payload.progVenusSign ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">프로그레션 금성 · ${payload.progVenusSign} ${payload.progVenusHouse}하우스</span>` : ''}
         ${payload.eclipseSignal ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${payload.eclipseSignal.type} · ${payload.eclipseSignal.conjunctPoint} 근접</span>` : ''}
       </div>
+      ${sections.strength ? _strengthBadgeHtml(sections.strength) : ''}
+      ${_strengthTimelineHtml(payload.monthlyStrength)}
     </div>
     <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
       <div style="${aiEyebrowStyle}">— 타이밍 해설</div>
       <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
     </div>
+    ${_conclusionHtml(payload.conclusion, sections.suggestion)}
   `;
 }
 
@@ -1431,7 +1438,7 @@ async function revealCompatibility() {
       partnerGender,
       myPlanets: {
         sun: calcData.natal.sun, moon: calcData.natal.moon,
-        venus: calcData.natal.venus, mars: calcData.natal.mars
+        venus: calcData.natal.venus, mars: calcData.natal.mars, saturn: calcData.natal.saturn
       },
       partnerPlanets: {
         sun: synastry.partnerNatal.planets.sun, moon: synastry.partnerNatal.planets.moon,
@@ -1450,6 +1457,9 @@ async function revealCompatibility() {
       const nowMonthIdx = new Date().getMonth();
       const myTransitNow = window.AstroResult?.transits?.[nowMonthIdx] || null;
       aiPayload.transitSaturnHouse = myTransitNow?.planets?.saturn?.house ?? null;
+      aiPayload.eclipseSignal = await _getEclipseReunionSignal(window.AstroResult);
+      aiPayload.transits = window.AstroResult?.transits;
+      aiPayload.houses = window.AstroResult?.houses;
     }
 
     const aiRes = await fetch("/api/gemini-love", {
@@ -1461,6 +1471,8 @@ async function revealCompatibility() {
     if (!aiRes.ok || aiData.error) throw new Error(aiData.error || "서버 오류가 발생했습니다.");
 
     aiPayload.categoryGrades = aiData.categoryGrades || null;
+    aiPayload.monthlyStrength = aiData.monthlyStrength || null;
+    aiPayload.conclusion = aiData.conclusion || null;
     if (resultArea) resultArea.innerHTML = _renderCompatibilityHtml(aiPayload, aiData.result || '', aiData.venusRetrograde);
     succeeded = true;
 
@@ -1563,12 +1575,16 @@ function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
           <span style="font-size:12px;padding:5px 13px;border-radius:999px;${venusRetrograde ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">금성 ${venusRetrograde ? '역행 중' : '순행 중'}</span>
           <span style="font-size:12px;padding:5px 13px;border-radius:999px;${saturnIn78 ? 'color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);' : 'color:#8d8268;border:1px solid rgba(200,168,96,.18);background:transparent;'}">나의 트랜짓 토성 · ${payload.transitSaturnHouse ? payload.transitSaturnHouse + '하우스' : '정보 없음'}</span>
           <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bdeede;border:1px solid rgba(120,210,180,.4);background:rgba(60,180,140,.1);">컴포지트 ASC · ${payload.composite.asc.sign}</span>
+          ${payload.eclipseSignal ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#f6c177;border:1px solid rgba(246,193,119,.5);background:rgba(246,193,119,.12);">${payload.eclipseSignal.type} · ${payload.eclipseSignal.conjunctPoint} 근접</span>` : ''}
         </div>
+        ${sections.strength ? _strengthBadgeHtml(sections.strength) : ''}
+        ${_strengthTimelineHtml(payload.monthlyStrength)}
       </div>
       <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
         <div style="${aiEyebrowStyle}">— 재회 타이밍 해설</div>
         <div style="${aiTextStyle}">${toParas(sections.timing)}</div>
       </div>
+      ${_conclusionHtml(payload.conclusion, sections.suggestion)}
     `;
   }
 
@@ -1715,6 +1731,12 @@ async function _getEclipseCareerSignal(astroData) {
 async function _getEclipseLoveSignal(astroData) {
   const events = await _fetchMoonPhaseEventsCached(astroData);
   return _findNearestEclipseSignal(events, ['DSC', '금성', '태양']);
+}
+
+// 재회운은 토성(관계의 재시험·재정비)이 핵심 테마라 일식 필터에 토성도 포함
+async function _getEclipseReunionSignal(astroData) {
+  const events = await _fetchMoonPhaseEventsCached(astroData);
+  return _findNearestEclipseSignal(events, ['DSC', '금성', '태양', '토성']);
 }
 
 function _buildCareerCommonFields(astroData) {
