@@ -146,6 +146,7 @@ function buildJobHuntingPrompt(body, sky) {
   if ([6, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([6, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
   if (sky.mercuryRetro) strengthScore -= 1;
+  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
   // 하우스 위치만으론 못 잡는 신호 보강 — 트랜짓 목성/토성이 나탈 수성(서류·면접 소통력)과 에스펙트
   strengthScore += aspectScore(currentLongitude('jupiter'), [mercury.longitude]);
   strengthScore += aspectScore(currentLongitude('saturn'), [mercury.longitude]);
@@ -228,6 +229,7 @@ function buildPromotionPrompt(body, sky) {
   let strengthScore = 0;
   if ([2, 10, 11].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([10, 12].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
   // 트랜짓 목성/토성이 나탈 MC·태양(인정받기·가시성)과 에스펙트인지 추가 반영
   strengthScore += aspectScore(currentLongitude('jupiter'), [mcLon, sun.longitude]);
   strengthScore += aspectScore(currentLongitude('saturn'), [mcLon, sun.longitude]);
@@ -313,6 +315,7 @@ function buildJobChangePrompt(body, sky) {
     !!mcChanged,
     !!sky.jupiterReturnActive,
     uranusAspectFav,
+    !!eclipseSignal, // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
   ].filter(Boolean).length;
   const strengthFixed = favorableCount >= 3 ? '강함' : favorableCount === 0 ? '약함' : '보통';
 
@@ -388,6 +391,7 @@ function buildStartupPrompt(body, sky) {
   let strengthScore = 0;
   if ([2, 8, 10].includes(jupiterTransitWindow?.house)) strengthScore += 1;
   if ([2, 8, 10].includes(saturnTransitWindow?.house)) strengthScore -= 1;
+  if (eclipseSignal) strengthScore += 1; // 일식/월식이 MC·ASC·태양 등 핵심 포인트에 근접 — 중요한 전환점 신호
   // 트랜짓 목성/토성이 나탈 화성(추진력)과 에스펙트인지 추가 반영
   strengthScore += aspectScore(currentLongitude('jupiter'), [mars.longitude]);
   strengthScore += aspectScore(currentLongitude('saturn'), [mars.longitude]);
