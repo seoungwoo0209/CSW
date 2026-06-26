@@ -5115,7 +5115,7 @@ function renderTodayPlanetPanel(todayData) {
     const aspectPanel = document.createElement('div');
     aspectPanel.id = 'todayAspectPanel';
     aspectPanel.innerHTML = renderAspectAccordion(
-      todayData.todayAspectsFull, '트랜짓-네이탈 에스펙트', '🌅', '#dfba6b'
+      todayData.todayAspectsFull, '트랜짓-네이탈 에스펙트', '☉', '#dfba6b'
     );
     panel.after(aspectPanel);
   }
@@ -5128,7 +5128,7 @@ function renderTodayPlanetPanel(todayData) {
     const progAspPanel = document.createElement('div');
     progAspPanel.id = 'todayProgTransitAspectPanel';
     progAspPanel.innerHTML = renderAspectAccordion(
-      todayData.progTransitAspects, '프로그레션→트랜짓 에스펙트', '🔭', '#c8a860'
+      todayData.progTransitAspects, '프로그레션→트랜짓 에스펙트', '◐', '#c8a860'
     );
     const transitAspPanel = document.getElementById('todayAspectPanel');
     if (transitAspPanel) transitAspPanel.after(progAspPanel);
