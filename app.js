@@ -3174,45 +3174,46 @@ function renderProgTimeline(astroData) {
   const { chapters, birthYear, currentAge } = data;
 
   const HOUSE_THEME = {
-    1:  { label:"자아·외모·시작",     color:"#f87171" },
-    2:  { label:"재물·가치관",        color:"#fb923c" },
-    3:  { label:"지식·소통·학습",     color:"#facc15" },
-    4:  { label:"기반·가정·정체성",   color:"#4ade80" },
-    5:  { label:"창작·표현·즐거움",   color:"#34d399" },
-    6:  { label:"건강·일과·봉사",     color:"#22d3ee" },
-    7:  { label:"관계·파트너십",      color:"#60a5fa" },
-    8:  { label:"변환·심층·공유",     color:"#818cf8" },
-    9:  { label:"탐구·철학·확장",     color:"#a78bfa" },
-    10: { label:"사회·직업·명예",     color:"#c084fc" },
-    11: { label:"이상·공동체·미래",   color:"#e879f9" },
-    12: { label:"은둔·무의식·영성",   color:"#94a3b8" },
+    1:  { label:"자아·외모·시작" },
+    2:  { label:"재물·가치관" },
+    3:  { label:"지식·소통·학습" },
+    4:  { label:"기반·가정·정체성" },
+    5:  { label:"창작·표현·즐거움" },
+    6:  { label:"건강·일과·봉사" },
+    7:  { label:"관계·파트너십" },
+    8:  { label:"변환·심층·공유" },
+    9:  { label:"탐구·철학·확장" },
+    10: { label:"사회·직업·명예" },
+    11: { label:"이상·공동체·미래" },
+    12: { label:"은둔·무의식·영성" },
   };
 
   const rowsHtml = chapters.map((c, i) => {
-    const theme    = HOUSE_THEME[c.house] || { label:"", color:"#94a3b8" };
+    const theme    = HOUSE_THEME[c.house] || { label:"" };
     const isCur    = c.isCurrent;
     const duration = c.endAge - c.startAge;
     const chapterNum = i + 1;
+    const posColor = isCur ? '#f4e6bd' : '#cabfa0';
     return `
       <tr style="
         background:${isCur ? 'rgba(200,168,96,.12)' : 'transparent'};
         border-bottom:1px solid rgba(200,168,96,.08);
       ">
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
-          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};">
+          제${chapterNum}장${isCur ? ' <span style="font-size:9px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 4px;white-space:nowrap;">현재</span>' : ''}
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startAge}~${c.endAge < 90 ? c.endAge : c.endAge + ''}세
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startYear}~${c.endYear}
         </td>
-        <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
-          <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
+        <td style="padding:6px 8px;font-size:11px;white-space:nowrap;">
+          <span style="color:${posColor};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
           <span style="color:#7d7257;"> · </span>
-          <span style="color:${isCur ? '#dfba6b' : '#7d7257'};">${c.house}H</span>
+          <span style="color:${posColor};">${c.house}H</span>
         </td>
-        <td style="padding:10px 12px;font-size:11px;color:#7d7257;">
+        <td style="padding:6px 8px;font-size:10px;color:#9b8f74;line-height:1.4;">
           ${theme.label}
         </td>
       </tr>
@@ -3231,14 +3232,17 @@ function renderProgTimeline(astroData) {
       <div style="font-size:11px;color:#7d7257;margin-bottom:16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;">
-        <table style="width:100%;border-collapse:collapse;min-width:420px;">
+        <table style="width:100%;border-collapse:collapse;min-width:460px;table-layout:fixed;">
+          <colgroup>
+            <col style="width:17%;"><col style="width:13%;"><col style="width:16%;"><col style="width:28%;"><col style="width:26%;">
+          </colgroup>
           <thead>
             <tr style="border-bottom:1px solid rgba(200,168,96,.15);">
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">챕터</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">나이</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">연도</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">위치</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;">핵심 주제</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;">챕터</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;">나이</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;">연도</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;">위치</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;">핵심 주제</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
@@ -3416,44 +3420,45 @@ function renderProgMoonTimeline(astroData) {
   const { chapters, currentAge } = data;
 
   const HOUSE_THEME = {
-    1:  { label:"자아·외모·시작",     color:"#f87171" },
-    2:  { label:"재물·가치관",        color:"#fb923c" },
-    3:  { label:"지식·소통·학습",     color:"#facc15" },
-    4:  { label:"기반·가정·정체성",   color:"#4ade80" },
-    5:  { label:"창작·표현·즐거움",   color:"#34d399" },
-    6:  { label:"건강·일과·봉사",     color:"#22d3ee" },
-    7:  { label:"관계·파트너십",      color:"#60a5fa" },
-    8:  { label:"변환·심층·공유",     color:"#818cf8" },
-    9:  { label:"탐구·철학·확장",     color:"#a78bfa" },
-    10: { label:"사회·직업·명예",     color:"#c084fc" },
-    11: { label:"이상·공동체·미래",   color:"#e879f9" },
-    12: { label:"은둔·무의식·영성",   color:"#94a3b8" },
+    1:  { label:"자아·외모·시작" },
+    2:  { label:"재물·가치관" },
+    3:  { label:"지식·소통·학습" },
+    4:  { label:"기반·가정·정체성" },
+    5:  { label:"창작·표현·즐거움" },
+    6:  { label:"건강·일과·봉사" },
+    7:  { label:"관계·파트너십" },
+    8:  { label:"변환·심층·공유" },
+    9:  { label:"탐구·철학·확장" },
+    10: { label:"사회·직업·명예" },
+    11: { label:"이상·공동체·미래" },
+    12: { label:"은둔·무의식·영성" },
   };
 
   const rowsHtml = chapters.map((c, i) => {
-    const theme    = HOUSE_THEME[c.house] || { label:"", color:"#94a3b8" };
+    const theme    = HOUSE_THEME[c.house] || { label:"" };
     const isCur    = c.isCurrent;
     const chapterNum = i + 1;
+    const posColor = isCur ? '#f4e6bd' : '#cabfa0';
     return `
       <tr style="
         background:${isCur ? 'rgba(200,168,96,.12)' : 'transparent'};
         border-bottom:1px solid rgba(200,168,96,.08);
       ">
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};white-space:nowrap;">
-          제${chapterNum}장${isCur ? ' <span style="font-size:10px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 5px;">현재</span>' : ''}
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#dfba6b' : '#7d7257'};font-weight:${isCur ? 700 : 400};">
+          제${chapterNum}장${isCur ? ' <span style="font-size:9px;background:rgba(200,168,96,.25);border-radius:4px;padding:1px 4px;white-space:nowrap;">현재</span>' : ''}
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startAge}~${c.endAge}세
         </td>
-        <td style="padding:10px 12px;font-size:12px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
+        <td style="padding:6px 8px;font-size:11px;color:${isCur ? '#f4ecd8' : '#cabfa0'};white-space:nowrap;">
           ${c.startYear}~${c.endYear}
         </td>
-        <td style="padding:10px 12px;font-size:12px;white-space:nowrap;">
-          <span style="color:${theme.color};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
+        <td style="padding:6px 8px;font-size:11px;white-space:nowrap;">
+          <span style="color:${posColor};font-weight:600;">${c.sign} ${c.degree}°${c.minute}'</span>
           <span style="color:#7d7257;"> · </span>
-          <span style="color:${isCur ? '#dfba6b' : '#7d7257'};">${c.house}H</span>
+          <span style="color:${posColor};">${c.house}H</span>
         </td>
-        <td style="padding:10px 12px;font-size:11px;color:#7d7257;">
+        <td style="padding:6px 8px;font-size:10px;color:#9b8f74;line-height:1.4;">
           ${theme.label}
         </td>
       </tr>
@@ -3474,14 +3479,17 @@ function renderProgMoonTimeline(astroData) {
       <div style="font-size:11px;color:#7d7257;margin:8px 0 16px;">네이탈 하우스 기준 · A방식</div>
 
       <div style="overflow-x:auto;overflow-y:auto;max-height:420px;">
-        <table style="width:100%;border-collapse:collapse;min-width:420px;">
+        <table style="width:100%;border-collapse:collapse;min-width:460px;table-layout:fixed;">
+          <colgroup>
+            <col style="width:17%;"><col style="width:13%;"><col style="width:16%;"><col style="width:28%;"><col style="width:26%;">
+          </colgroup>
           <thead>
             <tr style="border-bottom:1px solid rgba(200,168,96,.15);">
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">챕터</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">나이</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">연도</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">위치</th>
-              <th style="padding:6px 12px;font-size:10px;color:#7d7257;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">핵심 주제</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">챕터</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">나이</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">연도</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">위치</th>
+              <th style="padding:6px 8px;font-size:10px;color:#9b8f74;text-align:left;font-weight:400;position:sticky;top:0;background:#0e0b24;">핵심 주제</th>
             </tr>
           </thead>
           <tbody>${rowsHtml}</tbody>
