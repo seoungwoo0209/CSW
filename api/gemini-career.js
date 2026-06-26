@@ -156,6 +156,7 @@ function buildPromotionPrompt(body, sky) {
   const {
     name, gender, mcSign, mcRuler, house10Occupants,
     saturn, sun, mars, venus, house11Sign, house11Occupants, house12Sign,
+    house2Sign, house2Occupants, house2Ruler, jupiterSign,
     eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow
   } = body;
 
@@ -164,6 +165,7 @@ function buildPromotionPrompt(body, sky) {
 
   const house10Str = `${mcSign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}, 지배행성 ${mcRuler?.label || '?'}(${mcRuler?.sign || '?'} ${mcRuler?.house || '?'}하우스)`;
   const house11Str = `${house11Sign}${house11Occupants?.length ? ` (${house11Occupants.join(', ')} 위치)` : ''}`;
+  const house2Str  = `${house2Sign}${house2Occupants?.length ? ` (${house2Occupants.join(', ')} 위치)` : ''}, 지배행성 ${house2Ruler?.label || '?'}(${house2Ruler?.sign || '?'})`;
   const marsRetroStr = retroWindowStr(marsRetroWindow, '화성');
 
   return `
@@ -180,6 +182,8 @@ function buildPromotionPrompt(body, sky) {
 금성(처세·친화력): ${venus.sign} ${venus.house}하우스
 11하우스(인맥·동료 지지): ${house11Str}
 12하우스(숨은 정치·견제): ${house12Sign}
+2하우스(소득·연봉협상력): ${house2Str}
+목성(확장·인정받는 기회운): ${jupiterSign}
 
 [지금 시점의 승진·협상 타이밍 신호]
 ${transitWindowStr(saturnTransitWindow, '트랜짓 토성')} (전통적 "승진 시험" 시그널 — MC/10하우스 근접 시 강함)
@@ -199,7 +203,7 @@ ${eclipseStr(eclipseSignal)}
 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
 ===SECTION:nature===
-(타고난 직장 스타일과 인간관계 — 10하우스·토성·태양·화성·금성·11/12하우스가 보여주는 ${displayName}님만의 직장 내 위치와 처세)
+(타고난 직장 스타일과 인간관계 — 10하우스·토성·태양·화성·금성·11/12하우스·2하우스·목성이 보여주는 ${displayName}님만의 직장 내 위치와 처세)
 분량: 4~5문단
 
 ===SECTION:timing===
@@ -218,7 +222,7 @@ ${eclipseStr(eclipseSignal)}
 function buildJobChangePrompt(body, sky) {
   const {
     name, gender, mcSign, progMcSign, uranus, northNodeSign, northNodeHouse,
-    house9Sign, eclipseSignal, uranusTransitWindow
+    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -236,6 +240,7 @@ function buildJobChangePrompt(body, sky) {
 북노드(인생 방향·운명적 경로): ${northNodeSign} ${northNodeHouse}하우스
 9하우스(확장·도약형 이동): ${house9Sign}
 나탈 MC: ${mcSign}
+목성(기회를 알아채고 잡는 타고난 감각): ${jupiterSign}
 
 [지금 시점의 이직 타이밍 신호]
 ${transitWindowStr(uranusTransitWindow, '트랜짓 천왕성')} (MC·태양·10하우스 근접 시 급작스런 제안/변화 가능성 강함)
@@ -255,7 +260,7 @@ ${eclipseStr(eclipseSignal)}
 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
 ===SECTION:nature===
-(타고난 이직 패턴 — 천왕성·북노드·9하우스가 보여주는 ${displayName}님만의 커리어 점프 스타일)
+(타고난 이직 패턴 — 천왕성·북노드·9하우스·목성이 보여주는 ${displayName}님만의 커리어 점프 스타일)
 분량: 4~5문단
 
 ===SECTION:timing===
@@ -276,7 +281,8 @@ function buildStartupPrompt(body, sky) {
     name, gender, house2Sign, house2Occupants, house2Ruler,
     house8Sign, house8Occupants, house8Ruler,
     mars, jupiterSign, sun, house5Sign, eclipseSignal,
-    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow
+    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow,
+    mcSign, mcRuler, saturn
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -299,6 +305,8 @@ function buildStartupPrompt(body, sky) {
 목성(과감함·확장운): ${jupiterSign}
 태양(브랜드·리더십): ${sun.sign} ${sun.house}하우스
 5하우스(투기·창의적 사업): ${house5Sign}
+MC(나만의 사업 정체성): ${mcSign}, 지배행성 ${mcRuler?.label || '?'}(${mcRuler?.sign || '?'} ${mcRuler?.house || '?'}하우스)
+토성(장기 생존력·버텨내는 힘): ${saturn.sign} ${saturn.house}하우스
 
 [지금 시점의 창업 타이밍 신호]
 ${transitWindowStr(jupiterTransitWindow, '트랜짓 목성')} (2/8/10하우스 근접 시 재정 확장기)
@@ -319,7 +327,7 @@ ${eclipseStr(eclipseSignal)}
 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
 ===SECTION:nature===
-(타고난 사업가 기질 — 2/8/5하우스·화성·목성·태양이 보여주는 ${displayName}님만의 창업·부업 스타일)
+(타고난 사업가 기질 — 2/8/5하우스·화성·목성·태양·MC·토성이 보여주는 ${displayName}님만의 창업·부업 스타일)
 분량: 4~5문단
 
 ===SECTION:timing===

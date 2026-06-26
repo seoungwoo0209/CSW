@@ -1829,6 +1829,9 @@ async function revealPromotion() {
     buildExtraFields: (astroData) => {
       const house10 = _findHouseOccupants(astroData, 10);
       const house11 = _findHouseOccupants(astroData, 11);
+      const house2  = _findHouseOccupants(astroData, 2);
+      const house2RulerKey = _SIGN_RULER[astroData.houses?.[1]?.sign];
+      const house2Ruler = house2RulerKey ? { key: house2RulerKey, label: _LOVE_PLANET_KR[house2RulerKey], ...astroData.natal[house2RulerKey] } : null;
       const marsRetroWindow = _retrogradeWindow(astroData.transits, 'mars', new Date().getMonth());
       return {
         house10Sign: astroData.angles.mc.sign,
@@ -1841,6 +1844,10 @@ async function revealPromotion() {
         house11Occupants: house11,
         house12Sign: astroData.houses?.[11]?.sign,
         marsRetroWindow,
+        house2Sign: astroData.houses?.[1]?.sign,
+        house2Occupants: house2,
+        house2Ruler,
+        jupiterSign: astroData.natal.jupiter.sign,
       };
     }
   });
@@ -1897,6 +1904,7 @@ async function revealJobChange() {
         northNodeHouse: astroData.nodes?.north?.house,
         house9Sign: astroData.houses?.[8]?.sign,
         uranusTransitWindow,
+        jupiterSign: astroData.natal.jupiter.sign,
       };
     }
   });
@@ -1964,6 +1972,7 @@ async function revealStartup() {
         sun: astroData.natal.sun,
         house5Sign: astroData.houses?.[4]?.sign,
         jupiterRetroWindow,
+        saturn: astroData.natal.saturn,
       };
     }
   });
