@@ -74,6 +74,43 @@ export default async function handler(req, res) {
     const ilju     = dayStem + dayBranch;
     const stemDesc = STEM_NAME[dayStem] || dayStem;
 
+    // 지장간(地藏干) — 지지별 숨은 천간(정기/중기/여기)
+    const HIDDEN_STEMS_BRANCH = {
+      '子':[{stem:'癸',role:'정기'}],
+      '丑':[{stem:'己',role:'정기'},{stem:'癸',role:'중기'},{stem:'辛',role:'여기'}],
+      '寅':[{stem:'甲',role:'정기'},{stem:'丙',role:'중기'},{stem:'戊',role:'여기'}],
+      '卯':[{stem:'乙',role:'정기'}],
+      '辰':[{stem:'戊',role:'정기'},{stem:'乙',role:'중기'},{stem:'癸',role:'여기'}],
+      '巳':[{stem:'丙',role:'정기'},{stem:'庚',role:'중기'},{stem:'戊',role:'여기'}],
+      '午':[{stem:'丁',role:'정기'},{stem:'己',role:'중기'}],
+      '未':[{stem:'己',role:'정기'},{stem:'丁',role:'중기'},{stem:'乙',role:'여기'}],
+      '申':[{stem:'庚',role:'정기'},{stem:'壬',role:'중기'},{stem:'戊',role:'여기'}],
+      '酉':[{stem:'辛',role:'정기'}],
+      '戌':[{stem:'戊',role:'정기'},{stem:'辛',role:'중기'},{stem:'丁',role:'여기'}],
+      '亥':[{stem:'壬',role:'정기'},{stem:'甲',role:'중기'}],
+    };
+    const PILLAR_LABEL = { year:'년지', month:'월지', day:'일지', hour:'시지' };
+    const pillarOf = { year, month, day, hour };
+    const hiddenStemsStr = Object.entries(PILLAR_LABEL).map(([k, label]) => {
+      const branch = pillarOf[k].branch;
+      const items  = HIDDEN_STEMS_BRANCH[branch] || [];
+      const text   = items.map(it => `${it.stem}(${STEM_NAME[it.stem] || it.stem})${it.role}`).join(', ');
+      return `${label}(${branch}): ${text}`;
+    }).join(' / ');
+
+    // 오행(지장간 포함) 합산 — 표면엔 없는데 지장간에만 숨어있는 오행 탐지
+    const elCountHidden = { ...elCount };
+    for (const p of [year, month, day, hour]) {
+      for (const item of (HIDDEN_STEMS_BRANCH[p.branch] || [])) {
+        const wx = WUXING_STEM[item.stem];
+        if (wx) elCountHidden[wx]++;
+      }
+    }
+    const hiddenOnlyEl = Object.keys(elCountHidden).filter(k => elCount[k] === 0 && elCountHidden[k] > 0).map(k => WUXING_NAME[k]);
+    const hiddenOnlyDesc = hiddenOnlyEl.length
+      ? hiddenOnlyEl.join('·') + ' — 겉(표면 8글자)에는 전혀 없지만 지장간 속에 숨어 있음'
+      : '표면에 없던 오행이 지장간에서 새로 나타나지는 않음(겉과 속의 오행 종류는 일치)';
+
     // ═══════════════════════════════════════
     // 실제 엔진 결과 포맷팅 (격국·강약·용희기한·합충형파해·자원점수·12신살·대운)
     // ═══════════════════════════════════════
@@ -225,7 +262,7 @@ ${daeunStr}
    무엇이 달라지는지를 이야기처럼 설명해라. 단정적인 길흉 예언("이 시기에 망한다" 등)은 금지하고,
    "어떤 결을 타게 되는지"를 설명하는 톤을 유지해라.
 
-[섹션 구성 — 반드시 아래 5개 마커를 정확히 그대로(앞뒤 공백·줄바꿈 외 다른 글자 추가 없이) 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 7개 마커를 정확히 그대로(앞뒤 공백·줄바꿈 외 다른 글자 추가 없이) 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:essence===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
 
@@ -235,6 +272,21 @@ ${daeunStr}
 - ${geokName} · ${strengthLabel} 구조, 12신살이 성격에 어떻게 작동하는지
 - 겉으로 보이는 모습 vs 내면의 실제 기질 대비
 - 분량: 4~5문단, 각 문단 3~4문장
+
+===SECTION:elements===
+(오행(표면 8글자)이 보여주는 것 — ${excessDesc}, ${lackDesc})
+- 사주팔자 8글자 전체의 오행 분포(${ilju} 한 글자가 아니라 연/월/일/시 8글자 전체)를 자연현상 메타포로 풀어라
+- 과다한 오행이 넘쳐서 생기는 부작용, 결핍된 오행이 빠져서 아쉬운 부분을 구체적인 삶의 장면으로 설명
+- 이 오행 분포가 ${geokName} · ${strengthLabel} 구조와 어떻게 맞물리는지 한 문단 연결
+- 분량: 3~4문단
+
+===SECTION:hidden===
+(지장간이 보여주는 숨은 기질 — 겉(표면 8글자)과 속(지장간)의 차이)
+- 지장간 데이터: ${hiddenStemsStr}
+- 오행(지장간 포함) 관찰: ${hiddenOnlyDesc}
+- 겉으로 드러난 모습과 지장간 속에 숨어 있는 기질이 어떻게 다른지 대비 구조로 설명
+- 정기(主)·중기·여기가 같은 지지 안에서 어떻게 함께 작동하는지(주된 기운과 보조 기운의 관계)
+- 분량: 3~4문단
 
 ===SECTION:talent===
 (타고난 재능의 지형도 — 5축 자원 점수가 보여주는 강점)
@@ -273,7 +325,7 @@ ${daeunStr}
 - ===SECTION:xxx=== 마커 형식을 임의로 바꾸거나 누락하지 말 것
 - 대운 섹션에서 단정적인 길흉 예언("이 시기에 사고난다", "이 시기에 부자된다") 금지
 
-지금 바로 essence부터 daeun까지 5개 섹션을 마커와 함께 전부 작성해.
+지금 바로 essence부터 daeun까지 7개 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
     // ═══════════════════════════════════════

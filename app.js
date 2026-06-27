@@ -5273,7 +5273,7 @@ async function fetchAndInjectSajuAI() {
   if (errorBox) errorBox.style.display = "none";
 
   // 이전 해설 블록 제거 (재생성 대비)
-  const SECTION_KEYS = ["essence", "talent", "resource", "yongsin", "daeun"];
+  const SECTION_KEYS = ["essence", "elements", "hidden", "talent", "resource", "yongsin", "daeun"];
   SECTION_KEYS.forEach(key => {
     const old = _$("aiBlock-" + key);
     if (old) old.remove();
@@ -5318,6 +5318,8 @@ async function fetchAndInjectSajuAI() {
     // ── 패널 바로 뒤에 해당 해설을 끼워넣기
     const ANCHOR_ID = {
       essence:  "shinsalPanel",
+      elements: "surfaceElementsPanel",
+      hidden:   "hiddenElementsPanel",
       talent:   "personalityCard",
       resource: "resourcePanel",
       yongsin:  "godsPanel",
@@ -5325,6 +5327,8 @@ async function fetchAndInjectSajuAI() {
     };
     const EYEBROW = {
       essence:  "본질 해설",
+      elements: "오행 해설",
+      hidden:   "지장간 해설",
       talent:   "재능 해설",
       resource: "재물 · 일 · 관계 해설",
       yongsin:  "용신 해설",
