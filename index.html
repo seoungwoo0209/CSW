@@ -1208,6 +1208,58 @@
     </div>
 
     <div class="screen-body">
+
+      <div id="astroLocationGate" class="intro-card">
+        <div class="intro-card-frame"></div>
+        <span class="intro-card-corner tl"></span>
+        <span class="intro-card-corner tr"></span>
+        <span class="intro-card-corner bl"></span>
+        <span class="intro-card-corner br"></span>
+        <span class="intro-card-twinkle" style="top:36px;right:38px;"></span>
+        <span class="intro-card-twinkle" style="top:86px;left:32px;background:#cdbef0;animation-delay:1s;"></span>
+
+        <div class="intro-card-eyebrow">
+          <span class="line"></span>
+          <span class="label">현재 위치</span>
+          <span class="line r"></span>
+        </div>
+
+        <p class="intro-card-headline">
+          솔라리턴·트랜짓 차트는 지금 계신 곳을 기준으로 계산됩니다.
+        </p>
+
+        <p class="intro-card-tags">
+          현재 위치<span class="dot">·</span>솔라리턴<span class="dot">·</span>트랜짓
+        </p>
+
+        <span class="intro-card-section-label" style="font-size:13px;">현재 위치</span>
+        <div class="intro-card-section" style="position:relative;">
+          <div style="display:flex;align-items:center;gap:10px;width:100%;box-sizing:border-box;text-align:left;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7d7257" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;">
+              <path d="M3 10a7 7 0 1 0 14 0a7 7 0 0 0 -14 0"/><path d="M21 21l-6 -6"/>
+            </svg>
+            <input id="astroGateCityInput" type="text" placeholder="도시 검색..." autocomplete="off"
+              oninput="filterAstroGateCityList(this.value)"
+              onfocus="showAstroGateCityList()"
+              onblur="setTimeout(hideAstroGateCityList,200)"
+              style="flex:1;min-width:0;background:transparent;border:none;outline:none;font-family:inherit;font-size:14px;color:#efe8d6;text-align:center;" />
+          </div>
+          <div id="astroGateCityDropdown" style="
+            position:absolute;top:calc(100% + 2px);left:0;right:0;z-index:100;
+            background:#1a1530;border:1px solid rgba(200,168,96,.25);border-radius:8px;
+            max-height:200px;overflow-y:auto;display:none;text-align:left;"></div>
+        </div>
+
+        <button onclick="confirmAstroLocation()" class="intro-card-cta">
+          <span class="cta-sheen"></span>
+          <span class="intro-card-cta-label">확인</span>
+        </button>
+        <div style="text-align:center;margin-top:14px;">
+          <span onclick="skipAstroLocation()" style="font-size:12px;color:#9b8f74;text-decoration:underline;cursor:pointer;">출생지와 같아요 (건너뛰기)</span>
+        </div>
+      </div>
+
+      <div id="astroMainContent" style="display:none;">
       <div id="astroCalcStatus" style="font-size:12px;color:#8d8268;padding:6px 2px;min-height:20px;"></div>
 
       <div id="astroInputCard" class="intro-card">
@@ -1259,6 +1311,7 @@
             -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">네이탈 차트</div>
           <div id="astroNatalGrid" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;"></div>
         </div>
+      </div>
       </div>
     </div>
 

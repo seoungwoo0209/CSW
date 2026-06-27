@@ -144,7 +144,7 @@ function deleteProfile(id) {
 function getScreenLocation(screenKey) {
   return getScreenLocationRaw(screenKey) || getProfile()?.birthPlace || null;
 }
-// 출생지로 자동 대체하지 않는 버전 — "현재 위치"가 비어있어야 맞는 화면(솔라리턴/트랜짓)에서 사용
+// 출생지로 자동 대체하지 않는 버전
 function getScreenLocationRaw(screenKey) {
   const profile = getProfile();
   if (!profile) return null;
@@ -174,8 +174,7 @@ function syncFormFromProfile(p) {
   if (_$("birthCity"))      _$("birthCity").value      = p.birthPlace || "서울";
 }
 function refreshLocationVars() {
-  _todayCity       = getScreenLocation('today');
-  _solarReturnCity = getScreenLocationRaw('astro');
+  _todayCity = getScreenLocation('today');
 }
 
 /* =========================================================
@@ -203,6 +202,17 @@ function enterScreen(id) {
   if (id === 'today') {
     const input = _$('todayCityInput');
     if (input) input.value = _todayCity || getCitySelectValue();
+  }
+
+  // 점성술 탭 진입 시: 매번 "현재 위치" 게이트부터 보여줌(저장된 값 없이 항상 재입력)
+  if (id === 'astro') {
+    _astroCurrentCity = null;
+    const gate = _$('astroLocationGate');
+    const main = _$('astroMainContent');
+    if (gate) gate.style.display = '';
+    if (main) main.style.display = 'none';
+    const gateInput = _$('astroGateCityInput');
+    if (gateInput) gateInput.value = '';
   }
 }
 
@@ -3664,34 +3674,51 @@ function renderSaturnReturnPanel(astroData) {
 }
 
 /* =========================================================
-   솔라리턴 적용 도시 선택 (= 현재 위치. 기본값 없음 — 출생지와 다를 때만 입력)
+   점성술 탭 "현재 위치" 게이트 — 솔라리턴/루나리턴/신월만월/트랜짓이
+   공유하는 단일 값. 저장 안 함(프로필 전환 시 꼬이는 것 방지) — 탭에
+   들어갈 때마다 매번 새로 입력받는다.
    ========================================================= */
-let _solarReturnCity = getScreenLocationRaw('astro');
+let _astroCurrentCity = null;
 
-function filterSolarCityList(val) {
-  const dropdown = _$('solarReturnCityDropdown');
+function filterAstroGateCityList(val) {
+  const dropdown = _$('astroGateCityDropdown');
   if (!dropdown) return;
   const q = val.trim().toLowerCase();
   const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
   if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
   dropdown.innerHTML = matched.map(c =>
-    '<div onclick="selectSolarCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
+    '<div onclick="selectAstroGateCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
   ).join('');
   dropdown.style.display = 'block';
 }
-function showSolarCityList() {
-  const input = _$('solarReturnCityInput');
-  if (input) filterSolarCityList(input.value);
+function showAstroGateCityList() {
+  const input = _$('astroGateCityInput');
+  if (input) filterAstroGateCityList(input.value);
 }
-function hideSolarCityList() {
-  const d = _$('solarReturnCityDropdown');
+function hideAstroGateCityList() {
+  const d = _$('astroGateCityDropdown');
   if (d) d.style.display = 'none';
 }
-function selectSolarCity(cityName) {
-  _solarReturnCity = cityName;
-  setScreenLocation('astro', cityName);
-  hideSolarCityList();
-  if (window.AstroResult) renderSolarReturnPanel(window.AstroResult);
+function selectAstroGateCity(cityName) {
+  const input = _$('astroGateCityInput');
+  if (input) input.value = cityName;
+  hideAstroGateCityList();
+}
+function _passAstroLocationGate() {
+  const gate = _$('astroLocationGate');
+  const main = _$('astroMainContent');
+  if (gate) gate.style.display = 'none';
+  if (main) main.style.display = '';
+  if (window.AstroResult) renderSolarReturnPanel(window.AstroResult); // 솔라리턴부터 루나리턴·신월만월·트랜짓까지 연쇄 재렌더
+}
+function confirmAstroLocation() {
+  const cityName = _$('astroGateCityInput')?.value?.trim() || '';
+  _astroCurrentCity = cityName || null;
+  _passAstroLocationGate();
+}
+function skipAstroLocation() {
+  _astroCurrentCity = null; // 비워두면 출생지 기준으로 계산(부가계산 API들의 기본 동작)
+  _passAstroLocationGate();
 }
 
 /* =========================================================
@@ -3806,7 +3833,7 @@ async function renderSolarReturnPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || '';
+  const cityName = _astroCurrentCity || '';
   const { lat: srLat, lng: srLng, utcOffset: srUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
@@ -3819,23 +3846,7 @@ async function renderSolarReturnPanel(astroData) {
     ">
       <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">☀️ 솔라리턴</div>
       <div style="font-size:11px;color:#7d7257;margin-bottom:12px;">
-        트랜짓 태양이 네이탈 태양 위치로 돌아오는 시점의 어센던트
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">현재 위치</label>
-        <div style="position:relative;">
-          <input id="solarReturnCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
-            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;"
-            oninput="filterSolarCityList(this.value)"
-            onfocus="showSolarCityList()"
-            onblur="setTimeout(hideSolarCityList,200)"
-          />
-          <div id="solarReturnCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
-            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
-            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
-        </div>
-        <p style="margin:8px 0 0;font-size:11px;line-height:1.5;color:#7d7257;">비워두면 출생지 기준으로 계산됩니다.</p>
+        트랜짓 태양이 네이탈 태양 위치로 돌아오는 시점의 어센던트 (${cityName || '출생지'} 기준)
       </div>
       <div id="astroSolarReturnRows" style="font-size:12px;color:#9b8f74;">⏳ 솔라리턴 계산 중...</div>
     </div>
@@ -3903,7 +3914,7 @@ async function renderLunarReturnPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || '';
+  const cityName = _astroCurrentCity || '';
   const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
@@ -4016,7 +4027,7 @@ async function renderMoonPhasesPanel(astroData) {
   const meta = astroData.meta;
   if (!meta?.birthDate || !meta?.birthTime || meta.lat == null || meta.lng == null) return;
 
-  const cityName = _solarReturnCity || '';
+  const cityName = _astroCurrentCity || '';
   const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityName ? getCityCoords(cityName) : {};
 
   const panel = document.createElement('div');
@@ -4090,33 +4101,6 @@ async function renderMoonPhasesPanel(astroData) {
 /* =========================================================
    트랜짓 차트 패널 렌더링
    ========================================================= */
-let _transitCity = null;
-
-function filterTransitCityList(val) {
-  const dropdown = _$('transitCityDropdown');
-  if (!dropdown) return;
-  const q = val.trim().toLowerCase();
-  const matched = Object.keys(CITY_COORDS).filter(c => c.toLowerCase().includes(q)).slice(0, 30);
-  if (matched.length === 0 || q === '') { dropdown.style.display = 'none'; return; }
-  dropdown.innerHTML = matched.map(c =>
-    '<div onclick="selectTransitCity(\'' + c + '\')" style="padding:8px 12px;font-size:13px;color:#f4ecd8;cursor:pointer;border-bottom:1px solid rgba(200,168,96,.1);" onmouseover="this.style.background=\'rgba(200,168,96,.1)\'" onmouseout="this.style.background=\'\'">' + c + '</div>'
-  ).join('');
-  dropdown.style.display = 'block';
-}
-function showTransitCityList() {
-  const input = _$('transitCityInput');
-  if (input) filterTransitCityList(input.value);
-}
-function hideTransitCityList() {
-  const d = _$('transitCityDropdown');
-  if (d) d.style.display = 'none';
-}
-function selectTransitCity(cityName) {
-  _transitCity = cityName;
-  const input = _$('transitCityInput');
-  if (input) input.value = cityName;
-  hideTransitCityList();
-}
 
 /* =========================================================
    오늘의 운세 현재 위치 도시 선택
@@ -4161,7 +4145,7 @@ async function renderTransitPanel(astroData) {
   const nowKST = new Date(Date.now() + 9 * 3600000);
   const defaultDate = nowKST.toISOString().slice(0, 10);
   const defaultTime = nowKST.toISOString().slice(11, 16);
-  const cityName = _transitCity || '';
+  const cityName = _astroCurrentCity || '';
 
   const panel = document.createElement('div');
   panel.id = 'astroTransitPanel';
@@ -4173,7 +4157,7 @@ async function renderTransitPanel(astroData) {
     ">
       <div style="font-size:12px;color:#dfba6b;letter-spacing:2px;margin-bottom:4px;">🪐 트랜짓 차트</div>
       <div style="font-size:11px;color:#7d7257;margin-bottom:14px;">
-        특정 날짜/시각의 트랜짓 행성을 네이탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산
+        특정 날짜/시각의 트랜짓 행성을 네이탈 차트와 바이휠 비교 — ASC/MC/하우스/애스펙트 완전 계산 (${cityName || '출생지'} 기준)
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
         <div>
@@ -4188,22 +4172,6 @@ async function renderTransitPanel(astroData) {
             style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
             background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;" />
         </div>
-      </div>
-      <div style="margin-bottom:14px;">
-        <label style="font-size:10px;color:#9b8f74;display:block;margin-bottom:4px;">현재 위치</label>
-        <div style="position:relative;">
-          <input id="transitCityInput" type="text" value="${cityName}" placeholder="도시 검색..." autocomplete="off"
-            style="width:100%;padding:6px 10px;border-radius:8px;border:1px solid rgba(200,168,96,.2);
-            background:rgba(255,255,255,.04);color:#f4ecd8;font-size:13px;box-sizing:border-box;"
-            oninput="filterTransitCityList(this.value)"
-            onfocus="showTransitCityList()"
-            onblur="setTimeout(hideTransitCityList,200)"
-          />
-          <div id="transitCityDropdown" style="display:none;position:absolute;z-index:999;width:100%;max-height:200px;
-            overflow-y:auto;background:#0e0b24;border:1px solid rgba(200,168,96,.2);border-radius:8px;
-            margin-top:2px;box-shadow:0 4px 20px rgba(0,0,0,.5);"></div>
-        </div>
-        <p style="margin:8px 0 0;font-size:11px;line-height:1.5;color:#7d7257;">비워두면 출생지 기준으로 계산됩니다.</p>
       </div>
       <button onclick="calcTransitChart()" class="intro-card-cta" style="padding:8px 18px;font-size:12px;margin-bottom:14px;">
         <span class="cta-sheen"></span>
@@ -4228,8 +4196,7 @@ async function calcTransitChart() {
 
   const transitDate = _$('transitDateInput')?.value || '';
   const transitTime = _$('transitTimeInput')?.value || '00:00';
-  const cityInputVal = _$('transitCityInput')?.value?.trim() || '';
-  _transitCity = cityInputVal || null;
+  const cityInputVal = _astroCurrentCity || '';
   const { lat: appLat, lng: appLng, utcOffset: appUtcOffset } = cityInputVal ? getCityCoords(cityInputVal) : {};
 
   if (!transitDate) {
