@@ -34,7 +34,7 @@ function _setInlineAlert(elId, msg) {
 // 출생 정보가 바뀌는 모든 지점(프로필 전환/수정/삭제, 생년월일 입력 변경 등)에서 호출해야
 // 이전 사람의 결과 HTML이 화면에 남아있는 일이 없다.
 function _resetCareerLikeResultScreens() {
-  ['loveFortune', 'reunionFortune', 'jobHunting', 'promotion', 'jobChange', 'startup', 'business'].forEach(idPrefix => {
+  ['loveFortune', 'reunionFortune', 'compatibility', 'jobHunting', 'promotion', 'jobChange', 'startup', 'business'].forEach(idPrefix => {
     const introCard  = _$(idPrefix + 'InputCard');
     const resultArea = _$(idPrefix + 'ResultArea');
     if (resultArea) { resultArea.style.display = 'none'; resultArea.innerHTML = ''; }
@@ -50,6 +50,7 @@ function _invalidateAstroResult() {
   else window.TodayResult = null;
   if (typeof _setLoveRelationshipStatus === 'function') _setLoveRelationshipStatus('solo');
   _resetCareerLikeResultScreens();
+  if (typeof _resetPartnerForm === 'function') _resetPartnerForm();
 
   // 점성술 AI 리딩 결과 — 이전 사람 해석이 화면에 남아있다가 게이트 통과 시 다시 보이는 일이 없도록 비움
   const astroResultEl = _$('astroResult');
@@ -1225,6 +1226,38 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
 /* =========================================================
    궁합 — 상대방 정보 입력 + "✨ 궁합 보기" 버튼 클릭 전용
    ========================================================= */
+
+// 궁합 ↔ 재회운은 같은 입력 폼을 재사용하므로, 모드 전환 시 이전에
+// 입력해둔 다른 사람의 상대방 정보가 그대로 남아있지 않도록 비운다.
+function _resetPartnerForm() {
+  const nameEl = _$('partnerName');
+  if (nameEl) nameEl.value = '';
+  const profileSelect = _$('partnerProfileSelect');
+  if (profileSelect) profileSelect.value = '';
+  const birthDateEl = _$('partnerBirthDate');
+  if (birthDateEl) birthDateEl.value = '';
+  const birthTimeEl = _$('partnerBirthTime');
+  if (birthTimeEl) { birthTimeEl.value = ''; birthTimeEl.disabled = false; }
+  const timeUnknownEl = _$('partnerTimeUnknown');
+  if (timeUnknownEl) timeUnknownEl.checked = false;
+  const genderEl = _$('partnerGender');
+  if (genderEl) genderEl.value = 'M';
+  const cityInputEl = _$('partnerCityInput');
+  if (cityInputEl) cityInputEl.value = '';
+  const cityHiddenEl = _$('partnerCity');
+  if (cityHiddenEl) cityHiddenEl.value = '';
+  const saveAsProfileEl = _$('partnerSaveAsProfile');
+  if (saveAsProfileEl) saveAsProfileEl.checked = false;
+  if (typeof setPartnerCalType === 'function') setPartnerCalType('solar');
+
+  // 이전 모드(궁합/재회운)에서 본 결과 화면이 남아있지 않도록 인트로로 되돌림
+  const resultArea = _$('compatibilityResultArea');
+  const introCard  = _$('compatibilityInputCard');
+  if (resultArea) { resultArea.innerHTML = ''; resultArea.style.display = 'none'; }
+  if (introCard)  introCard.style.display = '';
+  const alertEl = _$('compatibilityAlert');
+  if (alertEl) alertEl.classList.add('hidden');
+}
 function setPartnerCalType(type) {
   const hidden = _$("partnerCalendarType");
   if (hidden) hidden.value = type;
@@ -1346,6 +1379,7 @@ function goToReunionPartnerForm() {
   if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 시너지를 보고,<br>금성 역행·토성 흐름까지 더해 재회 타이밍을 짚어드립니다.';
   if (tagsEl)     tagsEl.innerHTML      = '관계의 패턴<span class="dot">·</span>지금의 시기<span class="dot">·</span>재회 가능성';
   if (ctaEl)      ctaEl.textContent     = '✨ 재회운 보기';
+  _resetPartnerForm();
   _populatePartnerProfileSelect();
   enterScreen('compatibility');
 }
@@ -1363,6 +1397,7 @@ function enterCompatibilityFresh() {
   if (headlineEl) headlineEl.innerHTML  = '두 사람의 차트를 겹쳐 끌림과 어긋남의 지점을 찾고,<br>이 관계가 어떤 결을 가지고 있는지 풀어드립니다.';
   if (tagsEl)     tagsEl.innerHTML      = '끌림과 케미<span class="dot">·</span>관계의 결<span class="dot">·</span>오래 갈 수 있는지';
   if (ctaEl)      ctaEl.textContent     = '✨ 궁합 보기';
+  _resetPartnerForm();
   _populatePartnerProfileSelect();
   enterScreen('compatibility');
 }
