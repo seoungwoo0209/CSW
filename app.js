@@ -45,9 +45,28 @@ function _resetCareerLikeResultScreens() {
 
 function _invalidateAstroResult() {
   window.AstroResult = null;
-  window.TodayResult = null;
+  window.AstroReadingResult = null;
+  if (typeof closeTodayFortune === 'function') closeTodayFortune();
+  else window.TodayResult = null;
   if (typeof _setLoveRelationshipStatus === 'function') _setLoveRelationshipStatus('solo');
   _resetCareerLikeResultScreens();
+
+  // 점성술 AI 리딩 결과 — 이전 사람 해석이 화면에 남아있다가 게이트 통과 시 다시 보이는 일이 없도록 비움
+  const astroResultEl = _$('astroResult');
+  const astroErrorEl  = _$('astroError');
+  if (astroResultEl) { astroResultEl.innerHTML = ''; astroResultEl.style.display = 'none'; }
+  if (astroErrorEl)  { astroErrorEl.style.display = 'none'; }
+  const astroBtn = _$('astroBtn');
+  if (astroBtn) { astroBtn.disabled = false; astroBtn.style.opacity = '1'; }
+
+  // 정통사주 결과 화면 — 이전 사람 결과가 그대로 남아있던 가장 핵심적인 화면, 인트로로 되돌림
+  // (내부 result-card들은 비우지 않음 — 다음 reveal 때 그대로 덮어써지는 고정 엘리먼트라 지우면
+  //  다음 렌더가 getElementById로 못 찾아서 깨짐)
+  const sajuResultArea = _$('saju-result-area');
+  const sajuIntroCard  = _$('sajuInputCard');
+  if (sajuResultArea) sajuResultArea.style.display = 'none';
+  if (sajuIntroCard)  sajuIntroCard.style.display = '';
+  setAlert('');
 }
 
 /* =========================================================
