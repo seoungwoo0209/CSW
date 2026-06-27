@@ -365,9 +365,17 @@ ${daeunStr}
     const timerTrigger = new Promise(resolve => setTimeout(resolve, 5000));
     const staggeredAttempt = Promise.race([earlyTrigger, timerTrigger]).then(fireSecond);
 
+    // 1·2차가 둘 다 실패로 확정되면 3차를 한 번 더 쏜다(동시 3중 발사로 자체 과부하 유발 방지)
+    let thirdAttempt = null;
+    const fireThird = () => { if (!thirdAttempt) thirdAttempt = fireAttempt(); return thirdAttempt; };
+    const bothFailedTrigger = Promise.allSettled([attempt1, staggeredAttempt]).then(results => {
+      if (results.every(r => r.status === 'rejected')) return fireThird();
+      throw new Error('다른 시도가 이미 성공함');
+    });
+
     let reply, lastError;
     try {
-      reply = await Promise.any([attempt1, staggeredAttempt]);
+      reply = await Promise.any([attempt1, staggeredAttempt, bothFailedTrigger]);
     } catch (aggErr) {
       lastError = aggErr;
     }
