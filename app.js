@@ -46,6 +46,7 @@ function _resetCareerLikeResultScreens() {
 function _invalidateAstroResult() {
   window.AstroResult = null;
   window.AstroReadingResult = null;
+  window.AstroQuestionCount = 0;
   if (typeof closeTodayFortune === 'function') closeTodayFortune();
   else window.TodayResult = null;
   if (typeof _setLoveRelationshipStatus === 'function') _setLoveRelationshipStatus('solo');
@@ -5173,6 +5174,7 @@ function closeTodayFortune() {
   if (inputCard) inputCard.style.display = '';
   // 닫고 다시 열 때 도시를 바꿔서 새로 생성할 수 있도록, 캐시된 계산 결과를 비운다.
   window.TodayResult = null;
+  window.TodayReadingResult = null;
   window.TodayQuestionCount = 0;
 }
 
