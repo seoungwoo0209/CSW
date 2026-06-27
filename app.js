@@ -775,12 +775,12 @@ async function revealSajuResults() {
     });
 
     const aiOk = await fetchAndInjectSajuAI();
-    if (!aiOk) throw new Error("사주 AI 해설 호출 실패");
+    if (!aiOk) throw new Error(_lastSajuAIError || "사주 AI 해설 호출 실패");
     succeeded = true;
 
   } catch (err) {
     console.error("사주 분석 중 오류:", err);
-    setAlert("사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요.");
+    setAlert(err.message || "사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요.");
   } finally {
     _revealInFlight = false;
     if (runLoading) runLoading.style.display = 'none';
@@ -5264,6 +5264,7 @@ async function requestTodayFortune() {
 /* =========================================================
    Gemini AI 운세 호출 (사주)
    ========================================================= */
+let _lastSajuAIError = null;
 async function fetchAndInjectSajuAI() {
   if (!window.SajuResult) return false;
 
@@ -5365,6 +5366,7 @@ async function fetchAndInjectSajuAI() {
       errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");
       errorEl.style.display = "block";
     }
+    _lastSajuAIError = err.message || null;
     return false;
   }
 }
