@@ -174,6 +174,17 @@ function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
   };
 }
 
+// "지금 강도"만 알려주면 AI가 1년 전체를 그 강도로 뭉뚱그려 쓰는 문제가 있어,
+// 실제 12개월 등급을 전부 보여주고 진짜 흐름(회복/하락/유지)을 그대로 묘사하게 한다 — 가짜 줄거리 생성 방지.
+// tierFn은 함수별로 등급 임계값이 달라서(strengthFromScore/Strict/jobChange 자체 기준) 파라미터로 받는다.
+function monthlyTrajectoryInstruction(scores, nowMonthIdx, tierFn) {
+  const monthLabels = scores.map((s, i) => `${i + 1}월:${tierFn(s)}`).join(', ');
+  const remain = nowMonthIdx < 11
+    ? `지금(${nowMonthIdx + 1}월) 이후 남은 달들이 실제로 어떻게 바뀌는지(회복되는지, 더 약해지는지, 비슷하게 유지되는지)를 반드시 반영해서 써라.`
+    : '올해 남은 달이 없으니, 지금 이 시기 자체의 흐름에만 집중해서 써라.';
+  return `참고로 올해 전체 흐름은 이렇다(달:등급) — ${monthLabels}. ${remain} 1년 전체가 지금과 똑같이 흘러간다는 식으로 뭉뚱그리지 말고, 달마다 실제로 다른 등급이라는 걸 분명히 드러내라.`;
+}
+
 // 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
 // "지금" 강도도 이 함수에 nowMonthIdx를 넣어 호출하므로, 배지 값과 타임라인의 이번달 막대가 항상 일치한다.
 function jobHuntingScoreAt(monthIdx, ctx) {
@@ -312,6 +323,7 @@ function buildJobHuntingPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobHuntingReasonAt, ctx);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
   const prompt = `
@@ -356,7 +368,7 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 합격·면접에 유리한 시기인지 — 트랜짓 목성/토성, 수성 역행, 프로그레션 MC, 일식/월식 종합)
-지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게). ${trajectoryInstr}
 구체적으로 어떻게 준비/행동하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
@@ -408,6 +420,7 @@ function buildPromotionPrompt(body, sky) {
   const strengthFixed = strengthFromScoreStrict(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, promotionReasonAt, ctx);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScoreStrict);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -451,7 +464,7 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 승진·연봉협상에 유리한 시기인지 — 트랜짓 토성/목성, 화성 역행, 일식/월식 종합)
-지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게). ${trajectoryInstr}
 구체적인 협상 타이밍·행동 조언 포함
 분량: 3~4문단
 
@@ -499,6 +512,7 @@ function buildJobChangePrompt(body, sky) {
   const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobChangeReasonAt, ctx);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, c => c >= 2 ? '강함' : c === 0 ? '약함' : '보통');
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -538,7 +552,7 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 이직·스카웃 제안을 받아들이기 좋은 시기인지 — 트랜짓 천왕성, 프로그레션 MC 전환, 목성 회귀, 일식/월식 종합)
-지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게). ${trajectoryInstr}
 오퍼를 받았을 때 어떻게 판단하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
@@ -591,6 +605,7 @@ function buildStartupPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, startupReasonAt, ctx);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -634,7 +649,7 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:timing===
 (지금이 시작하기 좋은 시기인지 — 트랜짓 목성/토성, 목성 역행, 목성 회귀, 일식/월식 종합)
-지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게).
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 긍정적으로, 약함이면 신중론으로, 보통이면 균형있게). ${trajectoryInstr}
 구체적으로 어떻게 준비하면 좋을지 실질적인 조언 포함
 분량: 3~4문단
 
@@ -710,6 +725,7 @@ function buildBusinessPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, businessReasonAt, ctx);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -752,7 +768,7 @@ ${eclipseStr(eclipseSignal)}
 
 ===SECTION:organization===
 (조직·직원 운 — 6하우스 트랜짓 종합. 올해 손발이 맞는 직원이 들어오는 시기인지, 반대로 내부 소통/관리에 신경 써야 하는 시기인지)
-지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조가 그 강도와 어긋나지 않게 써라.
+지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조가 그 강도와 어긋나지 않게 써라. ${trajectoryInstr}
 분량: 2~3문단
 
 ===SECTION:contract===

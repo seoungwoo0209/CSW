@@ -138,6 +138,15 @@ function loveReasonAt(monthIdx, ctx) {
   if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) return '목성이 연애·관계 영역(5·7하우스)을 지나는 시기';
   return null;
 }
+// "지금 강도"만 알려주면 AI가 1년 전체를 그 강도로 뭉뚱그려 쓰는 문제가 있어,
+// 실제 12개월 등급을 전부 보여주고 진짜 흐름(회복/하락/유지)을 그대로 묘사하게 한다 — 가짜 줄거리 생성 방지.
+function loveTrajectoryInstruction(scores, nowMonthIdx) {
+  const monthLabels = scores.map((s, i) => `${i + 1}월:${strengthFromScore(s)}`).join(', ');
+  const remain = nowMonthIdx < 11
+    ? `지금(${nowMonthIdx + 1}월) 이후 남은 달들이 실제로 어떻게 바뀌는지(회복되는지, 더 약해지는지, 비슷하게 유지되는지)를 반드시 반영해서 써라.`
+    : '올해 남은 달이 없으니, 지금 이 시기 자체의 흐름에만 집중해서 써라.';
+  return `참고로 올해 전체 흐름은 이렇다(달:등급) — ${monthLabels}. ${remain} 1년 전체가 지금과 똑같이 흘러간다는 식으로 뭉뚱그리지 말고, 달마다 실제로 다른 등급이라는 걸 분명히 드러내라.`;
+}
 
 /* =========================================================
    재회운 — 올해의 재회 타이밍 점수·타임라인 (①단독·②상대방 있음 둘 다 동일 공식, 내 차트 기준 트랜짓)
@@ -302,7 +311,7 @@ function buildLovePrompt(body) {
   const house11Str = `${house11Sign}${house11Occupants?.length ? ` (${house11Occupants.join(', ')} 위치)` : ''}`;
 
   // 솔로일 때만 "올해의 만남 타이밍" 점수·타임라인 계산 (연애 중인 사람에겐 의미 없는 질문이라 스킵)
-  let monthlyStrength = null, conclusion = null, strengthFixed = null;
+  let monthlyStrength = null, conclusion = null, strengthFixed = null, trajectoryInstr = '';
   if (isSolo && Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const nowMonthIdx = new Date().getMonth();
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
@@ -318,6 +327,7 @@ function buildLovePrompt(body) {
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
     monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, loveReasonAt, ctx);
+    trajectoryInstr = loveTrajectoryInstruction(monthlyScores, nowMonthIdx);
   }
 
   // timing 섹션의 해석 관점만 분기 — 계산에 쓰는 천체 신호(트랜짓·프로그레션 등)는 솔로/연애 중 동일하게 공유
@@ -326,7 +336,7 @@ function buildLovePrompt(body) {
 - 지금 관계에 어떤 변화(개선·갈등 해소·시험대 등)가 다가오는지
 - 그 변화에 ${displayName}님이 어떻게 대응하면 좋을지 실질적인 조언`
     : `(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍, ${displayName}님이 현재 솔로인 상태를 전제로 해석)
-- 새로운 인연이 다가오는 시기인지를, 지금 강도는 이미 "${strengthFixed}"로 확정되어 있으니 그 흐름과 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 차분히 기반을 다지는 시기로, 보통이면 균형있게). 이 부분이 ${displayName}님이 가장 궁금해할 핵심이니, 왜 그런 강도인지 트랜짓·프로그레션 신호를 구체적으로 풀어 설명하며 충분한 분량을 써라.
+- 새로운 인연이 다가오는 시기인지를, 지금 강도는 이미 "${strengthFixed}"로 확정되어 있으니 그 흐름과 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 차분히 기반을 다지는 시기로, 보통이면 균형있게). 이 부분이 ${displayName}님이 가장 궁금해할 핵심이니, 왜 그런 강도인지 트랜짓·프로그레션 신호를 구체적으로 풀어 설명하며 충분한 분량을 써라. ${trajectoryInstr}
 - 그 다음, 어떤 계기·환경에서 만나게 될 가능성이 높은지를 아래 3개 하우스 중 ${displayName}님 차트에서 실제로 행성이 위치한(또는 가장 부합하는) 쪽으로 구체적으로 짚어라. 이 부분은 강도가 "약함"이어도 절대 생략하거나 분량을 줄이지 말고, "강함"·"보통"일 때와 동일하게 구체적으로 채워라(약함이어도 만남의 계기·환경은 똑같이 구체적으로 정해져 있고, 다만 그 흐름에 다가가는 속도나 마음가짐만 달라지는 것이다):
   · 5하우스(취미·모임·사교 자리) — ${house5Str}
   · 11하우스(친구 소개·동호회·커뮤니티) — ${house11Str}
