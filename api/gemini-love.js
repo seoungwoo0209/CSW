@@ -913,8 +913,9 @@ export default async function handler(req, res) {
     const conclusion = (isLove || isReunion || isReunionKnown) ? built.conclusion : null;
     const categoryGrades = isCompatibility ? built.categoryGrades : null;
     const liveSaturnHouse = (isReunion || isReunionKnown) ? built.liveSaturnHouse : null;
-    // strength·suggestion 2개 섹션이 추가될 때만(연애 솔로, 재회 타이밍 신호 확보 시) 본문이 길어지므로 토큰 한도를 더 넉넉히 잡는다.
-    const maxOutputTokens = monthlyStrength ? 6500 : 4096;
+    // 연애중·궁합도 섹션 분량이 작지 않아(궁합은 4~5문단짜리 섹션도 있음) 4096으론 가끔 끝까지 못 쓰고
+    // 잘릴 수 있어 — 섹션 개수와 무관하게 다 같이 넉넉한 한도로 통일.
+    const maxOutputTokens = 6500;
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (시간차 이중 요청 — 1번을 먼저 쏘고, 1번이 실패하거나 5초가 지나면 2번을 쏜다.
@@ -943,7 +944,11 @@ export default async function handler(req, res) {
         if (!r.ok) throw new Error(`status ${r.status}`);
         const json = await r.json();
         const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!reply) throw new Error(`빈 응답 (finishReason: ${json?.candidates?.[0]?.finishReason || '알수없음'})`);
+        const finishReason = json?.candidates?.[0]?.finishReason;
+        if (!reply) throw new Error(`빈 응답 (finishReason: ${finishReason || '알수없음'})`);
+        // 글자수 한도에 걸려 문장 중간에 잘린 응답은 "성공"이 아니라 실패로 취급해서 재시도시킨다
+        // (그대로 두면 마지막 문장/글자가 끊긴 채로 사용자에게 그대로 노출됨).
+        if (finishReason === 'MAX_TOKENS') throw new Error('응답이 글자수 한도에 걸려 중간에 잘림 (MAX_TOKENS)');
         return reply;
       });
     };

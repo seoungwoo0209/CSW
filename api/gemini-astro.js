@@ -297,7 +297,9 @@ ${transitStr}
         if (!r.ok) throw new Error(`status ${r.status}`);
         const json = await r.json();
         const reply = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!reply) throw new Error(`빈 응답 (finishReason: ${json?.candidates?.[0]?.finishReason || '알수없음'})`);
+        const finishReason = json?.candidates?.[0]?.finishReason;
+        if (!reply) throw new Error(`빈 응답 (finishReason: ${finishReason || '알수없음'})`);
+        if (finishReason === 'MAX_TOKENS') throw new Error('응답이 글자수 한도에 걸려 중간에 잘림 (MAX_TOKENS)');
         return reply;
       });
     };
