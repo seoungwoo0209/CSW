@@ -1968,6 +1968,7 @@ function _strengthTimelineHtml(monthlyStrength) {
   const { scores, bestIndices, nowIdx, tiers } = monthlyStrength;
   const hasBest = (bestIndices || []).length > 0; // 그중 진짜 "골든타임"이라 부를 만한 양(+)의 달이 있는지
   const bestSet = new Set(hasBest ? bestIndices : []);
+  const hasRange = Math.min(...scores) !== Math.max(...scores); // 달마다 점수가 조금이라도 다른지(콜아웃 문구용)
 
   let heightOf;
   if (Array.isArray(tiers) && tiers.length === 12) {
@@ -1983,7 +1984,6 @@ function _strengthTimelineHtml(monthlyStrength) {
   } else {
     // 서버가 등급 정보를 안 보낸 경우(구버전 응답 등)에 대한 안전한 대체 동작
     const min = Math.min(...scores), max = Math.max(...scores);
-    const hasRange = min !== max;
     heightOf = (s) => hasRange ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
   }
 
