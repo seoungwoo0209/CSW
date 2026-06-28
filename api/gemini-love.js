@@ -94,13 +94,16 @@ function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
   }
   return patched;
 }
-function buildMonthlyStrength(scores, nowIdx) {
+function buildMonthlyStrength(scores, nowIdx, tierFn) {
   const max = Math.max(...scores);
   const min = Math.min(...scores);
   const bestIndices = (min !== max && max > 0)
     ? scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, [])
     : [];
-  return { scores, nowIdx, bestIndices };
+  // 막대그래프가 등급(강함/보통/약함) 경계를 넘어서 헷갈리게 보이지 않도록,
+  // 클라이언트가 등급별 높이 구간을 쓸 수 있게 달마다 등급도 같이 보낸다.
+  const tiers = tierFn ? scores.map(tierFn) : null;
+  return { scores, nowIdx, bestIndices, tiers };
 }
 function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
   const { scores, bestIndices } = monthlyStrength;
@@ -351,7 +354,7 @@ function buildLovePrompt(body) {
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => loveScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
-    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, loveReasonAt, ctx);
     trajectoryInstr = loveTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, loveReasonAt, ctx)
       + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
@@ -513,7 +516,7 @@ function buildReunionPrompt(body) {
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
-    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
     bestMonthsInstr = reunionBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
   }
@@ -778,7 +781,7 @@ function buildReunionKnownPrompt(body) {
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionKnownScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
-    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+    monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
     conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionKnownReasonAt, ctx);
     bestMonthsInstr = reunionKnownBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
   }

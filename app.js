@@ -1958,19 +1958,37 @@ function _strengthBadgeHtml(strength) {
 }
 
 // 직업 4종 — "올해의 흐름" 12개월 막대 타임라인.
-// 막대 높이는 서버가 계산한 실제 강도 점수(monthlyStrength.scores)를 그 사람의 12개월 안에서
-// 상대적으로(min~max) 정규화한 값이다 — 숫자·퍼센트는 절대 텍스트로 노출하지 않는다(법적 리스크 회피).
+// 막대 높이는 서버가 계산한 실제 강도 점수(monthlyStrength.scores)를 등급(강함/보통/약함)별로
+// 정해둔 높이 구간 안에서, 같은 등급끼리만 비교해 정규화한다 — 숫자·퍼센트는 텍스트로 노출하지 않는다(법적 리스크 회피).
+// (등급과 무관하게 1년 전체 min~max로 늘려 펴면, "약함"인 달이 막대만 보고 "강함"보다 높아 보이는
+//  모순이 생길 수 있어 — 등급 경계를 절대 넘지 않는 구간 방식으로 변경)
+const _STRENGTH_TIER_BANDS = { '약함': [18, 38], '보통': [38, 65], '강함': [65, 92] };
 function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
-  const { scores, bestIndices, nowIdx } = monthlyStrength;
-  const min = Math.min(...scores), max = Math.max(...scores);
-  const hasRange = min !== max; // 막대 높이에 차이를 줄지 (점수가 1점이라도 다르면 true)
+  const { scores, bestIndices, nowIdx, tiers } = monthlyStrength;
   const hasBest = (bestIndices || []).length > 0; // 그중 진짜 "골든타임"이라 부를 만한 양(+)의 달이 있는지
   const bestSet = new Set(hasBest ? bestIndices : []);
-  const heightOf = (s) => hasRange ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
+
+  let heightOf;
+  if (Array.isArray(tiers) && tiers.length === 12) {
+    const groups = {};
+    tiers.forEach((t, i) => { (groups[t] = groups[t] || []).push(scores[i]); });
+    heightOf = (s, i) => {
+      const band = _STRENGTH_TIER_BANDS[tiers[i]] || [38, 65];
+      const groupScores = groups[tiers[i]];
+      const gMin = Math.min(...groupScores), gMax = Math.max(...groupScores);
+      if (gMin === gMax) return Math.round((band[0] + band[1]) / 2);
+      return Math.round(((s - gMin) / (gMax - gMin)) * (band[1] - band[0]) + band[0]);
+    };
+  } else {
+    // 서버가 등급 정보를 안 보낸 경우(구버전 응답 등)에 대한 안전한 대체 동작
+    const min = Math.min(...scores), max = Math.max(...scores);
+    const hasRange = min !== max;
+    heightOf = (s) => hasRange ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
+  }
 
   const bars = scores.map((s, i) => {
-    const h = heightOf(s);
+    const h = heightOf(s, i);
     const isBest = bestSet.has(i);
     const isNow  = i === nowIdx;
     let barStyle = 'background:rgba(200,168,96,.34);border:1px solid rgba(255,255,255,.06);';

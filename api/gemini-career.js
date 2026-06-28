@@ -115,7 +115,7 @@ function patchedTransitsForNow(transits, houses, nowMonthIdx, planetKeys) {
   return patched;
 }
 // scores(12개, 강도 점수 또는 호의신호 개수)와 현재월 인덱스로 타임라인 응답 객체 생성
-function buildMonthlyStrength(scores, nowIdx) {
+function buildMonthlyStrength(scores, nowIdx, tierFn) {
   const max = Math.max(...scores);
   const min = Math.min(...scores);
   // 골든타임은 "그 해 안에서 가장 나쁘지 않은 달"이 아니라 "실제로 양(+)의 신호가 있는 달"이어야 한다.
@@ -123,7 +123,10 @@ function buildMonthlyStrength(scores, nowIdx) {
   const bestIndices = (min !== max && max > 0)
     ? scores.reduce((acc, s, i) => { if (s === max) acc.push(i); return acc; }, [])
     : [];
-  return { scores, nowIdx, bestIndices };
+  // 막대그래프가 등급(강함/보통/약함) 경계를 넘어서 헷갈리게 보이지 않도록,
+  // 클라이언트가 등급별 높이 구간을 쓸 수 있게 달마다 등급도 같이 보낸다.
+  const tiers = tierFn ? scores.map(tierFn) : null;
+  return { scores, nowIdx, bestIndices, tiers };
 }
 
 // 골든타임(가장 점수 높은 달)이 "왜" 좋은지 — 실제로 그 달 점수에 기여한 신호 중 하나를 우선순위대로 골라 설명.
@@ -346,7 +349,7 @@ function buildJobHuntingPrompt(body, sky) {
   const monthlyScores = Array.from({ length: 12 }, (_, m) => jobHuntingScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
-  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobHuntingReasonAt, ctx);
   const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, jobHuntingReasonAt, ctx, '취업·합격 흐름')
     + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
@@ -444,7 +447,7 @@ function buildPromotionPrompt(body, sky) {
   const monthlyScores = Array.from({ length: 12 }, (_, m) => promotionScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScoreStrict(strengthScore);
-  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScoreStrict);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, promotionReasonAt, ctx);
   const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, promotionReasonAt, ctx, '승진·협상 흐름')
     + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
@@ -537,7 +540,8 @@ function buildJobChangePrompt(body, sky) {
   const favorableCount = monthlyScores[nowMonthIdx];
   // 5개 항목 중 호의신호가 3개 이상이어야 "강함"인 기준은 시뮬레이션 결과 너무 엄격해서(강함이 거의 안 나옴) 2개로 완화
   const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
-  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const jobChangeTierFn = c => c >= 2 ? '강함' : c === 0 ? '약함' : '보통';
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, jobChangeTierFn);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobChangeReasonAt, ctx);
   const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, jobChangeReasonAt, ctx, '이직·스카웃 흐름')
     + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
@@ -631,7 +635,7 @@ function buildStartupPrompt(body, sky) {
   const monthlyScores = Array.from({ length: 12 }, (_, m) => startupScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
-  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, startupReasonAt, ctx);
   const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, startupReasonAt, ctx, '창업·부업 흐름')
     + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
@@ -752,7 +756,7 @@ function buildBusinessPrompt(body, sky) {
   const monthlyScores = Array.from({ length: 12 }, (_, m) => businessScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
   const strengthFixed = strengthFromScore(strengthScore);
-  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
+  const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx, strengthFromScore);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, businessReasonAt, ctx);
   const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, businessReasonAt, ctx, '조직·사업 흐름')
     + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
