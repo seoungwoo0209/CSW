@@ -2127,12 +2127,12 @@ function _frictionTimelineHtml(frictionStrength) {
 
   const callout = hasPeak
     ? `
-      <span style="font-size:15px;">⚠️</span>
+      <span style="font-size:15px;">🌑</span>
       <span style="font-size:11.5px;color:#857a60;">마찰 주의 시기</span>
       <span style="font-size:13px;font-weight:700;color:#e8c08a;">${bestIndices.map(i => `${i + 1}월`).join('·')}</span>
     `
     : `
-      <span style="font-size:15px;">🌿</span>
+      <span style="font-size:15px;">🌓</span>
       <span style="font-size:11.5px;color:#857a60;">올해는 마찰이 두드러지는 달이 따로 없어요</span>
     `;
 
