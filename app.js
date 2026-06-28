@@ -30,6 +30,17 @@ function _setInlineAlert(elId, msg) {
   else      { el.textContent = msg; el.classList.remove("hidden"); }
 }
 
+// fetch() 자체가 네트워크 문제(연결 끊김, 요청이 서버에 닿지도 못한 경우)로 실패하면
+// 브라우저가 "Failed to fetch" 같은 영어 원문 에러를 던진다 — 이런 저수준 에러를 사용자에게
+// 그대로 보여주지 않고 한국어 안내로 바꿔준다. (우리가 직접 throw new Error(...)로 던진
+// 메시지는 항상 한국어라 그대로 보여주면 됨 — fetch 네트워크 실패만 TypeError로 구분됨)
+function _friendlyErrorMessage(err, fallback) {
+  if (err instanceof TypeError) {
+    return '네트워크 연결을 확인해주세요. 잠시 후 다시 시도해주세요.';
+  }
+  return err.message || fallback;
+}
+
 // 연애운/재회운/직업 4종 — 결과 화면을 인트로(버튼 누르는) 상태로 되돌림.
 // 출생 정보가 바뀌는 모든 지점(프로필 전환/수정/삭제, 생년월일 입력 변경 등)에서 호출해야
 // 이전 사람의 결과 HTML이 화면에 남아있는 일이 없다.
@@ -801,7 +812,7 @@ async function revealSajuResults() {
 
   } catch (err) {
     console.error("사주 분석 중 오류:", err);
-    setAlert(err.message || "사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요.");
+    setAlert(_friendlyErrorMessage(err, "사주 분석 중 오류가 발생했습니다. 입력값을 확인하고 다시 시도해주세요."));
   } finally {
     _revealInFlight = false;
     if (runLoading) runLoading.style.display = 'none';
@@ -955,7 +966,7 @@ async function revealLoveFortune() {
 
   } catch (err) {
     console.error("연애운 분석 중 오류:", err);
-    _setInlineAlert('loveFortuneAlert', err.message || "연애운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    _setInlineAlert('loveFortuneAlert', _friendlyErrorMessage(err, "연애운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
   } finally {
     _loveRevealInFlight = false;
     if (loading)   loading.style.display = 'none';
@@ -1142,7 +1153,7 @@ async function revealReunionFortune() {
 
   } catch (err) {
     console.error("재회운 분석 중 오류:", err);
-    _setInlineAlert('reunionFortuneAlert', err.message || "재회운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    _setInlineAlert('reunionFortuneAlert', _friendlyErrorMessage(err, "재회운 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
   } finally {
     _reunionRevealInFlight = false;
     if (loading)   loading.style.display = 'none';
@@ -1555,7 +1566,7 @@ async function revealCompatibility() {
 
   } catch (err) {
     console.error("궁합 분석 중 오류:", err);
-    showCompatErr(err.message || "궁합 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    showCompatErr(_friendlyErrorMessage(err, "궁합 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
   } finally {
     _compatRevealInFlight = false;
     if (loading)   loading.style.display = 'none';
@@ -1889,7 +1900,7 @@ async function _revealCareerScreen({ inFlightFlagName, idPrefix, type, buildExtr
 
   } catch (err) {
     console.error(errorLabel + " 분석 중 오류:", err);
-    _setInlineAlert(idPrefix + 'Alert', err.message || (errorLabel + " 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
+    _setInlineAlert(idPrefix + 'Alert', _friendlyErrorMessage(err, errorLabel + " 분석 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요."));
   } finally {
     window[inFlightFlagName] = false;
     if (loading)   loading.style.display = 'none';
@@ -5337,7 +5348,7 @@ async function requestTodayFortune() {
     if (todayInputCard) todayInputCard.style.display = 'none';
 
   } catch (err) {
-    errorEl.textContent   = "⚠️ " + (err.message || "오늘 운세를 불러오지 못했습니다.");
+    errorEl.textContent   = "⚠️ " + _friendlyErrorMessage(err, "오늘 운세를 불러오지 못했습니다.");
     errorEl.style.display = "block";
     if (statusEl) statusEl.textContent = "";
   } finally {
@@ -5449,10 +5460,10 @@ async function fetchAndInjectSajuAI() {
   } catch (err) {
     if (errorBox) errorBox.style.display = "block";
     if (errorEl) {
-      errorEl.textContent   = "⚠️ " + (err.message || "운세를 불러오지 못했습니다.");
+      errorEl.textContent   = "⚠️ " + _friendlyErrorMessage(err, "운세를 불러오지 못했습니다.");
       errorEl.style.display = "block";
     }
-    _lastSajuAIError = err.message || null;
+    _lastSajuAIError = _friendlyErrorMessage(err, null);
     return false;
   }
 }
@@ -5658,7 +5669,7 @@ async function requestAstroReading() {
     resultEl.style.display = "block";
 
   } catch (err) {
-    errorEl.textContent   = "⚠️ " + (err.message || "점성술 리딩을 불러오지 못했습니다.");
+    errorEl.textContent   = "⚠️ " + _friendlyErrorMessage(err, "점성술 리딩을 불러오지 못했습니다.");
     errorEl.style.display = "block";
   } finally {
     btn.disabled           = false;
