@@ -1956,7 +1956,7 @@ function _strengthBadgeHtml(strength) {
 // 상대적으로(min~max) 정규화한 값이다 — 숫자·퍼센트는 절대 텍스트로 노출하지 않는다(법적 리스크 회피).
 function _strengthTimelineHtml(monthlyStrength) {
   if (!monthlyStrength || !Array.isArray(monthlyStrength.scores) || monthlyStrength.scores.length !== 12) return '';
-  const { scores, bestIndices } = monthlyStrength;
+  const { scores, bestIndices, nowIdx } = monthlyStrength;
   const min = Math.min(...scores), max = Math.max(...scores);
   const hasRange = min !== max; // 막대 높이에 차이를 줄지 (점수가 1점이라도 다르면 true)
   const hasBest = (bestIndices || []).length > 0; // 그중 진짜 "골든타임"이라 부를 만한 양(+)의 달이 있는지
@@ -1965,18 +1965,24 @@ function _strengthTimelineHtml(monthlyStrength) {
 
   const bars = scores.map((s, i) => {
     const h = heightOf(s);
-    const barStyle = bestSet.has(i)
-      ? 'background:linear-gradient(180deg,#f6e9c1,#caa74e);box-shadow:0 0 10px rgba(232,196,120,.5);'
-      : 'background:rgba(200,168,96,.18);';
+    const isBest = bestSet.has(i);
+    const isNow  = i === nowIdx;
+    let barStyle = 'background:rgba(200,168,96,.34);border:1px solid rgba(255,255,255,.06);';
+    if (isBest) barStyle = 'background:linear-gradient(180deg,#f6e9c1,#caa74e);box-shadow:0 0 10px rgba(232,196,120,.5);border:1px solid rgba(255,255,255,.15);';
+    else if (isNow) barStyle += 'border:1.5px solid rgba(232,200,140,.85);box-shadow:0 0 8px rgba(232,196,120,.25),inset 0 0 6px rgba(232,196,120,.15);';
     return `
-      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:70px;">
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:78px;">
         <div style="width:100%;border-radius:4px 4px 2px 2px;${barStyle}height:${h}%;"></div>
       </div>
     `;
   }).join('');
-  const labels = scores.map((_, i) =>
-    `<span style="flex:1;text-align:center;font-size:9px;color:#6b6253;">${i + 1}</span>`
-  ).join('');
+  const labels = scores.map((_, i) => {
+    const isNow = i === nowIdx;
+    const style = isNow
+      ? 'color:#f6e9c1;font-weight:800;background:linear-gradient(90deg,rgba(200,168,96,.28),rgba(200,168,96,.1));border:1px solid rgba(200,168,96,.45);border-radius:999px;box-shadow:0 0 6px rgba(200,168,96,.2);'
+      : 'color:#a89a7a;font-weight:700;';
+    return `<span style="flex:1;text-align:center;font-size:10px;line-height:18px;${style}">${i + 1}</span>`;
+  }).join('');
 
   const callout = hasBest
     ? `
