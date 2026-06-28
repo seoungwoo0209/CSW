@@ -915,7 +915,7 @@ export default async function handler(req, res) {
     if (!reply) {
       const detail = lastError?.errors ? lastError.errors.map(e => e?.message || e).join(' | ') : (lastError?.message || lastError);
       console.error('Gemini API error (all parallel attempts failed):', detail);
-      await logError('gemini-career', detail);
+      await logError(`gemini-career:${type}`, detail);
       return res.status(502).json({ error: '현재 접속자가 많아 응답이 지연되고 있습니다. 잠시만 기다리시거나, 버튼을 몇 번 더 시도해 주시면 정상적으로 이용하실 수 있습니다.' });
     }
 
@@ -930,7 +930,7 @@ export default async function handler(req, res) {
 
   } catch (error) {
     console.error('handler error:', error);
-    await logError('gemini-career', error?.message || error);
+    await logError(`gemini-career:${req.body?.type || '?'}`, error?.message || error);
     return res.status(500).json({ error: 'AI 운세를 불러오는 중 오류가 발생했습니다.' });
   }
 }
