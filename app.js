@@ -858,6 +858,8 @@ function _buildLoveEnhancedFields(astroData) {
   const house5Ruler = house5RulerKey ? { key: house5RulerKey, label: _LOVE_PLANET_KR[house5RulerKey], ...astroData.natal[house5RulerKey] } : null;
 
   const house8 = _findHouseOccupants(astroData, 8);
+  const house9 = _findHouseOccupants(astroData, 9);
+  const house11 = _findHouseOccupants(astroData, 11);
 
   return {
     ascSign: astroData.angles.asc.sign,
@@ -865,6 +867,10 @@ function _buildLoveEnhancedFields(astroData) {
     house5Ruler,
     house8Sign: astroData.houses?.[7]?.sign,
     house8Occupants: house8,
+    house9Sign: astroData.houses?.[8]?.sign,
+    house9Occupants: house9,
+    house11Sign: astroData.houses?.[10]?.sign,
+    house11Occupants: house11,
     progVenusSign:  astroData.progression?.planets?.venus?.sign,
     progVenusHouse: astroData.progression?.planets?.venus?.house,
     northNodeSign:  astroData.nodes?.north?.sign,
