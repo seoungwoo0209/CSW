@@ -275,11 +275,11 @@ ${transitStr}
 
     // ── Gemini API 호출 (시간차 이중 요청 — 1번이 실패/5초경과 시 2번 발사, 먼저 성공하는 응답 채택)
     const controllers = [];
-    const fireAttempt = () => {
+    const fireAttempt = (model = 'gemini-2.5-flash') => {
       const controller = new AbortController();
       controllers.push(controller);
       return fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${process.env.GEMINI_API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -311,7 +311,8 @@ ${transitStr}
 
     // 1·2차가 둘 다 실패로 확정되면 3차를 한 번 더 쏜다(동시 3중 발사로 자체 과부하 유발 방지)
     let thirdAttempt = null;
-    const fireThird = () => { if (!thirdAttempt) thirdAttempt = fireAttempt(); return thirdAttempt; };
+    // 3차는 1·2차와 다른 모델로 쏴서, 같은 모델이 그 순간 과부하라도 다른 모델 쪽 여유가 있으면 살아난다.
+    const fireThird = () => { if (!thirdAttempt) thirdAttempt = fireAttempt('gemini-2.5-flash-lite'); return thirdAttempt; };
     const bothFailedTrigger = Promise.allSettled([attempt1, staggeredAttempt]).then(results => {
       if (results.every(r => r.status === 'rejected')) return fireThird();
       throw new Error('다른 시도가 이미 성공함');
