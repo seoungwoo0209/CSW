@@ -178,6 +178,84 @@ function monthlyShapeDetail(scores, nowMonthIdx) {
 }
 
 /* =========================================================
+   연애 중 — "마찰 시기"·"결혼운 시기" 점수·타임라인
+   (상대방 생일 정보가 없어 "이 커플이 싸운다/헤어진다"처럼 단정할 근거는 없음 — 대신
+   사용자 본인 차트 기준으로 "마찰이 생기기 쉬운 시기/비교적 평온한 시기",
+   "관계가 깊어지는 흐름이 들어오는 시기"로만 해석한다.)
+   ========================================================= */
+function frictionScoreAt(monthIdx, ctx) {
+  const { transits, venusLon, marsLon, mercuryRetroFlags } = ctx;
+  let s = 0;
+  s -= aspectScore(monthlyLon(transits, monthIdx, 'mars'), [venusLon, marsLon]); // 화성 트랜짓이 금성·화성 본인과 마찰 어스펙트 → 마찰 가능성 상승
+  s -= aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [venusLon]); // 토성이 금성과 마찰 → 무거움·거리감
+  if (mercuryRetroFlags?.[monthIdx]) s += 1; // 수성 역행 → 오해·소통 마찰
+  return s;
+}
+function frictionReasonAt(monthIdx, ctx) {
+  const { transits, mercuryRetroFlags, venusLon, marsLon } = ctx;
+  if (mercuryRetroFlags?.[monthIdx]) return '수성이 역행 중이라 오해나 말실수로 인한 소통 마찰이 늘기 쉬운 시기';
+  const marsAspect = aspectName(monthlyLon(transits, monthIdx, 'mars'), venusLon) || aspectName(monthlyLon(transits, monthIdx, 'mars'), marsLon);
+  if (_isChallengingAspect(marsAspect)) return '화성 트랜짓이 금성·화성과 마찰 어스펙트를 만들어 감정이 날카로워지기 쉬운 시기';
+  return null;
+}
+function frictionTierFn(score) {
+  if (score >= 1) return '높음';
+  if (score <= -1) return '낮음';
+  return '보통';
+}
+function frictionTrajectoryInstruction(worstIndices, nowMonthIdx, reasonFn, ctx) {
+  if (!worstIndices?.length) {
+    return '올해는 특별히 마찰이 두드러지는 달이 따로 없다. 전반적으로 큰 굴곡 없이 흐르지만, 그렇다고 모든 달이 완벽히 평온하다고 단정하지는 말고 자연스럽게 풀어써라.';
+  }
+  const nowMonth = nowMonthIdx + 1;
+  const worstMonths = worstIndices.map(i => i + 1);
+  if (worstMonths.includes(nowMonth)) {
+    const reason = reasonFn(nowMonthIdx, ctx) || '여러 신호가 겹치는 시기';
+    return `바로 지금(${nowMonth}월)이 올해 중 마찰이 가장 두드러지기 쉬운 시기다(${reason}). 단정적으로 "싸운다"거나 "헤어진다"고 쓰지 말고, 감정이 예민해지기 쉬운 시기임을 솔직하게 짚고 어떻게 대처하면 좋을지 실질적인 조언을 줘라.`;
+  }
+  const futureIndices = worstIndices.filter(i => i + 1 > nowMonth);
+  if (futureIndices.length) {
+    const reason = reasonFn(futureIndices[0], ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 마찰이 가장 두드러지기 쉬운 달은 ${futureIndices.map(i => i + 1).join('·')}월이다(${reason}). 지금의 흐름을 먼저 설명한 뒤, 다가올 그 시기를 미리 대비할 수 있게 구체적으로 짚어줘라. 단정적으로 "싸운다"거나 "헤어진다"고 쓰지 말고 마찰의 "결"과 대처법 위주로 써라.`;
+  }
+  const reason = reasonFn(worstIndices[0], ctx) || '여러 신호가 겹치는 시기';
+  return `올해 중 마찰이 가장 두드러졌던 시기는 이미 지나간 ${worstMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 돌아본 뒤 올해 남은 기간은 그보다 평온한 흐름이라는 걸 솔직하게 써라.`;
+}
+function marriageWaveScoreAt(monthIdx, ctx) {
+  const { transits, saturnLon, house7RulerLon } = ctx;
+  let s = 0;
+  if (monthlyHouse(transits, monthIdx, 'jupiter') === 7) s += 1;
+  if (monthlyHouse(transits, monthIdx, 'saturn') === 7) s += 1;
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [saturnLon, house7RulerLon]);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), [house7RulerLon]);
+  return s;
+}
+function marriageWaveReasonAt(monthIdx, ctx) {
+  const { transits } = ctx;
+  if (monthlyHouse(transits, monthIdx, 'jupiter') === 7) return '목성이 진지한 관계의 영역(7하우스)을 지나며 확장·기회를 만드는 시기';
+  if (monthlyHouse(transits, monthIdx, 'saturn') === 7) return '토성이 책임과 약속의 영역(7하우스)을 지나며 관계를 다지는 시기';
+  return null;
+}
+function marriageWaveTrajectoryInstruction(bestIndices, nowMonthIdx, reasonFn, ctx) {
+  if (!bestIndices?.length) {
+    return '올해는 관계가 유독 깊어지는 계기가 되는 시기가 따로 두드러지지 않는다. 그렇다고 전혀 진전이 없다고 단정하지 말고, 평소의 꾸준한 노력이 더 중요한 해라는 식으로 자연스럽게 풀어써라.';
+  }
+  const nowMonth = nowMonthIdx + 1;
+  const bestMonths = bestIndices.map(i => i + 1);
+  if (bestMonths.includes(nowMonth)) {
+    const reason = reasonFn(nowMonthIdx, ctx) || '여러 신호가 겹치는 시기';
+    return `바로 지금(${nowMonth}월)이 올해 중 관계가 깊어지거나 다음 단계로 갈 흐름이 가장 강하게 열리는 시기다(${reason}). 단정적으로 "결혼한다"고 쓰지 말고, 이 흐름을 어떻게 살리면 좋을지 구체적으로 써라.`;
+  }
+  const futureIndices = bestIndices.filter(i => i + 1 > nowMonth);
+  if (futureIndices.length) {
+    const reason = reasonFn(futureIndices[0], ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 그 흐름이 가장 강하게 열리는 달은 ${futureIndices.map(i => i + 1).join('·')}월이다(${reason}). 지금의 흐름을 먼저 설명한 뒤, 다가올 그 시기도 함께 언급해서 글을 마무리해라. 단정적으로 "결혼한다"고 쓰지는 마라.`;
+  }
+  const reason = reasonFn(bestIndices[0], ctx) || '여러 신호가 겹치는 시기';
+  return `올해 중 그 흐름이 가장 강했던 시기는 이미 지나간 ${bestMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 돌아본 뒤 올해 남은 기간의 흐름을 솔직하게 써라.`;
+}
+
+/* =========================================================
    재회운 — 올해의 재회 타이밍 점수·타임라인 (①단독·②상대방 있음 둘 다 동일 공식, 내 차트 기준 트랜짓)
    ========================================================= */
 function reunionScoreAt(monthIdx, ctx) {
@@ -360,6 +438,28 @@ function buildLovePrompt(body) {
       + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
   }
 
+  // 연애 중일 때만 "마찰 시기"·"결혼운 시기" 점수·타임라인 계산 (솔로에겐 의미 없는 질문이라 스킵)
+  let frictionStrength = null, marriageWaveStrength = null, frictionInstr = '', marriageWaveInstr = '';
+  if (!isSolo && Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
+    const nowMonthIdx2 = new Date().getMonth();
+    const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
+    const ctx2 = {
+      transits: patchedTransitsForNow(transits, houses, nowMonthIdx2, ['jupiter', 'saturn']),
+      venusLon: venus?.longitude,
+      marsLon: mars?.longitude,
+      saturnLon: saturn?.longitude,
+      house7RulerLon: house7Ruler?.longitude,
+      mercuryRetroFlags,
+    };
+    const frictionScores = Array.from({ length: 12 }, (_, m) => frictionScoreAt(m, ctx2));
+    frictionStrength = buildMonthlyStrength(frictionScores, nowMonthIdx2, frictionTierFn);
+    frictionInstr = frictionTrajectoryInstruction(frictionStrength.bestIndices, nowMonthIdx2, frictionReasonAt, ctx2);
+
+    const marriageWaveScores = Array.from({ length: 12 }, (_, m) => marriageWaveScoreAt(m, ctx2));
+    marriageWaveStrength = buildMonthlyStrength(marriageWaveScores, nowMonthIdx2, strengthFromScore);
+    marriageWaveInstr = marriageWaveTrajectoryInstruction(marriageWaveStrength.bestIndices, nowMonthIdx2, marriageWaveReasonAt, ctx2);
+  }
+
   // timing 섹션의 해석 관점만 분기 — 계산에 쓰는 천체 신호(트랜짓·프로그레션 등)는 솔로/연애 중 동일하게 공유
   const timingFocus = isInRelationship
     ? `(올해의 연애 흐름 — 트랜짓·프로그레션이 보여주는 타이밍, ${displayName}님이 현재 연애 중인 상태를 전제로 해석)
@@ -454,26 +554,39 @@ ${eclipseStr}
 4. 단정적인 길흉 예언(예: "올해 반드시 결혼한다")은 금지하되, 흐름과 타이밍은 명확하게 짚어라.
 5. 마크다운 문법(#, **볼드**, 목록 기호 등) 전부 사용 금지 — 순수 텍스트로만 작성해라.
 
-[섹션 구성 — 반드시 아래 ${isSolo ? '5개' : '3개'} 마커를 정확히 그대로 사용해서 구분할 것]
+[섹션 구성 — 반드시 아래 ${isSolo ? '5개' : '4개'} 마커를 정확히 그대로 사용해서 구분할 것]
 각 마커는 단독 줄에 정확히 이 형태로 적어라: ===SECTION:nature===
 마커 자체는 사용자에게 보이지 않는 구분선이므로, 마커 앞뒤로 다른 설명을 절대 덧붙이지 마라.
-${isSolo ? '5개 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.' : ''}
+${isSolo ? '5개' : '4개'} 섹션 전부 빠짐없이, 각자 요청된 분량을 줄이지 말고 작성해라 — 어떤 이유로도 마커를 생략하거나 일부만 쓰고 끝내면 안 된다.
 
 ===SECTION:nature===
 (타고난 연애 기질 — 금성·화성·달·5/7하우스가 만드는 ${displayName}님의 연애 패턴)
 - 어떤 사람에게 끌리는지, 사랑을 표현하는 방식, 진지한 관계 vs 가벼운 만남 중 무엇을 추구하는지
 - 분량: 4~5문단, 각 문단 3~4문장
-
+${isSolo ? `
 ===SECTION:marriage===
 (결혼·지속적 관계 — 토성과 7하우스 지배행성이 보여주는 결혼 성향)
 - 연애와 결혼은 다르다는 점을 살려서, ${displayName}님이 관계를 얼마나 오래/진지하게 지속시키는 성향인지
 - 토성-금성, 토성-7하우스지배행성 어스펙트가 있다면 그게 결혼/헌신에 어떤 의미인지 (없다면 토성과 7하우스 지배행성의 별자리·하우스만으로 해석)
 - 단정적인 결혼 시기 예언("올해 결혼한다" 등)은 금지, 결혼에 대한 태도와 패턴 위주로
-- 분량: 3~4문단
+- 분량: 3~4문단` : `
+===SECTION:friction===
+(마찰 시기 — 지금 만나는 상대방의 생일 정보는 없으니, ${displayName}님 본인 차트의 트랜짓으로 본 감정 기복·소통 마찰 가능성)
+- 화성·토성·수성 역행 트랜짓이 만드는 마찰 신호를 구체적으로 풀어써라. 아래 신호를 그대로 반영해라: ${frictionInstr}
+- "싸운다", "헤어진다" 같은 단정적 표현은 절대 쓰지 말고, "감정이 예민해지기 쉬운 시기", "오해가 생기기 쉬운 시기" 식으로 풀어써라.
+- 이런 시기에 어떻게 대처하면 좋을지(말투를 조심하기, 상대방 입장을 먼저 듣기 등) 실질적인 조언을 충분히 담아라.
+- 분량: 4~5문단, 각 문단 3~4문장 — ${displayName}님이 답답해서 보는 부분이니 분량을 줄이지 말고 풍부하게 써라.
+
+===SECTION:marriagewave===
+(결혼·동거 등 관계가 깊어지는 흐름 — 토성·7하우스 지배행성에 닿는 트랜짓으로 본 시기)
+- 아래 신호를 그대로 반영해라: ${marriageWaveInstr}
+- "올해 결혼한다" 같은 단정적 예언은 절대 쓰지 말고, "관계를 다음 단계로 가져가기에 무리 없는 흐름" 식으로 풀어써라.
+- 이 흐름을 살리려면 어떻게 하면 좋을지(대화를 먼저 꺼내보기, 함께 결정할 일을 미루지 않기 등) 실질적인 조언을 충분히 담아라.
+- 분량: 4~5문단, 각 문단 3~4문장 — 분량을 줄이지 말고 풍부하게 써라.`}
 
 ===SECTION:timing===
 ${timingFocus}
-- 분량: ${isSolo ? '4~6문단' : '3~4문단'}
+- 분량: ${isSolo ? '4~6문단' : '4~5문단'}
 ${isSolo ? `
 ===SECTION:strength===
 (아래 한 단어를 정확히 그대로, 다른 말 절대 덧붙이지 말고 출력: "${strengthFixed}")
@@ -484,10 +597,10 @@ ${isSolo ? `
 이 SECTION:suggestion 섹션 안에서만 한 문장으로 끝내라(마크다운 금지). 이 규칙은 이 섹션 안에만 적용되는 것이고, 위의 nature·marriage·timing·strength 섹션은 각각 요청한 분량과 형식을 그대로 지켜서 절대 줄이지 마라.)` : ''}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
-지금 바로 ${isSolo ? 'nature, marriage, timing, strength, suggestion 다섯' : 'nature, marriage, timing 세'} 섹션을 마커와 함께 전부 작성해.
+지금 바로 ${isSolo ? 'nature, marriage, timing, strength, suggestion 다섯' : 'nature, friction, marriagewave, timing 네'} 섹션을 마커와 함께 전부 작성해.
 `.trim();
 
-  return { prompt, monthlyStrength, conclusion };
+  return { prompt, monthlyStrength, conclusion, frictionStrength, marriageWaveStrength };
 }
 
 function buildReunionPrompt(body) {
@@ -911,6 +1024,8 @@ export default async function handler(req, res) {
     const prompt = (isLove || isCompatibility || isReunion || isReunionKnown) ? built.prompt : built;
     const monthlyStrength = (isLove || isReunion || isReunionKnown) ? built.monthlyStrength : null;
     const conclusion = (isLove || isReunion || isReunionKnown) ? built.conclusion : null;
+    const frictionStrength = isLove ? built.frictionStrength : null;
+    const marriageWaveStrength = isLove ? built.marriageWaveStrength : null;
     const categoryGrades = isCompatibility ? built.categoryGrades : null;
     const liveSaturnHouse = (isReunion || isReunionKnown) ? built.liveSaturnHouse : null;
     // 연애중·궁합도 섹션 분량이 작지 않아(궁합은 4~5문단짜리 섹션도 있음) 4096으론 가끔 끝까지 못 쓰고
@@ -988,7 +1103,9 @@ export default async function handler(req, res) {
     if (isLove) {
       const requiredMarkers = monthlyStrength
         ? ['===SECTION:nature===', '===SECTION:marriage===', '===SECTION:timing===', '===SECTION:strength===', '===SECTION:suggestion===']
-        : ['===SECTION:nature===', '===SECTION:marriage===', '===SECTION:timing==='];
+        : req.body.isInRelationship
+          ? ['===SECTION:nature===', '===SECTION:friction===', '===SECTION:marriagewave===', '===SECTION:timing===']
+          : ['===SECTION:nature===', '===SECTION:marriage===', '===SECTION:timing==='];
       if (requiredMarkers.some(marker => !reply.includes(marker))) {
         console.warn('연애운 AI 응답에 필수 섹션 마커 누락 — 원문 앞부분:', reply.slice(0, 300));
       }
@@ -1016,6 +1133,7 @@ export default async function handler(req, res) {
     const responseBody = { result: reply };
     if (!isCompatibility) responseBody.venusRetrograde = venusRetro;
     if (isLove || isReunion || isReunionKnown) { responseBody.monthlyStrength = monthlyStrength; responseBody.conclusion = conclusion; }
+    if (isLove) { responseBody.frictionStrength = frictionStrength; responseBody.marriageWaveStrength = marriageWaveStrength; }
     if (isReunion || isReunionKnown) { responseBody.liveSaturnHouse = liveSaturnHouse; }
     if (isCompatibility) { responseBody.categoryGrades = categoryGrades; }
     return res.status(200).json(responseBody);

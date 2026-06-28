@@ -961,6 +961,8 @@ async function revealLoveFortune() {
 
     payload.monthlyStrength = data.monthlyStrength || null;
     payload.conclusion = data.conclusion || null;
+    payload.frictionStrength = data.frictionStrength || null;
+    payload.marriageWaveStrength = data.marriageWaveStrength || null;
     if (resultArea) resultArea.innerHTML = _renderLoveFortuneHtml(payload, data.result || '', data.venusRetrograde);
     succeeded = true;
 
@@ -1032,6 +1034,7 @@ function _renderLoveFortuneHtml(payload, raw, venusRetrograde) {
       <div style="${aiTextStyle}">${toParas(sections.nature)}</div>
     </div>
 
+    ${!payload.isInRelationship ? `
     <div style="${panelStyle}">
       <div style="${eyebrowStyle}">結 婚</div>
       <div style="${titleStyle}">결혼·지속적 관계</div>
@@ -1049,6 +1052,35 @@ function _renderLoveFortuneHtml(payload, raw, venusRetrograde) {
       <div style="${aiEyebrowStyle}">— 결혼운 해설</div>
       <div style="${aiTextStyle}">${toParas(sections.marriage)}</div>
     </div>
+    ` : `
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">摩 擦</div>
+      <div style="${titleStyle}">마찰 시기</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#e8b9ad;border:1px solid rgba(221,155,136,.4);background:rgba(221,155,136,.1);">화성 · ${payload.mars.sign} ${payload.mars.house}하우스</span>
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">토성 · ${payload.saturn.sign} ${payload.saturn.house}하우스</span>
+      </div>
+      ${_frictionTimelineHtml(payload.frictionStrength)}
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 마찰 시기 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.friction)}</div>
+    </div>
+
+    <div style="${panelStyle}">
+      <div style="${eyebrowStyle}">結 婚</div>
+      <div style="${titleStyle}">관계가 깊어지는 흐름</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">토성 · ${payload.saturn.sign} ${payload.saturn.house}하우스</span>
+        ${payload.house7Ruler ? `<span style="font-size:12px;padding:5px 13px;border-radius:999px;color:#bcd9ee;border:1px solid rgba(120,180,210,.4);background:rgba(60,140,180,.1);">7하우스 지배행성 · ${payload.house7Ruler.label} ${payload.house7Ruler.sign} ${payload.house7Ruler.house}하우스</span>` : ''}
+      </div>
+      ${_strengthTimelineHtml(payload.marriageWaveStrength)}
+    </div>
+    <div style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
+      <div style="${aiEyebrowStyle}">— 관계가 깊어지는 흐름 해설</div>
+      <div style="${aiTextStyle}">${toParas(sections.marriagewave)}</div>
+    </div>
+    `}
 
     <div style="${panelStyle}">
       <div style="${eyebrowStyle}">今 年</div>
@@ -2040,6 +2072,75 @@ function _strengthTimelineHtml(monthlyStrength) {
       <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:4px;">${bars}</div>
       <div style="display:flex;gap:4px;margin-bottom:10px;">${labels}</div>
       <div style="display:flex;align-items:center;gap:8px;background:rgba(200,168,96,.08);border:1px solid rgba(200,168,96,.3);border-radius:12px;padding:8px 12px;">
+        ${callout}
+      </div>
+    </div>
+  `;
+}
+
+// 연애중 — "마찰 시기" 12개월 막대 타임라인. _strengthTimelineHtml과 같은 구조지만,
+// 여기선 점수가 높을수록 "안 좋은" 거라서(마찰이 큼) 골드/축하 톤이 아니라 주의(주황) 톤으로 강조한다.
+const _FRICTION_TIER_BANDS = { '낮음': [18, 38], '보통': [38, 65], '높음': [65, 92] };
+function _frictionTimelineHtml(frictionStrength) {
+  if (!frictionStrength || !Array.isArray(frictionStrength.scores) || frictionStrength.scores.length !== 12) return '';
+  const { scores, bestIndices, nowIdx, tiers } = frictionStrength;
+  const hasPeak = (bestIndices || []).length > 0; // 마찰이 뚜렷하게 두드러지는 달이 있는지
+  const peakSet = new Set(hasPeak ? bestIndices : []);
+  const hasRange = Math.min(...scores) !== Math.max(...scores);
+
+  let heightOf;
+  if (Array.isArray(tiers) && tiers.length === 12) {
+    const groups = {};
+    tiers.forEach((t, i) => { (groups[t] = groups[t] || []).push(scores[i]); });
+    heightOf = (s, i) => {
+      const band = _FRICTION_TIER_BANDS[tiers[i]] || [38, 65];
+      const groupScores = groups[tiers[i]];
+      const gMin = Math.min(...groupScores), gMax = Math.max(...groupScores);
+      if (gMin === gMax) return Math.round((band[0] + band[1]) / 2);
+      return Math.round(((s - gMin) / (gMax - gMin)) * (band[1] - band[0]) + band[0]);
+    };
+  } else {
+    const min = Math.min(...scores), max = Math.max(...scores);
+    heightOf = (s) => hasRange ? Math.round(((s - min) / (max - min)) * 70 + 20) : 55;
+  }
+
+  const bars = scores.map((s, i) => {
+    const h = heightOf(s, i);
+    const isPeak = peakSet.has(i);
+    const isNow  = i === nowIdx;
+    let barStyle = 'background:rgba(140,150,180,.28);border:1px solid rgba(255,255,255,.06);';
+    if (isPeak) barStyle = 'background:linear-gradient(180deg,#f6d6a8,#d98a4e);box-shadow:0 0 10px rgba(217,138,78,.45);border:1px solid rgba(255,255,255,.15);';
+    else if (isNow) barStyle += 'border:1.5px solid rgba(232,200,140,.85);box-shadow:0 0 8px rgba(232,196,120,.25),inset 0 0 6px rgba(232,196,120,.15);';
+    return `
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:78px;">
+        <div style="width:100%;border-radius:4px 4px 2px 2px;${barStyle}height:${h}%;"></div>
+      </div>
+    `;
+  }).join('');
+  const labels = scores.map((_, i) => {
+    const isNow = i === nowIdx;
+    const style = isNow
+      ? 'color:#f6e9c1;font-weight:800;background:linear-gradient(90deg,rgba(200,168,96,.28),rgba(200,168,96,.1));border:1px solid rgba(200,168,96,.45);border-radius:999px;box-shadow:0 0 6px rgba(200,168,96,.2);'
+      : 'color:#a89a7a;font-weight:700;';
+    return `<span style="flex:1;text-align:center;font-size:10px;line-height:18px;${style}">${i + 1}</span>`;
+  }).join('');
+
+  const callout = hasPeak
+    ? `
+      <span style="font-size:15px;">⚠️</span>
+      <span style="font-size:11.5px;color:#857a60;">마찰 주의 시기</span>
+      <span style="font-size:13px;font-weight:700;color:#e8c08a;">${bestIndices.map(i => `${i + 1}월`).join('·')}</span>
+    `
+    : `
+      <span style="font-size:15px;">🌿</span>
+      <span style="font-size:11.5px;color:#857a60;">올해는 마찰이 두드러지는 달이 따로 없어요</span>
+    `;
+
+  return `
+    <div style="margin-bottom:16px;margin-top:10px;">
+      <div style="display:flex;align-items:flex-end;gap:4px;margin-bottom:4px;">${bars}</div>
+      <div style="display:flex;gap:4px;margin-bottom:10px;">${labels}</div>
+      <div style="display:flex;align-items:center;gap:8px;background:rgba(217,138,78,.08);border:1px solid rgba(217,138,78,.3);border-radius:12px;padding:8px 12px;">
         ${callout}
       </div>
     </div>
