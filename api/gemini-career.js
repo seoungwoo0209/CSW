@@ -174,15 +174,40 @@ function buildConclusion(monthlyStrength, strengthFixed, reasonFn, ctx) {
   };
 }
 
-// "지금 강도"만 알려주면 AI가 1년 전체를 그 강도로 뭉뚱그려 쓰는 문제가 있어,
-// 실제 12개월 등급을 전부 보여주고 진짜 흐름(회복/하락/유지)을 그대로 묘사하게 한다 — 가짜 줄거리 생성 방지.
-// tierFn은 함수별로 등급 임계값이 달라서(strengthFromScore/Strict/jobChange 자체 기준) 파라미터로 받는다.
-function monthlyTrajectoryInstruction(scores, nowMonthIdx, tierFn) {
-  const monthLabels = scores.map((s, i) => `${i + 1}월:${tierFn(s)}`).join(', ');
-  const remain = nowMonthIdx < 11
-    ? `지금(${nowMonthIdx + 1}월) 이후 남은 달들이 실제로 어떻게 바뀌는지(회복되는지, 더 약해지는지, 비슷하게 유지되는지)를 반드시 반영해서 써라.`
-    : '올해 남은 달이 없으니, 지금 이 시기 자체의 흐름에만 집중해서 써라.';
-  return `참고로 올해 전체 흐름은 이렇다(달:등급) — ${monthLabels}. ${remain} 1년 전체가 지금과 똑같이 흘러간다는 식으로 뭉뚱그리지 말고, 달마다 실제로 다른 등급이라는 걸 분명히 드러내라.`;
+// "지금 강도"만 알려주면 AI가 1년 전체를 그 강도로 뭉뚱그려 쓰는 문제가 있다 — 특히 그래프 막대는
+// 달마다 다르게 보여도, 등급(강함/보통/약함) 라벨이 같은 구간 안에 몰리면 "1년 내내 같다"고 써버림.
+// 그래프의 "골든타임"(bestIndices)이 지금 기준 과거/현재/미래 중 어디인지를 명확히 알려줘서
+// 글과 그래프가 어긋나지 않게 한다 — reunion(gemini-love.js)에서 이미 검증된 패턴을 그대로 재사용.
+function monthlyTrajectoryInstruction(bestIndices, nowMonthIdx, reasonFn, ctx, labelNoun) {
+  if (!bestIndices?.length) {
+    return `올해는 특별히 도드라지게 좋은 달이 없어 ${labelNoun}이 전반적으로 비슷한 흐름이다. 그래도 달마다 미묘한 기복은 있을 수 있으니, 1년 내내 똑같은 한 문장만 반복하지 말고 자연스럽게 풀어써라.`;
+  }
+  const nowMonth = nowMonthIdx + 1;
+  const bestMonths = bestIndices.map(i => i + 1);
+  if (bestMonths.includes(nowMonth)) {
+    const reason = reasonFn(nowMonthIdx, ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 ${labelNoun}이 가장 강하게 열리는 시기가 바로 지금(${nowMonth}월)이다(${reason}). 이 점을 적극적으로 강조해서 써라.`;
+  }
+  const futureIndices = bestIndices.filter(i => i + 1 > nowMonth);
+  if (futureIndices.length) {
+    const reason = reasonFn(futureIndices[0], ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 ${labelNoun}이 가장 강하게 열리는 달은 ${futureIndices.map(i => i + 1).join('·')}월이다(${reason}). 지금의 흐름을 설명한 뒤, 다가올 그 달들도 함께 언급해서 글을 마무리해라.`;
+  }
+  const reason = reasonFn(bestIndices[0], ctx) || '여러 신호가 겹치는 시기';
+  return `올해 중 ${labelNoun}이 가장 강했던 시기는 이미 지나간 ${bestMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 회고적으로 짚어준 뒤 올해 남은 기간은 그보다 차분한 흐름이 이어진다는 걸 솔직하게 써라.`;
+}
+// 골든타임(딱 한 지점) 안내만으로는 남은 달들 "사이"의 미세한 오르내림까지는 못 잡는다.
+// 등급 라벨로 묶으면 또 뭉뚱그려지므로, 원점수를 지금과 직접 비교한 결과를 그대로 알려줘서
+// AI가 진짜 오르내리는 모양을 임의로 지어내지 않고 실제 비교값에 맞게 묘사하게 한다.
+function monthlyShapeDetail(scores, nowMonthIdx) {
+  if (nowMonthIdx >= 11) return '';
+  const nowScore = scores[nowMonthIdx];
+  const compares = scores.slice(nowMonthIdx + 1).map((s, i) => {
+    const month = nowMonthIdx + 2 + i;
+    const rel = s > nowScore ? '지금보다 강해짐' : s < nowScore ? '지금보다 약해짐' : '지금과 비슷';
+    return `${month}월(${rel})`;
+  }).join(', ');
+  return `참고로 지금(${nowMonthIdx + 1}월)과 비교한 남은 달들의 실제 변화는 이렇다 — ${compares}. 이 비교에 맞게 진짜 오르내리는 흐름을 구체적으로 묘사해라. 임의로 "쭉 좋아진다"거나 "쭉 비슷하다"고 지어내지 말고, 실제 비교 결과를 그대로 반영해라.`;
 }
 
 // 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
@@ -323,7 +348,8 @@ function buildJobHuntingPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobHuntingReasonAt, ctx);
-  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, jobHuntingReasonAt, ctx, '취업·합격 흐름')
+    + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
   const house10Str = `${house10Sign}(MC)${house10Occupants?.length ? ` (${house10Occupants.join(', ')} 위치)` : ''}`;
 
   const prompt = `
@@ -420,7 +446,8 @@ function buildPromotionPrompt(body, sky) {
   const strengthFixed = strengthFromScoreStrict(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, promotionReasonAt, ctx);
-  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScoreStrict);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, promotionReasonAt, ctx, '승진·협상 흐름')
+    + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -512,7 +539,8 @@ function buildJobChangePrompt(body, sky) {
   const strengthFixed = favorableCount >= 2 ? '강함' : favorableCount === 0 ? '약함' : '보통';
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, jobChangeReasonAt, ctx);
-  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, c => c >= 2 ? '강함' : c === 0 ? '약함' : '보통');
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, jobChangeReasonAt, ctx, '이직·스카웃 흐름')
+    + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -605,7 +633,8 @@ function buildStartupPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, startupReasonAt, ctx);
-  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, startupReasonAt, ctx, '창업·부업 흐름')
+    + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -725,7 +754,8 @@ function buildBusinessPrompt(body, sky) {
   const strengthFixed = strengthFromScore(strengthScore);
   const monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
   const conclusion = buildConclusion(monthlyStrength, strengthFixed, businessReasonAt, ctx);
-  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyScores, nowMonthIdx, strengthFromScore);
+  const trajectoryInstr = monthlyTrajectoryInstruction(monthlyStrength.bestIndices, nowMonthIdx, businessReasonAt, ctx, '조직·사업 흐름')
+    + ' ' + monthlyShapeDetail(monthlyScores, nowMonthIdx);
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
