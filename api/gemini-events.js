@@ -7,6 +7,7 @@
    ========================================================= */
 
 import { applyCors } from './_cors.js';
+import { logError } from './_errorLog.js';
 
 /* ─── 하우스 테마 → 구체적 현실 시나리오 어휘 팔레트 ───
    annual-events.js의 HOUSE_THEME(추상 라벨, 예: "철학·여행")을 AI가 그대로
@@ -285,7 +286,9 @@ ${majorEventsOrdered.map((e, i) =>
     }
     controllers.forEach(c => c.abort());
     if (!reply) {
-      console.error('Gemini API error (all parallel attempts failed):', lastError?.errors ? lastError.errors.map(e => e?.message || e).join(' | ') : (lastError?.message || lastError));
+      const detail = lastError?.errors ? lastError.errors.map(e => e?.message || e).join(' | ') : (lastError?.message || lastError);
+      console.error('Gemini API error (all parallel attempts failed):', detail);
+      await logError('gemini-events', detail);
       return res.status(502).json({ error: '현재 접속자가 많습니다. 잠시 후 다시 시도해주세요.' });
     }
 
@@ -293,6 +296,7 @@ ${majorEventsOrdered.map((e, i) =>
 
   } catch (error) {
     console.error('gemini-events error:', error);
+    await logError('gemini-events', error?.message || error);
     return res.status(500).json({ error: '연간 리포트 생성 중 오류가 발생했습니다.' });
   }
 }
