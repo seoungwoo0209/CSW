@@ -22,8 +22,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
     }
 
-    const { natal, angles, houses, natalAspectsFull = [], progression, meta, transits = [], transitsYear, nodes } = astroData;
-    const reportYear = transitsYear || new Date().getFullYear();
+    const { natal, angles, houses, natalAspectsFull = [], progression, meta, nodes, lunationCycle, profectionWealth } = astroData;
     const progPlanets = progression?.planets || {};
     const progAngles  = progression?.angles  || {};
     const progMeta    = progression?.meta    || {};
@@ -77,19 +76,25 @@ export default async function handler(req, res) {
       ? progAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
       : '(주요 프로그레션 에스펙트 없음)';
 
-    // ── 올해 트랜짓 문자열
-    const PLANET_KR_MAP = {
-      sun:'태양', mercury:'수성', venus:'금성',
-      mars:'화성', jupiter:'목성', saturn:'토성'
+    // ── 진행월령(인생 전체 흐름) 문자열
+    const lunationStr = lunationCycle?.stages?.length
+      ? lunationCycle.stages.map(s => `${s.stageName} (${s.fromAge.toFixed(1)}세~${s.toAge.toFixed(1)}세)`).join('\n') +
+        `\n→ 현재(${lunationCycle.currentAgeYears}세)는 "${lunationCycle.stages[lunationCycle.currentStageIndex]?.stageName}" 단계`
+      : '(데이터 없음)';
+
+    // ── 프로펙션 재물(2하우스) 문자열
+    const DIGNITY_KR = {
+      rulership: '자기 별자리(가장 강함)', exaltation: '승격(매우 좋음)',
+      detriment: '디트리먼트(약화됨)', fall: '함몰(가장 약함)', peregrine: '중립'
     };
-    const transitStr = transits.length
-      ? transits.map(m => {
-          const planets = Object.entries(m.planets)
-            .map(([k, v]) => `${PLANET_KR_MAP[k]}(${v.sign}·${v.house}하우스)`)
-            .join(', ');
-          return `${m.month}: ${planets}`;
-        }).join('\n')
-      : '(트랜짓 데이터 없음)';
+    const profectionStr = profectionWealth
+      ? `재물(2하우스) 지배성: ${profectionWealth.rulerLabel} (위계: ${DIGNITY_KR[profectionWealth.dignity]})\n` +
+        `재물운 활성화 나이: ${profectionWealth.activeAges.slice(0, 8).join(', ')}세 (12년마다 반복)\n` +
+        `${profectionWealth.rulerLabel}의 주요각:\n` +
+        (profectionWealth.rulerAspects.length
+          ? profectionWealth.rulerAspects.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect})`).join('\n')
+          : '(주요각 없음)')
+      : '(데이터 없음)';
 
     // ── 노드 문자열
     const nodesStr = nodes
@@ -150,7 +155,7 @@ ${question}
 - 친근하고 따뜻한 톤으로 작성하세요.`;
 
     } else {
-      // 전체 리딩 모드 — 인생 흐름 + 올해 월별 운세
+      // 전체 리딩 모드 — 진행월령 + 프로펙션 재물 기반 인생 전체 흐름
       prompt = baseData + `
 
 [리딩 지침 — 반드시 준수]
@@ -161,113 +166,27 @@ ${question}
   예시) X "프로그레션 달이 양자리 5하우스" → O "지금은 새로운 도전에 본능적으로 끌리고 창의적 표현 욕구가 강해지는 때"
 - 완성된 문장으로 마무리하고 중간에 절대 끊지 마세요.
 
-[출력 양식 — 반드시 아래 2개 헤드라인 순서로 작성]
+[출력 양식 — 반드시 아래 헤드라인으로 작성]
 
 ## 🌌 인생 전체 흐름
-다음 요소를 모두 반영해서 이 사람의 인생 큰 그림을 서사로 써주세요:
-· ASC(어센던트) 사인과 지배행성이 만드는 삶의 방식과 외적 태도
-· 태양과 달의 사인·하우스 배치로 보는 핵심 정체성과 내면 욕구
-· 주요 하우스(1·4·7·10하우스)에 있는 행성들의 의미
-· 네이탈 에스펙트 중 가장 강한 것들이 만드는 인생의 테마
-· 타고난 강점, 반복되는 과제, 인생에서 중요한 관계·직업·성장 방향
-· 북노드(인생의 카르마 방향)와 릴리스(반복되는 전생 패턴)가 삶의 테마에 미치는 영향
-300자 이상 충분히 써주세요.
 
-## 📅 ${reportYear}년 운세
+[진행월령 데이터 — 인생의 심리적 계절 흐름]
+${lunationStr}
 
-[프로그레션 데이터 — 내면 성장 흐름]
-${progPlanetStr}
-${progAnglesStr}
-프로그레션↔네이탈 에스펙트: ${progAspectStr}
+[프로펙션 재물(2하우스) 데이터]
+${profectionStr}
 
-[${reportYear}년 실제 행성 위치 — 외부 환경 흐름]
-${transitStr}
-
-위 두 가지 데이터를 모두 활용해서 다음 순서로 반드시 작성하세요.
-절대 일반적이거나 누구에게나 해당되는 내용을 쓰지 마세요.
-반드시 이 사람의 네이탈 차트와 프로그레션 데이터에서 근거를 찾아 구체적으로 써야 합니다.
-
-**${reportYear}년 전체 흐름 요약** (4~5문장)
-- 이 사람의 네이탈 차트 특성과 올해 에너지가 어떻게 맞물리는지
-- 올해 가장 중요한 테마 2가지를 명확히 제시
-- 특히 좋은 시기와 조심할 시기를 언급
-
-**월별 상세 운세** (1월~12월, 각 달마다 반드시 아래 형식으로)
-
-### 1월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 2월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 3월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 4월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 5월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 6월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 7월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 8월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 9월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 10월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 11월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
-
-### 12월
-- 이달의 핵심 에너지: (구체적으로)
-- 재물/직업: (구체적으로)
-- 관계: (구체적으로)
-- 이달의 조언: (한 문장)
+위 두 데이터를 반드시 모두 반영해서, 이 사람의 인생 전체를 가로지르는 큰 흐름을 서사로 써주세요:
+· 진행월령 8단계가 보여주는 인생의 시기별 성격 변화 — 지금이 어느 단계인지, 그 단계가 어떤 의미인지 구체적으로
+· 위에 나온 재물운 활성화 나이들이 실제로 이 사람 인생에서 어떤 시기들인지(이미 지난 나이는 "그때 이런 흐름이 있었을 것"으로, 앞으로 올 나이는 "다가올 시기"로) 자연스럽게 짚어주기
+· 재물 지배성의 위계(자기 별자리/승격이면 타고난 재물 그릇이 좋다는 뜻, 디트리먼트/함몰이면 애를 먹지만 노력으로 극복 가능, 중립이면 평범하게 안정적)와 그 행성의 주요각이 보여주는 재물운의 "질감"(꾸준한지, 들쑥날쑥한지, 마찰이 있는지)
+· 타고난 강점과 반복되는 과제, 인생에서 중요한 성장 방향
+이 섹션에서는 나이 숫자를 자연스럽게 언급해도 됩니다(다른 곳과 달리 시기를 짚어주는 게 핵심이므로).
+행성 이름·사인 이름·각도 숫자·기호·하우스 번호는 여기서도 쓰지 말고 의미만 풀어서 설명하세요.
+400자 이상 충분히 써주세요.
 
 [절대 금지 사항]
-- 행성 이름, 사인 이름, 각도 숫자, 하우스 번호 언급 금지
+- 행성 이름, 사인 이름, 각도 숫자, 기호, 하우스 번호 언급 금지(나이 숫자는 허용)
 - "새로운 시작", "긍정적인 변화", "신중함이 필요" 같은 모호한 표현 금지
 - 누구에게나 해당되는 일반적인 조언 금지
 - 반드시 이 사람의 데이터에서 근거를 찾아 구체적으로 써야 함`;

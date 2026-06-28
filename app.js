@@ -2147,6 +2147,128 @@ function _frictionTimelineHtml(frictionStrength) {
   `;
 }
 
+// 점성술 — 진행월령(인생 전체 흐름) 웨이브 그래프.
+// 곡선 모양은 실제 세컨더리 프로그레션으로 계산된 단계별 나이 구간(astro-calc.js의 lunationCycle.stages)
+// 그대로에서 나온 것이며, 미리 정해진 모양에 데이터를 끼워맞춘 게 아니다.
+const _LUNATION_STAGE_HEIGHT = {
+  '신월기': 18, '초승달기': 38, '상현기': 60, '상현보름새기': 80,
+  '보름달기': 95, '하현보름새기': 78, '하현기': 50, '그림자달기': 15
+};
+function _lunationCycleWaveHtml(lunationCycle) {
+  if (!lunationCycle || !Array.isArray(lunationCycle.stages) || !lunationCycle.stages.length) return '';
+  const { stages, currentAgeYears, currentStageIndex } = lunationCycle;
+  const maxAge = stages[stages.length - 1].toAge;
+  const W = 680, H = 150, pad = 16;
+  const xAt = age => pad + (age / maxAge) * (W - pad * 2);
+  const yAt = stageName => H - pad - ((_LUNATION_STAGE_HEIGHT[stageName] || 50) / 100) * (H - pad * 1.6);
+
+  const pts = stages.map(s => ({ x: xAt((s.fromAge + s.toAge) / 2), y: yAt(s.stageName) }));
+
+  function buildPath(points) {
+    let d = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 0; i < points.length - 1; i++) {
+      const p0 = points[i === 0 ? 0 : i - 1], p1 = points[i], p2 = points[i + 1], p3 = points[i + 2] || p2;
+      const cp1x = p1.x + (p2.x - p0.x) / 6, cp1y = p1.y + (p2.y - p0.y) / 6;
+      const cp2x = p2.x - (p3.x - p1.x) / 6, cp2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
+  const pathD = buildPath(pts);
+  const areaD = pathD + ` L ${pts[pts.length - 1].x} ${H - pad} L ${pts[0].x} ${H - pad} Z`;
+
+  const clampedNowAge = Math.min(Math.max(currentAgeYears, 0), maxAge);
+  const nowX = xAt(clampedNowAge);
+  const nowStageName = stages[currentStageIndex]?.stageName || stages[0].stageName;
+  const nowY = yAt(nowStageName);
+
+  const bands = stages.map(s => {
+    const x1 = xAt(s.fromAge), x2 = xAt(s.toAge);
+    const op = ((_LUNATION_STAGE_HEIGHT[s.stageName] || 50) / 100) * 0.16 + 0.03;
+    return `<rect x="${x1.toFixed(1)}" y="${(pad / 2).toFixed(1)}" width="${Math.max(x2 - x1, 0).toFixed(1)}" height="${(H - pad - pad / 2).toFixed(1)}" fill="#9ed0ff" opacity="${op.toFixed(2)}"/>`;
+  }).join('');
+
+  const tickStep = maxAge > 60 ? 20 : 10;
+  const ageTicks = [];
+  for (let a = 0; a <= maxAge; a += tickStep) ageTicks.push(a);
+
+  return `
+    <div style="margin-bottom:18px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(158,208,255,.07),rgba(10,13,24,.2));border:1px solid rgba(158,208,255,.22);">
+      <div style="color:#9ed0ff;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:8px;">🌙 인생 전체 흐름 — 진행월령</div>
+      <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto;">
+        <defs>
+          <linearGradient id="lunGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#9ed0ff" stop-opacity="0.28"/>
+            <stop offset="100%" stop-color="#9ed0ff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        ${bands}
+        <path d="${areaD}" fill="url(#lunGrad)" stroke="none"/>
+        <path d="${pathD}" fill="none" stroke="#9ed0ff" stroke-width="2.2"/>
+        <circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="5" fill="#ffd36a" stroke="#0a0d18" stroke-width="1.3"/>
+        ${ageTicks.map(a => `<text x="${xAt(a).toFixed(1)}" y="${H - 2}" fill="#7d87ab" font-size="9" text-anchor="middle">${a}세</text>`).join('')}
+      </svg>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;background:rgba(158,208,255,.08);border:1px solid rgba(158,208,255,.28);border-radius:12px;padding:8px 12px;">
+        <span style="font-size:14px;">🌙</span>
+        <span style="font-size:11.5px;color:#9badcf;">지금은</span>
+        <span style="font-size:13px;font-weight:700;color:#cfe6ff;">${nowStageName}</span>
+        <span style="font-size:11px;color:#7d87ab;">(만 ${Math.floor(currentAgeYears)}세)</span>
+      </div>
+    </div>
+  `;
+}
+
+// 점성술 — 프로펙션 재물(2하우스) 타이밍 그래프.
+// 활성화 나이(1,13,25...세)는 모든 사람에게 동일한 보편적 스케줄이고, 마커 색(에센셜 디그니티)만
+// 이 사람의 실제 네이탈 차트에서 계산된 값이다.
+const _DIGNITY_COLOR = {
+  rulership: '#ffd36a', exaltation: '#ffe9a8', peregrine: '#9aa3c0',
+  detriment: '#ff9e7a', fall: '#ff7a7a'
+};
+const _DIGNITY_KR = {
+  rulership: '자기 별자리', exaltation: '승격', peregrine: '중립',
+  detriment: '디트리먼트', fall: '함몰'
+};
+function _profectionWealthTimelineHtml(profectionWealth) {
+  if (!profectionWealth || !Array.isArray(profectionWealth.activeAges) || !profectionWealth.activeAges.length) return '';
+  const { rulerLabel, rulerNatalSign, dignity, activeAges, rulerAspects } = profectionWealth;
+  const maxAge = 100;
+  const color = _DIGNITY_COLOR[dignity] || '#9aa3c0';
+  const shownAges = activeAges.filter(a => a <= maxAge);
+
+  const markers = shownAges.map(age => {
+    const leftPct = (age / maxAge) * 100;
+    return `
+      <div style="position:absolute;left:${leftPct}%;top:50%;transform:translate(-50%,-50%);">
+        <div style="width:11px;height:11px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}99;border:1.5px solid #0a0d18;"></div>
+      </div>
+    `;
+  }).join('');
+
+  const ageRow = [0, 20, 40, 60, 80, 100].map(age => {
+    const leftPct = (age / maxAge) * 100;
+    return `<span style="position:absolute;left:${leftPct}%;transform:translateX(-50%);font-size:9px;color:#7d87ab;">${age}세</span>`;
+  }).join('');
+
+  const aspectStr = (rulerAspects || []).slice(0, 3)
+    .map(a => `${a.point1 === rulerLabel ? a.point2 : a.point1}(${a.aspect})`).join(', ');
+
+  return `
+    <div style="margin-bottom:18px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(255,211,106,.07),rgba(10,13,24,.2));border:1px solid rgba(255,211,106,.22);">
+      <div style="color:#ffd36a;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:10px;">💰 재물운 타이밍 — 프로펙션(2하우스)</div>
+      <div style="position:relative;height:24px;margin:0 6px 4px;">
+        <div style="position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(255,255,255,.1);transform:translateY(-50%);"></div>
+        ${markers}
+      </div>
+      <div style="position:relative;height:14px;margin:2px 6px 0;">${ageRow}</div>
+      <div style="margin-top:12px;background:rgba(255,211,106,.08);border:1px solid rgba(255,211,106,.28);border-radius:12px;padding:8px 12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffe9b8;margin-bottom:4px;">${rulerLabel}(${rulerNatalSign}) · ${_DIGNITY_KR[dignity] || '중립'}</div>
+        <div style="font-size:11px;color:#9badcf;">12년마다 재물운이 활성화돼요${aspectStr ? ` · 주요각: ${aspectStr}` : ''}</div>
+      </div>
+    </div>
+  `;
+}
+
 // 직업 4종 — "이번 리포트 결론" 요약 박스. AI 호출 없이, 서버가 이미 계산해둔 monthlyStrength/conclusion
 // 데이터만으로 만든다 — 추가 지연 없음. "~해라/하지마라" 같은 행동 지시나 근거 없는 비교는 절대 넣지 않고,
 // 실제로 계산된 사실(지금 강도·상반기·하반기 흐름·골든타임과 그 이유)만 단정적으로 적는다.
@@ -5737,7 +5859,12 @@ async function requestAstroReading() {
     // 리딩 결과 저장 (질문에 활용)
     window.AstroReadingResult = geminiData.result || "";
 
+    const lunationHtml   = _lunationCycleWaveHtml(window.AstroResult?.lunationCycle);
+    const profectionHtml = _profectionWealthTimelineHtml(window.AstroResult?.profectionWealth);
+
     resultEl.innerHTML = `
+      ${lunationHtml}
+      ${profectionHtml}
       <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">${formatted}</div>
 
       <!-- 질문 섹션 -->

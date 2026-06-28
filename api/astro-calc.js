@@ -16,6 +16,9 @@
 import Ephemeris from 'ephemeris';
 import { applyCors } from './_cors.js';
 
+const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+               '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') {
@@ -80,10 +83,15 @@ export default async function handler(req, res) {
       labelPrefixA: '프로그레션 ', labelPrefixB: '네이탈 '
     });
 
-    // 사인 변환
-    const SIGNS = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
-                   '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+    // ── 진행월령(인생 전체 흐름) + 프로펙션 재물(2하우스) 분석
+    const lunationCycle = calcProgressedLunationCycle(birthUTC, lat, lng, 100);
+    lunationCycle.currentAgeYears = Math.round(ageYears * 100) / 100;
+    lunationCycle.currentStageIndex = lunationCycle.stages.findIndex(
+      s => ageYears >= s.fromAge && ageYears < s.toAge
+    );
+    if (lunationCycle.currentStageIndex === -1) lunationCycle.currentStageIndex = lunationCycle.stages.length - 1;
 
+    // 사인 변환
     function toSignInfo(lon) {
       const norm    = ((lon % 360) + 360) % 360;
       const signIdx = Math.floor(norm / 30);
@@ -103,6 +111,9 @@ export default async function handler(req, res) {
     KEYS.forEach(k => {
       natalResult[k] = { ...toSignInfo(planetsWithHouse[k].lon), house: planetsWithHouse[k].house };
     });
+
+    const ascSignIndex = Math.floor(norm360(asc) / 30);
+    const profectionWealth = calcProfectionWealthAnalysis(ascSignIndex, natalResult, natalAspectsFull, 100);
 
     const progResult = {};
     KEYS.forEach(k => {
@@ -168,6 +179,8 @@ export default async function handler(req, res) {
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
       natalAspectsFull,
+      lunationCycle,
+      profectionWealth,
       nodes: {
         north: { ...toSignInfo(northLon), house: getNodeHouse(northLon, houses) },
         south: { ...toSignInfo(southLon), house: getNodeHouse(southLon, houses) },
@@ -596,6 +609,31 @@ const PLANET_KR   = {
   jupiter:'목성', saturn:'토성', uranus:'천왕성', neptune:'해왕성', pluto:'명왕성'
 };
 
+/* =========================================================
+   사인 지배행성 + 전통 7행성 에센셜 디그니티
+   ========================================================= */
+const SIGN_RULERS = { 0:'mars',1:'venus',2:'mercury',3:'moon',4:'sun',5:'mercury',
+  6:'venus',7:'mars',8:'jupiter',9:'saturn',10:'saturn',11:'jupiter' };
+
+const ESSENTIAL_DIGNITIES = {
+  sun:     { rulership:[4],     exaltation:[0],  detriment:[10],     fall:[6]  },
+  moon:    { rulership:[3],     exaltation:[1],  detriment:[9],      fall:[7]  },
+  mercury: { rulership:[2,5],   exaltation:[5],  detriment:[8,11],   fall:[11] },
+  venus:   { rulership:[1,6],   exaltation:[11], detriment:[0,7],    fall:[5]  },
+  mars:    { rulership:[0,7],   exaltation:[9],  detriment:[1,6],    fall:[3]  },
+  jupiter: { rulership:[8,11],  exaltation:[3],  detriment:[2,5],    fall:[9]  },
+  saturn:  { rulership:[9,10],  exaltation:[6],  detriment:[3,4],    fall:[0]  },
+};
+function getDignity(planetKey, signIndex) {
+  const d = ESSENTIAL_DIGNITIES[planetKey];
+  if (!d) return 'peregrine'; // 천왕성/해왕성/명왕성은 전통 위계 없음
+  if (d.rulership.includes(signIndex))  return 'rulership';
+  if (d.exaltation.includes(signIndex)) return 'exaltation';
+  if (d.detriment.includes(signIndex))  return 'detriment';
+  if (d.fall.includes(signIndex))       return 'fall';
+  return 'peregrine';
+}
+
 function angularDistance(a, b) {
   const diff = Math.abs(norm360(a) - norm360(b));
   return diff > 180 ? 360 - diff : diff;
@@ -701,4 +739,88 @@ function calcLunarNodes(jd) {
   const southLon = norm360(bml + 180);
 
   return { northLon, southLon };
+}
+
+/* =========================================================
+   진행월령(Secondary Progressed Lunation Cycle)
+   세컨더리 프로그레션(1일=1년)된 태양-달 각도가 0~360도를 도는
+   약 29.5년 주기를 8단계로 나눠 인생 전체 흐름을 추적한다.
+   ========================================================= */
+const LUNATION_STAGES = ['신월기','초승달기','상현기','상현보름새기','보름달기','하현보름새기','하현기','그림자달기'];
+
+function calcProgressedLunationCycle(birthUTC, lat, lng, maxAge = 100) {
+  function angleAt(ageYears) {
+    const progUTC = new Date(birthUTC.getTime() + ageYears * 86400000);
+    const raw = Ephemeris.getAllPlanets(progUTC, lng, lat, 0);
+    return norm360(raw.observed.moon.apparentLongitudeDd - raw.observed.sun.apparentLongitudeDd);
+  }
+  // 1) 거친 스캔(0.5년 간격)으로 unwrap된 누적각도 추적 — 진행월령은 항상 순행
+  const STEP = 0.5;
+  let prevAngle = angleAt(0);
+  let cum = prevAngle;
+  const samples = [{ age: 0, cum, angle: prevAngle }];
+  for (let age = STEP; age <= maxAge; age += STEP) {
+    const a = angleAt(age);
+    let step = a - prevAngle;
+    while (step < -180) step += 360;
+    while (step > 180) step -= 360;
+    cum += step;
+    samples.push({ age, cum, angle: a });
+    prevAngle = a;
+  }
+  // 2) 45도 배수(8단계 경계)마다 이분탐색으로 정밀한 나이 탐색
+  function cumAt(x, base) {
+    const a = angleAt(x);
+    let step = a - base.angle;
+    while (step < -180) step += 360;
+    while (step > 180) step -= 360;
+    return base.cum + step;
+  }
+  const boundaries = [];
+  let target = Math.ceil((samples[0].cum + 1e-9) / 45) * 45;
+  for (let i = 1; i < samples.length && target <= samples[samples.length - 1].cum; i++) {
+    while (samples[i].cum >= target) {
+      let lo = samples[i - 1].age, hi = samples[i].age;
+      const base = samples[i - 1];
+      for (let iter = 0; iter < 20; iter++) {
+        const mid = (lo + hi) / 2;
+        if (cumAt(mid, base) < target) lo = mid; else hi = mid;
+      }
+      boundaries.push({ targetDeg: target, ageYears: (lo + hi) / 2 });
+      target += 45;
+    }
+  }
+  // 3) 경계들을 이어서 stage 구간 생성
+  const edges = [0, ...boundaries.map(b => b.ageYears)];
+  const stages = [];
+  for (let i = 0; i < edges.length - 1; i++) {
+    const fromAge = edges[i], toAge = edges[i + 1];
+    const midAngle = norm360(angleAt((fromAge + toAge) / 2));
+    const stageIndex = Math.floor(midAngle / 45);
+    stages.push({ stageIndex, stageName: LUNATION_STAGES[stageIndex], fromAge, toAge });
+  }
+  return { stages };
+}
+
+/* =========================================================
+   헬레니즘 프로펙션(Profection) 기반 재물(2하우스) 분석
+   나이%12로 활성화 하우스가 정해지는 고대 기법 — 2하우스(재물)는
+   1,13,25,37...세에 활성화된다(모든 사람 공통). 개인화는 ASC 사인으로
+   정해지는 2하우스 지배행성과, 그 행성의 에센셜 디그니티·각도에서 나온다.
+   ========================================================= */
+function calcProfectionWealthAnalysis(ascSignIndex, natalResult, natalAspectsFull, maxAge = 100) {
+  const secondHouseSignIndex = (ascSignIndex + 1) % 12;
+  const rulerKey = SIGN_RULERS[secondHouseSignIndex];
+  const rulerNatalSignIndex = natalResult[rulerKey]?.signIndex;
+  const dignity = getDignity(rulerKey, rulerNatalSignIndex);
+  const rulerLabel = PLANET_KR[rulerKey];
+  const activeAges = [];
+  for (let age = 1; age <= maxAge; age += 12) activeAges.push(age);
+  const rulerAspects = natalAspectsFull.filter(a => a.point1 === rulerLabel || a.point2 === rulerLabel);
+  return {
+    secondHouseSign: SIGNS[secondHouseSignIndex],
+    rulerKey, rulerLabel,
+    rulerNatalSign: SIGNS[rulerNatalSignIndex],
+    dignity, activeAges, rulerAspects,
+  };
 }

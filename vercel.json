@@ -1,7 +1,8 @@
 {
   "regions": ["icn1"],
   "functions": {
-    "api/gemini-*.js": { "maxDuration": 60 }
+    "api/gemini-*.js": { "maxDuration": 60 },
+    "api/astro-calc.js": { "maxDuration": 60 }
   },
   "redirects": [
     {
