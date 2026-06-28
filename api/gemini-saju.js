@@ -346,7 +346,7 @@ ${daeunStr}
             contents: [{ parts: [{ text: prompt }] }],
             generationConfig: {
               temperature: 0.9,
-              maxOutputTokens: 8192,
+              maxOutputTokens: 10000,
             }
           })
         }

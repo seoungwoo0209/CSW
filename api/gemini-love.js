@@ -1028,9 +1028,9 @@ export default async function handler(req, res) {
     const marriageWaveStrength = isLove ? built.marriageWaveStrength : null;
     const categoryGrades = isCompatibility ? built.categoryGrades : null;
     const liveSaturnHouse = (isReunion || isReunionKnown) ? built.liveSaturnHouse : null;
-    // 연애중·궁합도 섹션 분량이 작지 않아(궁합은 4~5문단짜리 섹션도 있음) 4096으론 가끔 끝까지 못 쓰고
-    // 잘릴 수 있어 — 섹션 개수와 무관하게 다 같이 넉넉한 한도로 통일.
-    const maxOutputTokens = 6500;
+    // 연애중(마찰·결혼운 섹션 추가 후 4개 섹션×4~5문단)·궁합도 분량이 작지 않아 6500으로도
+    // 가끔 끝까지 못 쓰고 잘릴 수 있어 — 섹션 개수와 무관하게 다 같이 넉넉한 한도로 통일.
+    const maxOutputTokens = 10000;
 
     // ═══════════════════════════════════════
     // Gemini API 호출 (시간차 이중 요청 — 1번을 먼저 쏘고, 1번이 실패하거나 5초가 지나면 2번을 쏜다.
