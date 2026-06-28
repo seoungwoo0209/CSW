@@ -176,6 +176,54 @@ function reunionBestMonthsInstruction(bestIndices, nowMonthIdx, ctx) {
 }
 
 /* =========================================================
+   재회운("아는 사람") 전용 — 위 reunionScoreAt/reunionReasonAt/
+   reunionBestMonthsInstruction(모르는 사람 모드와 공유)은 그대로 두고,
+   상대방 네이탈·컴포지트 차트 신호를 추가로 보는 전용 함수를 따로 둔다.
+   ========================================================= */
+function reunionKnownScoreAt(monthIdx, ctx) {
+  const { transits, partnerLons, compositeLons } = ctx;
+  let s = reunionScoreAt(monthIdx, ctx); // 본인 주기 신호(토성 7/8하우스, 금성 역행, 일식월식 등) 그대로 포함
+  // 내 트랜짓 금성이 상대방의 핵심 행성(금성/화성/태양/달)과 맺는 시너지 활성화 시기
+  s += aspectScore(monthlyLon(transits, monthIdx, 'venus'), partnerLons);
+  // 내 트랜짓 토성/목성이 두 사람의 관계 자체(컴포지트 차트)에 닿는 시기 — 재시험/확장
+  s += aspectScore(monthlyLon(transits, monthIdx, 'saturn'), compositeLons);
+  s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), compositeLons);
+  return s;
+}
+function reunionKnownReasonAt(monthIdx, ctx) {
+  const { transits, partnerLons, compositeLons } = ctx;
+  const baseReason = reunionReasonAt(monthIdx, ctx);
+  if (baseReason) return baseReason;
+  if (aspectScore(monthlyLon(transits, monthIdx, 'venus'), partnerLons) === 1) {
+    return '트랜짓 금성이 상대방의 핵심 행성과 우호적 각도를 맺어 둘 사이의 끌림이 다시 떠오르는 시기';
+  }
+  if (aspectScore(monthlyLon(transits, monthIdx, 'saturn'), compositeLons) === 1) {
+    return '트랜짓 토성이 두 사람의 관계(컴포지트 차트)를 단단하게 다지는 시기';
+  }
+  if (aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), compositeLons) === 1) {
+    return '트랜짓 목성이 관계 자체를 확장·고양시키는 시기';
+  }
+  return null;
+}
+// reunionBestMonthsInstruction과 동일한 구조이지만, reasonAt만 reunionKnownReasonAt로 교체
+function reunionKnownBestMonthsInstruction(bestIndices, nowMonthIdx, ctx) {
+  if (!bestIndices?.length) return '';
+  const nowMonth = nowMonthIdx + 1;
+  const bestMonths = bestIndices.map(i => i + 1);
+  if (bestMonths.includes(nowMonth)) {
+    const reason = reunionKnownReasonAt(nowMonthIdx, ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 재회 흐름이 가장 강하게 열리는 시기가 바로 지금(${nowMonth}월)이다(${reason}). 이 점을 적극적으로 강조해서 써라.`;
+  }
+  const futureIndices = bestIndices.filter(i => i + 1 > nowMonth);
+  if (futureIndices.length) {
+    const reason = reunionKnownReasonAt(futureIndices[0], ctx) || '여러 신호가 겹치는 시기';
+    return `올해 중 재회 흐름이 가장 강하게 열리는 달은 ${futureIndices.map(i => i + 1).join('·')}월이다(${reason}). 지금의 흐름을 설명한 뒤, 다가올 그 달들도 함께 언급해서 글을 마무리해라.`;
+  }
+  const reason = reunionKnownReasonAt(bestIndices[0], ctx) || '여러 신호가 겹치는 시기';
+  return `올해 중 재회 흐름이 가장 강했던 시기는 이미 지나간 ${bestMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 회고적으로 짚어준 뒤 올해 남은 기간은 차분한 흐름이 이어진다는 걸 솔직하게 써라.`;
+}
+
+/* =========================================================
    궁합 — 6가지 핵심 시너지 등급 (정적 비교라 타임라인 없음, 강도 배지만)
    ========================================================= */
 // topAspects의 point1/point2는 항상 "나 X" / "상대 Y" 형태 (calcAllAspects가 그렇게 라벨링)
@@ -663,23 +711,41 @@ function buildReunionKnownPrompt(body) {
   if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    // 상대방 네이탈 핵심 행성 + 컴포지트(관계 자체) 차트 경도 — "아는 사람" 모드 전용 타이밍 신호에 사용
+    const partnerLons = [
+      partnerPlanets?.venus?.longitude, partnerPlanets?.mars?.longitude,
+      partnerPlanets?.sun?.longitude, partnerPlanets?.moon?.longitude,
+    ].filter(v => v != null);
+    const compositeLons = [
+      composite?.sun?.longitude, composite?.moon?.longitude, composite?.asc?.longitude,
+    ].filter(v => v != null);
     ctx = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
       natalVenusLon: myPlanets?.venus?.longitude,
       natalSaturnLon: myPlanets?.saturn?.longitude,
       eclipseMonth: eclipseMonthIndex(eclipseSignal),
       venusRetroFlags,
+      partnerLons,
+      compositeLons,
     };
-    const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionScoreAt(m, ctx));
+    const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionKnownScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
     monthlyStrength = buildMonthlyStrength(monthlyScores, nowMonthIdx);
-    conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionReasonAt, ctx);
-    bestMonthsInstr = reunionBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
+    conclusion = buildConclusion(monthlyStrength, strengthFixed, reunionKnownReasonAt, ctx);
+    bestMonthsInstr = reunionKnownBestMonthsInstruction(monthlyStrength.bestIndices, nowMonthIdx, ctx);
   }
 
   // "지금 토성이 몇 하우스인가"는 점수 계산에 쓴 라이브 패치 값을 단일 출처로 사용 — 클라이언트가 보낸 15일 샘플 값과 어긋나지 않게 한다.
   const liveSaturnHouse = ctx?.transits?.[nowMonthIdx]?.planets?.saturn?.house ?? transitSaturnHouse ?? null;
   const saturnIn78 = liveSaturnHouse === 7 || liveSaturnHouse === 8;
+
+  // 지금 시점의 상대방 연동 타이밍 신호(라이브 트랜짓 기준) — 점수 계산과 같은 출처
+  const liveVenusLon   = ctx?.transits?.[nowMonthIdx]?.planets?.venus?.longitude ?? null;
+  const liveSaturnLon  = ctx?.transits?.[nowMonthIdx]?.planets?.saturn?.longitude ?? null;
+  const liveJupiterLon = ctx?.transits?.[nowMonthIdx]?.planets?.jupiter?.longitude ?? null;
+  const venusToPartnerNow    = ctx ? aspectScore(liveVenusLon, ctx.partnerLons) : 0;
+  const saturnToCompositeNow = ctx ? aspectScore(liveSaturnLon, ctx.compositeLons) : 0;
+  const jupiterToCompositeNow = ctx ? aspectScore(liveJupiterLon, ctx.compositeLons) : 0;
 
   const prompt = `
 너는 20년 경력의 서양 점성술 전문가야.
@@ -707,6 +773,9 @@ ${overlayStr}${timeNote}
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
 ${myLabel}의 트랜짓 토성이 7/8하우스를 지나는 중인가: ${saturnIn78 ? `예 (${liveSaturnHouse}하우스 — 관계의 재시험/재정비 시기)` : '아니오'}
 ${eclipseStr}
+${myLabel}의 트랜짓 금성이 ${partnerLabel}의 핵심 행성(금성·화성·태양·달)과 우호적 각도를 맺는 중인가: ${venusToPartnerNow === 1 ? '예 — 둘 사이의 끌림이 다시 활성화되는 시기' : venusToPartnerNow === -1 ? '긴장된 각도(스퀘어/어포지션) — 마찰이 불거지기 쉬운 시기' : '뚜렷한 각도 없음'}
+${myLabel}의 트랜짓 토성이 두 사람의 관계(컴포지트 차트)에 닿는 중인가: ${saturnToCompositeNow === 1 ? '예 — 관계 자체가 단단해지는 시기' : saturnToCompositeNow === -1 ? '긴장된 각도 — 관계가 시험받는 시기' : '뚜렷한 각도 없음'}
+${myLabel}의 트랜짓 목성이 두 사람의 관계(컴포지트 차트)에 닿는 중인가: ${jupiterToCompositeNow === 1 ? '예 — 관계가 확장·고양되는 시기' : jupiterToCompositeNow === -1 ? '긴장된 각도' : '뚜렷한 각도 없음'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -727,10 +796,10 @@ ${monthlyStrength ? '4개 섹션 전부 빠짐없이, 각자 요청된 분량을
 - 분량: 4~5문단, 각 문단 3~4문장
 
 ===SECTION:timing===
-(지금이 재회에 유리한 시기인지 — 금성 역행·토성 트랜짓이 보여주는 타이밍)
+(지금이 재회에 유리한 시기인지 — 본인 주기(금성 역행·토성 트랜짓)뿐 아니라, 트랜짓이 ${partnerLabel}의 핵심 행성·두 사람의 관계(컴포지트 차트)에 닿는지까지 함께 보고 판단)
 ${monthlyStrength ? `지금 시기의 강도는 이미 "${strengthFixed}"로 확정되어 있다. 이 글의 어조와 결론이 그 강도와 어긋나지 않게 써라(강함이면 적극적으로, 약함이면 신중론으로, 보통이면 균형있게).` : ''}
 ${bestMonthsInstr}
-- 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지
+- 지금 흐름이 재회에 유리한지, 불리한지, 어떤 신호를 주목해야 하는지 — 단순히 "내 시기"가 아니라 "이 사람과의" 타이밍으로 풀어써라
 - 구체적으로 어떻게 행동하면 좋을지 실질적인 조언
 - 분량: 3~4문단
 ${monthlyStrength ? `
