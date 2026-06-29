@@ -2269,6 +2269,271 @@ function _profectionWealthTimelineHtml(profectionWealth) {
   `;
 }
 
+// 점성술 — 조디악 릴리징(ZR) 타임라인. 포르투나(재물·몸)/스피릿(행위·직업) 공용.
+// L1(대시기) 하나를 확대 배너로 보여주고, 그 안의 L2(소시기)는 균등폭(실제 비례폭은
+// 좁은 구간 라벨이 가려지는 문제가 있어 폐기)으로 그린다. "절정"(culm)·"결속풀림"(lb)·
+// "전환예고"(preLB) 마커는 화살표(▼)로 정확한 칸을 가리킨다.
+const _ZR_SIGNS_KR = ['양자리','황소자리','쌍둥이자리','게자리','사자자리','처녀자리',
+                       '천칭자리','전갈자리','사수자리','염소자리','물병자리','물고기자리'];
+const _ZR_SIGN_SHORT = ['양','황소','쌍둥이','게','사자','처녀','천칭','전갈','사수','염소','물병','물고기'];
+const _ZR_HOUSE_MEANING = ['자아·몸','재물·자원','소통·형제','가정·뿌리','창조·연애','일상·건강',
+                            '관계·결혼','변형·공유재산','확장·철학','성취·사회적지위','공동체·결실','마무리·내면'];
+const _ZR_SIGN_RULERS = { 0:'mars',1:'venus',2:'mercury',3:'moon',4:'sun',5:'mercury',
+  6:'venus',7:'mars',8:'jupiter',9:'saturn',10:'saturn',11:'jupiter' };
+const _ZR_PLANET_KR = { sun:'태양',moon:'달',mercury:'수성',venus:'금성',mars:'화성',jupiter:'목성',saturn:'토성' };
+const _ZR_PLANET_GLYPH = { sun:'☉',moon:'☽',mercury:'☿',venus:'♀',mars:'♂',jupiter:'♃',saturn:'♄' };
+const _ZR_ESSENTIAL_DIGNITIES = { // astro-calc.js의 ESSENTIAL_DIGNITIES와 동일 표(클라이언트 사본)
+  sun:{rulership:[4],exaltation:[0],detriment:[10],fall:[6]}, moon:{rulership:[3],exaltation:[1],detriment:[9],fall:[7]},
+  mercury:{rulership:[2,5],exaltation:[5],detriment:[8,11],fall:[11]}, venus:{rulership:[1,6],exaltation:[11],detriment:[0,7],fall:[5]},
+  mars:{rulership:[0,7],exaltation:[9],detriment:[1,6],fall:[3]}, jupiter:{rulership:[8,11],exaltation:[3],detriment:[2,5],fall:[9]},
+  saturn:{rulership:[9,10],exaltation:[6],detriment:[3,4],fall:[0]},
+};
+const _ZR_MARKER_KR = { preLB: '전환예고', culm: '절정', lb: '결속풀림' };
+const _ZR_MARKER_COLOR = { preLB: '#9ed0ff', culm: '#ffd36a', lb: '#ff9e7a' };
+const _ZR_SECT_DAY = ['sun','jupiter','saturn'];
+const _ZR_SECT_NIGHT = ['moon','venus','mars'];
+const _ZR_HOUSE_TIER_KR = { angular: '앵글(강함)', succedent: '보통', cadent: '약함' };
+const _ZR_COMBUSTION_KR = { none: '', cazimi: '카지미(매우 강함)', combust: '컴버스천(약화)', underbeams: '빔 아래(약간 약화)' };
+const _ZR_SECT_KR = { infavor: '섹트상 유리', contrary: '섹트상 불리', neutral: '섹트 중립' };
+
+function _zrEssentialDignity(planetKey, signIndex) {
+  const d = _ZR_ESSENTIAL_DIGNITIES[planetKey];
+  if (!d) return 'peregrine';
+  if (d.rulership.includes(signIndex)) return 'rulership';
+  if (d.exaltation.includes(signIndex)) return 'exaltation';
+  if (d.detriment.includes(signIndex)) return 'detriment';
+  if (d.fall.includes(signIndex)) return 'fall';
+  return 'peregrine';
+}
+
+// 행성이 "지금 어떤 상황에 처해 있는지"(하우스 위치·역행·컴버스천·섹트) — 본질적 위계와 별개 축
+function _zrAccidentalDignity(planetKey, planetNatal, ascSignIndex, isDayChart, sunLongitude) {
+  const house = ((planetNatal.signIndex - ascSignIndex + 12) % 12) + 1;
+  const houseTier = [1,4,7,10].includes(house) ? 'angular' : ([2,5,8,11].includes(house) ? 'succedent' : 'cadent');
+  let diff = Math.abs(planetNatal.longitude - sunLongitude);
+  if (diff > 180) diff = 360 - diff;
+  let combustion = 'none';
+  if (planetKey !== 'sun') {
+    if (diff <= 0.3) combustion = 'cazimi';
+    else if (diff <= 8) combustion = 'combust';
+    else if (diff <= 17) combustion = 'underbeams';
+  }
+  let sect = 'neutral';
+  if (_ZR_SECT_DAY.includes(planetKey)) sect = isDayChart ? 'infavor' : 'contrary';
+  else if (_ZR_SECT_NIGHT.includes(planetKey)) sect = isDayChart ? 'contrary' : 'infavor';
+  return { house, houseTier, combustion, sect, retrograde: !!planetNatal.retrograde };
+}
+
+// 별자리(signIndex) 하나에 대해 하우스·지배성·본질적+우연적 위계·각도를 한번에 계산
+function _zrPeriodInfo(signIndex, ctx) {
+  const house = ((signIndex - ctx.ascSignIndex + 12) % 12) + 1;
+  const rulerKey = _ZR_SIGN_RULERS[signIndex];
+  const rulerNatal = ctx.natal[rulerKey] || { signIndex: 0, longitude: 0, retrograde: false };
+  const dignity = _zrEssentialDignity(rulerKey, rulerNatal.signIndex);
+  const accidental = _zrAccidentalDignity(rulerKey, rulerNatal, ctx.ascSignIndex, ctx.isDayChart, ctx.sunLongitude);
+  const rulerLabel = _ZR_PLANET_KR[rulerKey];
+  const rulerAspects = (ctx.natalAspectsFull || []).filter(a => a.point1 === rulerLabel || a.point2 === rulerLabel);
+  return { house, houseMeaning: _ZR_HOUSE_MEANING[house - 1], rulerKey, rulerLabel, dignity, accidental, rulerAspects };
+}
+function _zrAspectStr(info) {
+  if (!info.rulerAspects.length) return '주요각 없음';
+  return info.rulerAspects.slice(0, 4)
+    .map(a => `${a.point1 === info.rulerLabel ? a.point2 : a.point1}${a.symbol}${a.aspect}(${a.orb}°)`).join(' · ');
+}
+function _zrAccidentalStr(acc) {
+  const parts = [`${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})`, _ZR_SECT_KR[acc.sect]];
+  if (acc.retrograde) parts.push('역행');
+  if (acc.combustion !== 'none') parts.push(_ZR_COMBUSTION_KR[acc.combustion]);
+  return parts.join(' · ');
+}
+// astroResult 응답 하나로 _zrPeriodInfo/_zrAccidentalDignity에 필요한 컨텍스트를 구성
+function _zrBuildCtx(astroResult) {
+  const natal = astroResult?.natal || {};
+  const sunHouse = natal.sun?.house ?? 0;
+  return {
+    ascSignIndex: astroResult?.angles?.asc?.signIndex ?? 0,
+    natal,
+    natalAspectsFull: astroResult?.natalAspectsFull || [],
+    isDayChart: sunHouse >= 7 && sunHouse <= 12,
+    sunLongitude: natal.sun?.longitude ?? 0,
+    nowAge: astroResult?.lunationCycle?.currentAgeYears ?? astroResult?.progression?.meta?.ageYears ?? 0,
+  };
+}
+
+function _zodiacalReleasingHtml(zr, opts, ctx) {
+  if (!zr || !Array.isArray(zr.l1Periods) || !zr.l1Periods.length || !ctx) return '';
+  const { eyebrowKr, eyebrowHanja, title, grad, accent } = opts;
+  const muted = '#8d81a8', dim = '#695e84';
+  const l1List = zr.l1Periods;
+  const maxAge = l1List[l1List.length - 1].toAge;
+  const curL1 = l1List[zr.currentL1Index];
+  if (!curL1) return '';
+  const curL2List = curL1.l2 || [];
+  const l1Span = curL1.toAge - curL1.fromAge;
+  const curL1Info = _zrPeriodInfo(curL1.signIndex, ctx);
+  const curL2 = curL2List[zr.currentL2Index];
+  if (!curL2) return '';
+  const curL2Info = _zrPeriodInfo(curL2.signIndex, ctx);
+
+  // L1 매크로 바 — 전체 생애, 사인+하우스 라벨, 현재 칸만 금빛으로 강조(나머지는 무채색)
+  const l1Segs = l1List.map((p, i) => {
+    const widthPct = ((p.toAge - p.fromAge) / maxAge) * 100;
+    const isNow = i === zr.currentL1Index;
+    const info = _zrPeriodInfo(p.signIndex, ctx);
+    const bg = isNow ? `linear-gradient(160deg,${accent}2e,${accent}10)` : 'rgba(255,255,255,.035)';
+    const bd = isNow ? `1.5px solid ${accent}` : '1px solid rgba(200,168,96,.14)';
+    return `<div style="flex:0 0 ${widthPct.toFixed(3)}%;height:100%;background:${bg};border:${bd};box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;">
+      ${widthPct > 5 ? `<span style="font-size:8.5px;font-weight:700;color:${isNow ? '#f0e0ad' : '#c9bcdb'};white-space:nowrap;">${_ZR_SIGN_SHORT[p.signIndex]}</span><span style="font-size:6.5px;color:${dim};">${info.house}H</span>` : ''}
+    </div>`;
+  }).join('');
+  const l1AgeLabels = l1List.map(p => {
+    const leftPct = (p.fromAge / maxAge) * 100;
+    return `<span style="position:absolute;left:${leftPct.toFixed(2)}%;top:0;font-size:8px;color:${dim};transform:translateX(-2px);">${p.fromAge.toFixed(1)}</span>`;
+  }).join('');
+
+  // L1 확대 배너 — 현재 대시기 하나를 어두운 카드 위에 금빛 텍스트로
+  const l1BannerMarkers = curL2List.filter(s => s.marker).map(s => {
+    const leftPct = ((s.fromAge - curL1.fromAge) / l1Span) * 100;
+    return `<span style="position:absolute;left:${leftPct.toFixed(2)}%;transform:translateX(-50%);font-size:9px;font-weight:700;color:${_ZR_MARKER_COLOR[s.marker]};white-space:nowrap;">${_ZR_MARKER_KR[s.marker]}</span>`;
+  }).join('');
+
+  // L2 트랙 — 균등폭(꼬임 방지), 칸 안에 사인·하우스+나이, 마커는 ▼로 정확한 칸을 가리킴
+  const l2Count = curL2List.length;
+  const l2Segs = curL2List.map((s, i) => {
+    const isNow = i === zr.currentL2Index;
+    const info = _zrPeriodInfo(s.signIndex, ctx);
+    const markerBorder = s.marker ? `border-top:3px solid ${_ZR_MARKER_COLOR[s.marker]};` : 'border-top:3px solid transparent;';
+    const bg = isNow ? `linear-gradient(160deg,${accent}30,${accent}12)` : 'rgba(255,255,255,.035)';
+    const bd = isNow ? `1.5px solid ${accent}` : '1px solid rgba(200,168,96,.14)';
+    return `<div style="flex:1;min-width:0;height:100%;background:${bg};border:${bd};${markerBorder}box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;padding:0 1px;">
+      <span style="font-size:7.3px;font-weight:700;color:${isNow ? '#f0e0ad' : '#c9bcdb'};white-space:nowrap;line-height:1.15;">${_ZR_SIGN_SHORT[s.signIndex]}</span>
+      <span style="font-size:6px;font-weight:600;color:${dim};white-space:nowrap;line-height:1.15;">${info.house}H</span>
+      <span style="font-size:5.6px;color:${dim};white-space:nowrap;line-height:1.15;">${s.fromAge.toFixed(1)}세</span>
+    </div>`;
+  }).join('');
+  const l2Badges = curL2List.map((s, i) => {
+    if (!s.marker) return '';
+    const centerPct = ((i + 0.5) / l2Count) * 100;
+    const isPast = s.toAge <= ctx.nowAge;
+    return `<div style="position:absolute;left:${centerPct.toFixed(2)}%;transform:translateX(-50%);top:-26px;text-align:center;opacity:${isPast ? 0.5 : 1};">
+      <div style="font-size:9px;font-weight:700;color:${_ZR_MARKER_COLOR[s.marker]};white-space:nowrap;">${_ZR_MARKER_KR[s.marker]}${isPast ? '(지남)' : ''}</div>
+      <div style="font-size:8px;color:${_ZR_MARKER_COLOR[s.marker]};line-height:1;">▼</div>
+    </div>`;
+  }).join('');
+
+  // 가까운 주요 전환점 — 현재 대시기에 갇히지 않고, 전체 생애에서 과거 일부 + 다가올 것까지
+  const nowAge = ctx.nowAge;
+  const allMarkers = l1List.flatMap(l1 => (l1.l2 || []).filter(s => s.marker));
+  const pastMarkers = allMarkers.filter(s => s.toAge <= nowAge).slice(-2);
+  const futureMarkers = allMarkers.filter(s => s.toAge > nowAge).slice(0, 4);
+  const markerListHtml = [...pastMarkers, ...futureMarkers].map(s => {
+    const info = _zrPeriodInfo(s.signIndex, ctx);
+    const isPast = s.toAge <= nowAge;
+    return `<div style="display:flex;align-items:flex-start;gap:6px;margin-top:8px;opacity:${isPast ? 0.5 : 1};">
+      <span style="color:${_ZR_MARKER_COLOR[s.marker]};font-size:12px;">${s.marker === 'lb' ? '◆' : (s.marker === 'culm' ? '★' : '◐')}</span>
+      <div style="font-size:11px;color:#beb39a;line-height:1.6;">
+        <b style="color:${_ZR_MARKER_COLOR[s.marker]};">${_ZR_MARKER_KR[s.marker]}</b>${isPast ? ` <span style="color:${dim};font-size:9.5px;">(이미 지남)</span>` : ` <span style="color:${accent};font-size:9.5px;">(다가올 시기)</span>`} — ${_ZR_SIGNS_KR[s.signIndex]} 시기 (만 ${s.fromAge.toFixed(1)}세부터)<br>
+        <span style="color:${muted};">${info.house}하우스(${info.houseMeaning}) · 지배성 ${info.rulerLabel} <span style="color:${_DIGNITY_COLOR[info.dignity]};">${_DIGNITY_KR[info.dignity]}</span> · ${_zrAspectStr(info)}</span><br>
+        <span style="color:${dim};">우연적 위계: ${_zrAccidentalStr(info.accidental)}</span>
+      </div>
+    </div>`;
+  }).join('');
+
+  const headerGlyph = _ZR_PLANET_GLYPH[curL1Info.rulerKey] || '·';
+
+  return `
+  <div style="${_CAREER_PANEL_STYLE}">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+      <div style="flex-shrink:0;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:rgba(200,168,96,.07);border:1px solid ${accent}66;color:${accent};">${headerGlyph}</div>
+      <div style="font-size:15px;font-weight:700;font-family:Georgia,serif;line-height:1.3;">
+        <span style="color:#cbbfe3;">${eyebrowKr}</span><span style="color:${dim};font-size:11px;font-weight:400;">(${eyebrowHanja})</span>
+        <span style="color:${dim};font-weight:400;"> — </span>
+        <span style="background:${grad};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">${title}</span>
+      </div>
+    </div>
+    <div style="font-size:10.5px;color:${dim};margin-bottom:14px;">대시기(L1) · 인생 전체 약 ${Math.floor(maxAge)}년의 흐름</div>
+
+    <div style="position:relative;height:14px;margin:14px 6px 0;">${l1AgeLabels}<span style="position:absolute;right:0;top:0;font-size:8px;color:${dim};">${Math.floor(maxAge)}세</span></div>
+    <div style="display:flex;height:34px;margin:0 6px;border-radius:6px;overflow:hidden;">${l1Segs}</div>
+
+    <div style="position:relative;margin:18px 6px 0;padding:16px 12px 12px;border-radius:14px;background:radial-gradient(130% 100% at 50% -10%, ${accent}26 0%, rgba(20,16,40,.55) 55%, rgba(8,6,15,.7) 100%);border:1.5px solid ${accent};box-shadow:0 16px 36px -20px rgba(0,0,0,.85), 0 0 22px ${accent}30;">
+      <span style="position:absolute;left:10px;top:8px;font-size:9.5px;letter-spacing:.08em;color:${accent};">만 ${curL1.fromAge.toFixed(1)}세</span>
+      <span style="position:absolute;right:10px;top:8px;font-size:9.5px;letter-spacing:.08em;color:${accent};">만 ${curL1.toAge.toFixed(1)}세</span>
+      <div style="text-align:center;font-size:23px;font-weight:700;margin-top:10px;font-family:Georgia,serif;background:${grad};-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">${_ZR_SIGNS_KR[curL1.signIndex].replace('자리', '')}</div>
+      <div style="text-align:center;font-size:11.5px;font-weight:600;color:#cbbfe3;margin-top:3px;">${curL1Info.house}하우스 · ${curL1Info.houseMeaning}</div>
+      <div style="text-align:center;font-size:10px;color:${muted};margin-top:5px;">지배성 ${curL1Info.rulerLabel} · ${_DIGNITY_KR[curL1Info.dignity]}</div>
+      <div style="text-align:center;font-size:9px;color:${dim};margin-top:2px;">우연적 위계: ${_zrAccidentalStr(curL1Info.accidental)}</div>
+    </div>
+    <div style="position:relative;height:16px;margin:6px 6px 0;">${l1BannerMarkers}</div>
+
+    <div style="margin:16px 0 4px;font-size:9.5px;letter-spacing:.05em;color:${dim};">↓ 소시기(L2) 확대</div>
+    <div style="position:relative;height:28px;margin:28px 6px 0;">${l2Badges}</div>
+    <div style="display:flex;height:42px;margin:0 6px;border-radius:0 0 8px 8px;overflow:hidden;">${l2Segs}</div>
+
+    <div style="margin-top:16px;background:rgba(255,255,255,.025);border:1px solid rgba(200,168,96,.18);border-top:2px solid ${accent};border-radius:12px;padding:12px 14px;">
+      <div style="font-size:13px;font-weight:700;font-family:Georgia,serif;color:#f0e6cc;">지금은 ${_ZR_SIGNS_KR[curL2.signIndex]} 소시기${curL2.marker ? ` · ${_ZR_MARKER_KR[curL2.marker]}` : ''}</div>
+      <div style="font-size:11px;color:${muted};margin-top:4px;">${curL2Info.house}하우스(${curL2Info.houseMeaning}) · 지배성 ${curL2Info.rulerLabel} <span style="color:${_DIGNITY_COLOR[curL2Info.dignity]};font-weight:700;">${_DIGNITY_KR[curL2Info.dignity]}</span></div>
+      <div style="font-size:10.5px;color:${muted};margin-top:4px;">주요각: ${_zrAspectStr(curL2Info)}</div>
+      <div style="font-size:10.5px;color:${dim};margin-top:4px;">우연적 위계: ${_zrAccidentalStr(curL2Info.accidental)}</div>
+      <div style="font-size:10.5px;color:${muted};margin-top:12px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px;">가까운 주요 전환점 (지난 것 일부 + 다가올 것)</div>
+      ${markerListHtml || `<div style="font-size:11px;color:${dim};margin-top:4px;">없음</div>`}
+    </div>
+  </div>
+  `;
+}
+
+// 포르투나·스피릿 두 랏이 5년 내에 같은 하우스를 가리키는 구간을 탐지 — 독립된 두 계산이
+// 같은 결론에 도달하는 교차신호. 겹치는 게 없으면 빈 문자열(표시 안 함).
+function _zrCrossSignalHtml(zrFortune, zrSpirit, ctx) {
+  if (!zrFortune?.l1Periods?.length || !zrSpirit?.l1Periods?.length || !ctx) return '';
+  const nowAge = ctx.nowAge;
+  function collectNearTerm(zr, yearsAhead) {
+    const out = [];
+    zr.l1Periods.forEach(l1 => (l1.l2 || []).forEach(s => {
+      if (s.toAge >= nowAge && s.fromAge <= nowAge + yearsAhead) out.push(s);
+    }));
+    return out;
+  }
+  const fortuneNear = collectNearTerm(zrFortune, 5);
+  const spiritNear = collectNearTerm(zrSpirit, 5);
+  const overlaps = [];
+  fortuneNear.forEach(f => {
+    const fInfo = _zrPeriodInfo(f.signIndex, ctx);
+    spiritNear.forEach(s => {
+      const sInfo = _zrPeriodInfo(s.signIndex, ctx);
+      if (fInfo.house !== sInfo.house) return;
+      const overlapStart = Math.max(f.fromAge, s.fromAge);
+      const overlapEnd = Math.min(f.toAge, s.toAge);
+      const gap = overlapStart - overlapEnd; // 양수면 안 겹침, 그만큼 떨어져있음
+      if (gap < 2) {
+        overlaps.push({
+          house: fInfo.house, meaning: fInfo.houseMeaning,
+          fortuneFromAge: f.fromAge, fortuneToAge: f.toAge, spiritFromAge: s.fromAge, spiritToAge: s.toAge,
+          overlapping: overlapEnd > overlapStart, fortuneSign: f.signIndex, spiritSign: s.signIndex,
+        });
+      }
+    });
+  });
+  if (!overlaps.length) return '';
+
+  const items = overlaps.map(o => `
+    <div style="display:flex;align-items:flex-start;gap:8px;margin-top:10px;">
+      <span style="color:#caa74e;font-size:12px;">◆</span>
+      <div style="font-size:11.5px;color:#beb39a;line-height:1.6;">
+        포르투나 ${_ZR_SIGNS_KR[o.fortuneSign]}(만 ${o.fortuneFromAge.toFixed(1)}~${o.fortuneToAge.toFixed(1)}세)와 스피릿 ${_ZR_SIGNS_KR[o.spiritSign]}(만 ${o.spiritFromAge.toFixed(1)}~${o.spiritToAge.toFixed(1)}세)가
+        <b style="color:#e0c684;">같은 ${o.house}하우스(${o.meaning})</b>를 ${o.overlapping ? '같은 시기에' : '비슷한 시기에 이어서'} 가리켜요 — 서로 다른 두 계산이 독립적으로 같은 결론에 도달한 구간이에요.
+      </div>
+    </div>`).join('');
+
+  return `
+  <div style="${_CAREER_PANEL_STYLE}">
+    <div style="${_CAREER_EYEBROW_STYLE}">兩 運 相 應</div>
+    <div style="font-size:16px;font-weight:700;font-family:Georgia,serif;background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;">함께 가리키는 시기 (5년 내)</div>
+    ${items}
+  </div>
+  `;
+}
+
 // 직업 4종 — "이번 리포트 결론" 요약 박스. AI 호출 없이, 서버가 이미 계산해둔 monthlyStrength/conclusion
 // 데이터만으로 만든다 — 추가 지연 없음. "~해라/하지마라" 같은 행동 지시나 근거 없는 비교는 절대 넣지 않고,
 // 실제로 계산된 사실(지금 강도·상반기·하반기 흐름·골든타임과 그 이유)만 단정적으로 적는다.
@@ -3108,6 +3373,35 @@ function renderAspectAccordion(aspects, title, icon, accentColor) {
 /* =========================================================
    네이탈 차트 렌더링 (네이탈만 표시 — 데이터는 풀 패키지)
    ========================================================= */
+// 진행월령·프로펙션재물·ZR(포르투나/스피릿)·교차신호 카드 — 네이탈/세컨더리와 동일하게
+// AI 해석(gemini-astro) 호출 없이 astro-calc 응답만으로 즉시 렌더링된다.
+function renderAstroZRCards(astroData) {
+  const panel = document.getElementById("astroZRPanel");
+  if (!panel) return;
+
+  const zrCtx = _zrBuildCtx(astroData);
+  const lunationHtml   = _lunationCycleWaveHtml(astroData.lunationCycle);
+  const profectionHtml = _profectionWealthTimelineHtml(astroData.profectionWealth);
+  const zrFortuneHtml  = _zodiacalReleasingHtml(astroData.zrFortune, {
+    eyebrowKr: '재신지운', eyebrowHanja: '財身之運', title: '부와 신체의 흐름',
+    grad: 'linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%)', accent: '#caa74e',
+  }, zrCtx);
+  const zrSpiritHtml   = _zodiacalReleasingHtml(astroData.zrSpirit, {
+    eyebrowKr: '의행지운', eyebrowHanja: '意行之運', title: '커리어와 성취 흐름',
+    grad: 'linear-gradient(100deg,#f1e9ff 0%,#cdb8ec 45%,#9f86c9 100%)', accent: '#a78bc4',
+  }, zrCtx);
+  const zrCrossHtml = _zrCrossSignalHtml(astroData.zrFortune, astroData.zrSpirit, zrCtx);
+
+  const combined = lunationHtml + profectionHtml + zrFortuneHtml + zrSpiritHtml + zrCrossHtml;
+  if (!combined) {
+    panel.style.display = "none";
+    panel.innerHTML = "";
+    return;
+  }
+  panel.innerHTML = combined;
+  panel.style.display = "block";
+}
+
 function renderAstroNatal(astroData) {
   const panel = _$("astroNatalPanel");
   const grid  = _$("astroNatalGrid");
@@ -3196,6 +3490,10 @@ function renderAstroNatal(astroData) {
     );
     panel.after(aspectPanel);
   }
+
+  // 진행월령·프로펙션재물·ZR 카드 — astroZRPanel은 HTML에서 astroNatalPanel의 다음 형제로
+  // 고정돼 있어, 위에서 동적으로 끼워넣은 패널들 뒤에도 항상 가장 마지막에 위치한다.
+  renderAstroZRCards(astroData);
 }
 
 /* =========================================================
@@ -5859,13 +6157,10 @@ async function requestAstroReading() {
     // 리딩 결과 저장 (질문에 활용)
     window.AstroReadingResult = geminiData.result || "";
 
-    const lunationHtml   = _lunationCycleWaveHtml(window.AstroResult?.lunationCycle);
-    const profectionHtml = _profectionWealthTimelineHtml(window.AstroResult?.profectionWealth);
-
+    // 진행월령·프로펙션재물·ZR 카드는 네이탈 차트와 함께 이미 astroZRPanel에 표시돼 있으므로
+    // (renderAstroNatal → renderAstroZRCards) 여기서는 AI 해설 텍스트만 만든다.
     resultEl.innerHTML = `
-      ${lunationHtml}
-      ${profectionHtml}
-      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;border-top:1px solid rgba(255,255,255,.08);padding-top:14px;">${formatted}</div>
+      <div style="font-size:13px;color:#cbd3f0;line-height:1.9;">${formatted}</div>
 
       <!-- 질문 섹션 -->
       <div id="astroQuestionSection" style="margin-top:20px;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;">

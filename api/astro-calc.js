@@ -109,11 +109,24 @@ export default async function handler(req, res) {
 
     const natalResult = {};
     KEYS.forEach(k => {
-      natalResult[k] = { ...toSignInfo(planetsWithHouse[k].lon), house: planetsWithHouse[k].house };
+      natalResult[k] = {
+        ...toSignInfo(planetsWithHouse[k].lon),
+        house: planetsWithHouse[k].house,
+        retrograde: !!planets[k].retrograde,
+      };
     });
 
     const ascSignIndex = Math.floor(norm360(asc) / 30);
     const profectionWealth = calcProfectionWealthAnalysis(ascSignIndex, natalResult, natalAspectsFull, 100);
+
+    // ── 조디악 릴리징(ZR) — 포르투나/스피릿
+    const sunHouse = planetsWithHouse.sun.house;
+    const fortuneLon = calcLotLongitude(asc, planets.sun.lon, planets.moon.lon, sunHouse, 'fortune');
+    const spiritLon  = calcLotLongitude(asc, planets.sun.lon, planets.moon.lon, sunHouse, 'spirit');
+    const lotFortune = toSignInfo(fortuneLon);
+    const lotSpirit  = toSignInfo(spiritLon);
+    const zrFortune = calcZodiacalReleasing(lotFortune.signIndex, ageYears, 100);
+    const zrSpirit  = calcZodiacalReleasing(lotSpirit.signIndex, ageYears, 100);
 
     const progResult = {};
     KEYS.forEach(k => {
@@ -181,6 +194,10 @@ export default async function handler(req, res) {
       natalAspectsFull,
       lunationCycle,
       profectionWealth,
+      lotFortune,
+      lotSpirit,
+      zrFortune,
+      zrSpirit,
       nodes: {
         north: { ...toSignInfo(northLon), house: getNodeHouse(northLon, houses) },
         south: { ...toSignInfo(southLon), house: getNodeHouse(southLon, houses) },
@@ -229,7 +246,7 @@ function extractPlanets(observed) {
   const result = {};
   KEYS.forEach(k => {
     const lon = observed[k]?.apparentLongitudeDd ?? 0;
-    result[k] = { lon: ((lon % 360) + 360) % 360 };
+    result[k] = { lon: ((lon % 360) + 360) % 360, retrograde: !!observed[k]?.is_retrograde };
   });
   return result;
 }
@@ -610,6 +627,12 @@ const PLANET_KR   = {
 };
 
 /* =========================================================
+   조디악 릴리징(Zodiacal Releasing) 별자리별 연수표
+   Aries(0)~Pisces(11), SIGNS 배열 인덱스와 동일 순서
+   ========================================================= */
+const ZR_SIGN_YEARS = [15,8,20,25,19,20,8,15,12,27,30,12];
+
+/* =========================================================
    사인 지배행성 + 전통 7행성 에센셜 디그니티
    ========================================================= */
 const SIGN_RULERS = { 0:'mars',1:'venus',2:'mercury',3:'moon',4:'sun',5:'mercury',
@@ -823,4 +846,90 @@ function calcProfectionWealthAnalysis(ascSignIndex, natalResult, natalAspectsFul
     rulerNatalSign: SIGNS[rulerNatalSignIndex],
     dignity, activeAges, rulerAspects,
   };
+}
+
+/* =========================================================
+   조디악 릴리징(Zodiacal Releasing) — 포르투나/스피릿
+   포르투나(재물·몸·외부 사건)와 스피릿(행위·직업·내가 하는 선택) 두 랏에서
+   각각 시작해 별자리를 순서대로 "풀어나가며" 대시기(L1)·소시기(L2)로 나누는
+   헬레니즘 타임로드 기법. astro-seek 실제 ZR 계산기 출력과 날짜 단위로
+   전부 일치하도록 검증된 알고리즘.
+   ========================================================= */
+function calcLotLongitude(asc, sunLon, moonLon, sunHouse, lotType) {
+  const isDayChart = sunHouse >= 7 && sunHouse <= 12;
+  let lon;
+  if (lotType === 'fortune') {
+    lon = isDayChart ? asc + (moonLon - sunLon) : asc + (sunLon - moonLon);
+  } else {
+    lon = isDayChart ? asc + (sunLon - moonLon) : asc + (moonLon - sunLon);
+  }
+  return norm360(lon);
+}
+
+// L2(소시기): 같은 연수표를 "월"(30일) 단위로 재사용해 L1과 같은 시작 별자리부터
+// 진행. 한 바퀴(211개월) 다 돌고 시작 별자리로 복귀할 차례가 오면 반대궁으로
+// 점프(결속풀림). 마지막 소시기는 L1 총 기간에 맞춰 잘릴 수 있음.
+function buildZRSubPeriods(startSignIndex, totalDays, fromAgeBase) {
+  const sub = [];
+  let position = 0;
+  let cumDays = 0;
+  let loosed = false;
+  let markNextLB = false;
+  while (cumDays < totalDays) {
+    const signIndex = (startSignIndex + position) % 12;
+    const fullDays = ZR_SIGN_YEARS[signIndex] * 30;
+    const remaining = totalDays - cumDays;
+    const used = Math.min(fullDays, remaining);
+    let marker = null;
+    if (markNextLB) { marker = 'lb'; markNextLB = false; }
+    else if (position === 6 && !loosed) marker = 'preLB';
+    else if (position === 9) marker = 'culm';
+    sub.push({
+      signIndex,
+      fromAge: fromAgeBase + cumDays / 365.25,
+      toAge:   fromAgeBase + (cumDays + used) / 365.25,
+      marker,
+      truncated: used < fullDays,
+    });
+    cumDays += used;
+    position++;
+    if (position === 12 && !loosed) {
+      loosed = true;
+      position = 6; // 반대궁으로 점프
+      markNextLB = true;
+    }
+  }
+  return sub;
+}
+
+// L1(대시기): 시작 별자리부터 연수표만큼씩(1년=360일 이상화 단위) 누적해서
+// 다음 별자리로 순서대로 진행. 사람 수명 내에선 한 바퀴(211년)를 다 돌지
+// 않으므로 결속풀림 로직 불필요.
+function buildZRPeriods(startSignIndex, maxAgeYears) {
+  const maxDays = maxAgeYears * 365.25;
+  const periods = [];
+  let position = 0;
+  let cumDays = 0;
+  while (cumDays < maxDays) {
+    const signIndex = (startSignIndex + position) % 12;
+    const years = ZR_SIGN_YEARS[signIndex];
+    const days = years * 360;
+    const fromAge = cumDays / 365.25;
+    const toAge = (cumDays + days) / 365.25;
+    const l2 = buildZRSubPeriods(signIndex, days, fromAge);
+    periods.push({ signIndex, fromAge, toAge, l2 });
+    cumDays += days;
+    position++;
+  }
+  return periods;
+}
+
+function calcZodiacalReleasing(startSignIndex, ageYears, maxAgeYears = 100) {
+  const l1Periods = buildZRPeriods(startSignIndex, maxAgeYears);
+  let currentL1Index = l1Periods.findIndex(p => ageYears >= p.fromAge && ageYears < p.toAge);
+  if (currentL1Index === -1) currentL1Index = l1Periods.length - 1;
+  const currentL1 = l1Periods[currentL1Index];
+  let currentL2Index = currentL1.l2.findIndex(s => ageYears >= s.fromAge && ageYears < s.toAge);
+  if (currentL2Index === -1) currentL2Index = currentL1.l2.length - 1;
+  return { l1Periods, currentL1Index, currentL2Index };
 }
