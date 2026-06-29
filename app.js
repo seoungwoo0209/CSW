@@ -2154,13 +2154,36 @@ const _LUNATION_STAGE_HEIGHT = {
   '신월기': 18, '초승달기': 38, '상현기': 60, '상현보름새기': 80,
   '보름달기': 95, '하현보름새기': 78, '하현기': 50, '그림자달기': 15
 };
+const _LUNATION_STAGE_DESC = {
+  '신월기': '새로운 충동의 씨앗', '초승달기': '확장과 시도', '상현기': '위기와 행동', '상현보름새기': '정교화와 분석',
+  '보름달기': '완성과 절정', '하현보름새기': '전파와 나눔', '하현기': '재정립', '그림자달기': '해체와 준비'
+};
+const _LUNATION_STAGE_ORDER = ['신월기', '초승달기', '상현기', '상현보름새기', '보름달기', '하현보름새기', '하현기', '그림자달기'];
+// 달 모양 아이콘 — 이모지는 폰트마다 신월기 등 어두운 위상이 보랏빛으로 보여서 직접 그린다.
+// 차오른 부분은 전부 금색 하나, 어두운 부분은 카드 배경색 하나 — 단색이라 "컬러풀"하지 않다.
+const _LUNATION_STAGE_FRAC = {
+  '신월기': 0, '초승달기': 0.125, '상현기': 0.25, '상현보름새기': 0.375,
+  '보름달기': 0.5, '하현보름새기': 0.625, '하현기': 0.75, '그림자달기': 0.875,
+};
+function _lunMoonIconSvg(r, frac, opts) {
+  const o = opts || {};
+  const lit = o.lit || '#f5cd5a', dark = o.dark || '#0d1330', ring = o.ring || 'rgba(255,255,255,.25)';
+  const ang = 2 * Math.PI * frac, rx = Math.cos(ang) * r, waxing = frac < 0.5;
+  const sweepOuter = waxing ? 1 : 0, sweepInner = (rx >= 0) ? (1 - sweepOuter) : sweepOuter;
+  const d = `M ${r} ${0} A ${r} ${r} 0 0 ${sweepOuter} ${r} ${(r * 2).toFixed(2)} ` +
+    `A ${Math.abs(rx).toFixed(2)} ${r} 0 0 ${sweepInner} ${r} ${0} Z`;
+  return `<svg width="${r * 2}" height="${r * 2}" viewBox="0 0 ${r * 2} ${r * 2}" style="flex-shrink:0;${o.style || ''}">
+    <circle cx="${r}" cy="${r}" r="${r - 0.6}" fill="${dark}" stroke="${ring}" stroke-width="0.8"/>
+    <path d="${d}" fill="${lit}"/>
+  </svg>`;
+}
 function _lunationCycleWaveHtml(lunationCycle) {
   if (!lunationCycle || !Array.isArray(lunationCycle.stages) || !lunationCycle.stages.length) return '';
   const { stages, currentAgeYears, currentStageIndex } = lunationCycle;
   const maxAge = stages[stages.length - 1].toAge;
-  const W = 680, H = 150, pad = 16;
-  const xAt = age => pad + (age / maxAge) * (W - pad * 2);
-  const yAt = stageName => H - pad - ((_LUNATION_STAGE_HEIGHT[stageName] || 50) / 100) * (H - pad * 1.6);
+  const W = 680, H = 250, padX = 20, TOP = 44, BOT = 160, STRIP = 200;
+  const xAt = age => padX + (age / maxAge) * (W - padX * 2);
+  const yAt = stageName => BOT - ((_LUNATION_STAGE_HEIGHT[stageName] || 50) / 100) * (BOT - TOP);
 
   const pts = stages.map(s => ({ x: xAt((s.fromAge + s.toAge) / 2), y: yAt(s.stageName) }));
 
@@ -2175,44 +2198,106 @@ function _lunationCycleWaveHtml(lunationCycle) {
     return d;
   }
   const pathD = buildPath(pts);
-  const areaD = pathD + ` L ${pts[pts.length - 1].x} ${H - pad} L ${pts[0].x} ${H - pad} Z`;
+  const areaD = pathD + ` L ${pts[pts.length - 1].x} ${BOT} L ${pts[0].x} ${BOT} Z`;
 
   const clampedNowAge = Math.min(Math.max(currentAgeYears, 0), maxAge);
   const nowX = xAt(clampedNowAge);
-  const nowStageName = stages[currentStageIndex]?.stageName || stages[0].stageName;
+  const curStage = stages[currentStageIndex] || stages[0];
+  const nowStageName = curStage.stageName;
   const nowY = yAt(nowStageName);
 
   const bands = stages.map(s => {
     const x1 = xAt(s.fromAge), x2 = xAt(s.toAge);
-    const op = ((_LUNATION_STAGE_HEIGHT[s.stageName] || 50) / 100) * 0.16 + 0.03;
-    return `<rect x="${x1.toFixed(1)}" y="${(pad / 2).toFixed(1)}" width="${Math.max(x2 - x1, 0).toFixed(1)}" height="${(H - pad - pad / 2).toFixed(1)}" fill="#9ed0ff" opacity="${op.toFixed(2)}"/>`;
+    const op = ((_LUNATION_STAGE_HEIGHT[s.stageName] || 50) / 100) * 0.14 + 0.025;
+    return `<rect x="${x1.toFixed(1)}" y="${TOP - 6}" width="${Math.max(x2 - x1, 0).toFixed(1)}" height="${BOT - TOP + 6}" fill="#9ed0ff" opacity="${op.toFixed(2)}"/>`;
   }).join('');
 
-  const tickStep = maxAge > 60 ? 20 : 10;
-  const ageTicks = [];
-  for (let a = 0; a <= maxAge; a += tickStep) ageTicks.push(a);
+  // 가장 중요한 세 전환점(신월기=골짜기, 상현기=오르는 중간점, 보름달기=봉우리)만 곡선 위에
+  // 달 아이콘+이름+나이로 직접 표기한다. 나머지 5단계는 곡선의 경유점일 뿐이라 그래프
+  // 위에선 빼고 아래 strip 줄에 배치한다. 색은 금색 하나로 통일.
+  const _KEY_STAGES = ['신월기', '상현기', '보름달기'];
+  const keyStageMarkers = stages.filter(s => _KEY_STAGES.includes(s.stageName)).map(s => {
+    const x = xAt((s.fromAge + s.toAge) / 2), y = yAt(s.stageName);
+    const isFull = s.stageName === '보름달기';
+    const isCurrent = s === curStage;
+    const r = 9;
+    const nameY = isFull ? y + 30 : y - 22;
+    const ageY = isFull ? y + 44 : y - 10;
+    const icon = _lunMoonIconSvg(r, _LUNATION_STAGE_FRAC[s.stageName], { style: 'animation:moon-float 3.2s ease-in-out infinite;' });
+    return `<g transform="translate(${(x - r).toFixed(1)},${(y - r).toFixed(1)})">
+      ${isCurrent ? `<circle cx="${r}" cy="${r}" r="${r + 4}" fill="none" stroke="rgba(245,205,90,.5)" stroke-width="1.4" filter="url(#lunGlow)"/>` : ''}
+      ${icon}
+    </g>
+    <text x="${x.toFixed(1)}" y="${nameY.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#f3f5ff" style="paint-order:stroke;stroke:#070b14;stroke-width:3px;">${s.stageName}</text>
+    <text x="${x.toFixed(1)}" y="${ageY.toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="#ffe9a8" style="paint-order:stroke;stroke:#070b14;stroke-width:3px;">${s.fromAge.toFixed(1)}세</text>`;
+  }).join('');
+
+  // 나머지 5단계 — strip 줄에 작은 달 아이콘 + 이름 + 나이. 라벨은 위/아래 두 줄에
+  // 그리디로 배치해(글자폭 추정해서 자리 없으면 양보) 서로 겹치지 않게 한다.
+  // 아이콘과 눈금은 모든 전환 지점에 빠짐없이 표시하고, 글자 라벨만 자리가 없으면 생략한다.
+  const otherTicks = stages.filter(s => !_KEY_STAGES.includes(s.stageName));
+  let row0Right = -Infinity, row1Right = -Infinity;
+  const stripHtml = otherTicks.map(s => {
+    const x = xAt(s.fromAge);
+    const label = `${s.stageName} ${s.fromAge.toFixed(1)}세`;
+    const halfW = label.length * 4.6;
+    let row = null;
+    if (x - halfW > row0Right) { row = 0; row0Right = x + halfW; }
+    else if (x - halfW > row1Right) { row = 1; row1Right = x + halfW; }
+    const textY = row === 1 ? STRIP + 30 : STRIP + 16;
+    const textHtml = row === null ? '' :
+      `<text x="${x.toFixed(1)}" y="${textY}" text-anchor="middle" font-size="9" font-weight="700" fill="#aab4d6">${s.stageName} <tspan font-weight="800" fill="#ffe9a8">${s.fromAge.toFixed(1)}세</tspan></text>`;
+    const r2 = 5.5;
+    return `<g>
+      <line x1="${x.toFixed(1)}" y1="${STRIP - 6}" x2="${x.toFixed(1)}" y2="${STRIP}" stroke="#5a6694" stroke-width="1.2"/>
+      <g transform="translate(${(x - r2).toFixed(1)},${(STRIP - 18 - r2).toFixed(1)})">${_lunMoonIconSvg(r2, _LUNATION_STAGE_FRAC[s.stageName])}</g>
+      ${textHtml}
+    </g>`;
+  }).join('');
 
   return `
-    <div style="margin-bottom:18px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(158,208,255,.07),rgba(10,13,24,.2));border:1px solid rgba(158,208,255,.22);">
-      <div style="color:#9ed0ff;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:8px;">🌙 인생 전체 흐름 — 진행월령</div>
-      <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto;">
+    <div style="margin-bottom:18px;border-radius:18px;background:radial-gradient(120% 60% at 50% -10%, #1c2a4a 0%, #101a30 55%, #070b14 100%);
+      border:1px solid rgba(158,208,255,.28);box-shadow:0 20px 50px -28px rgba(0,0,0,.9);padding:18px 16px 16px;">
+      <div style="color:#bfe0ff;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:10px;">🌙 인생 전체 흐름 — 진행월령</div>
+      <svg viewBox="0 0 ${W} ${H}" style="display:block;width:100%;height:auto;overflow:visible;">
         <defs>
           <linearGradient id="lunGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stop-color="#9ed0ff" stop-opacity="0.28"/>
+            <stop offset="0%" stop-color="#9ed0ff" stop-opacity="0.3"/>
             <stop offset="100%" stop-color="#9ed0ff" stop-opacity="0"/>
           </linearGradient>
+          <filter id="lunGlow" x="-80%" y="-80%" width="260%" height="260%">
+            <feGaussianBlur stdDeviation="3.2" result="b"/>
+            <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
         </defs>
         ${bands}
+        <line x1="${padX}" y1="${STRIP}" x2="${W - padX}" y2="${STRIP}" stroke="rgba(255,255,255,.14)"/>
         <path d="${areaD}" fill="url(#lunGrad)" stroke="none"/>
-        <path d="${pathD}" fill="none" stroke="#9ed0ff" stroke-width="2.2"/>
-        <circle cx="${nowX.toFixed(1)}" cy="${nowY.toFixed(1)}" r="5" fill="#ffd36a" stroke="#0a0d18" stroke-width="1.3"/>
-        ${ageTicks.map(a => `<text x="${xAt(a).toFixed(1)}" y="${H - 2}" fill="#7d87ab" font-size="9" text-anchor="middle">${a}세</text>`).join('')}
+        <path d="${pathD}" fill="none" stroke="#9ed0ff" stroke-width="2.6" stroke-linecap="round" filter="url(#lunGlow)"/>
+        ${stripHtml}
+        ${keyStageMarkers}
+        ${_KEY_STAGES.includes(nowStageName) ? '' : `<g transform="translate(${(nowX - 9).toFixed(1)},${(nowY - 9).toFixed(1)})" style="animation:moon-float 3.2s ease-in-out infinite;">
+          <circle cx="9" cy="9" r="13" fill="none" stroke="rgba(245,205,90,.5)" stroke-width="1.4" filter="url(#lunGlow)"/>
+          ${_lunMoonIconSvg(9, _LUNATION_STAGE_FRAC[nowStageName])}
+        </g>`}
       </svg>
-      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;background:rgba(158,208,255,.08);border:1px solid rgba(158,208,255,.28);border-radius:12px;padding:8px 12px;">
-        <span style="font-size:14px;">🌙</span>
-        <span style="font-size:11.5px;color:#9badcf;">지금은</span>
-        <span style="font-size:13px;font-weight:700;color:#cfe6ff;">${nowStageName}</span>
-        <span style="font-size:11px;color:#7d87ab;">(만 ${Math.floor(currentAgeYears)}세)</span>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px;background:rgba(158,208,255,.1);border:1px solid rgba(158,208,255,.3);border-radius:12px;padding:8px 12px;">
+        ${_lunMoonIconSvg(8, _LUNATION_STAGE_FRAC[nowStageName])}
+        <span style="font-size:11.5px;color:#b8a98a;">지금은</span>
+        <span style="font-size:13px;font-weight:700;color:#ffe9a8;">${nowStageName}</span>
+        <span style="font-size:11px;color:#b8a98a;">— ${_LUNATION_STAGE_DESC[nowStageName] || ''}</span>
+        <span style="font-size:11px;font-weight:700;color:#fff7e0;">(만 ${currentAgeYears.toFixed(1)}세)</span>
+      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;">
+        ${_LUNATION_STAGE_ORDER.filter(name => stages.some(s => s.stageName === name)).map(name => {
+          const isNow = name === nowStageName;
+          return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:9.5px;padding:3px 9px;border-radius:20px;white-space:nowrap;
+            background:${isNow ? 'rgba(158,208,255,.18)' : 'rgba(255,255,255,.03)'};
+            border:1px solid ${isNow ? 'rgba(158,208,255,.5)' : 'rgba(158,208,255,.15)'};
+            color:${isNow ? '#e8d9b0' : '#8d8270'};">${_lunMoonIconSvg(6.5, _LUNATION_STAGE_FRAC[name])}
+            <b style="color:${isNow ? '#ffe9a8' : '#a8946a'};">${name}</b> ${_LUNATION_STAGE_DESC[name] || ''}
+          </span>`;
+        }).join('')}
       </div>
     </div>
   `;
