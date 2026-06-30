@@ -2316,8 +2316,8 @@ const _DIGNITY_COLOR = {
   detriment: '#ff9e7a', fall: '#ff7a7a'
 };
 const _DIGNITY_KR = {
-  rulership: '본진', exaltation: '강함', peregrine: '중립',
-  detriment: '변칙', fall: '약함'
+  rulership: '본진 Domicile', exaltation: '강함 Exaltation', peregrine: '중립 Peregrine',
+  detriment: '변칙 Detriment', fall: '약함 Fall'
 };
 function _profectionWealthTimelineHtml(profectionWealth, ctx) {
   if (!profectionWealth || !Array.isArray(profectionWealth.activeAges) || !profectionWealth.activeAges.length) return '';
