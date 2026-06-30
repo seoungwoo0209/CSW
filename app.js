@@ -2329,17 +2329,33 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
   const dim = '#695e84';
   const shownAges = activeAges.filter(a => a <= maxAge);
 
+  // 출생년도 역산 — 마커·년도 라벨 모두에 필요하므로 먼저 계산
+  const currentYear = new Date().getFullYear();
+  const birthYear = nowAge > 0 ? Math.round(currentYear - nowAge) : null;
+
+  // 타임라인 높이 56px: 상단 20px(년도 라벨) + 중단(선+점) + 하단 14px(년도 라벨)
+  // 활성 점은 top:54%(중앙선)에, 년도는 dot 아래 bottom:2px에 표기
   const markers = shownAges.map(age => {
     const leftPct = (age / maxAge) * 100;
-    return `<div style="position:absolute;left:${leftPct}%;top:50%;transform:translate(-50%,-50%);">
-      <div style="width:11px;height:11px;border-radius:50%;background:${dc};box-shadow:0 0 8px ${dc}99;border:1.5px solid #0a0d18;"></div>
+    const year = birthYear ? birthYear + age : null;
+    const isPast = age <= nowAge - 1;
+    const yearColor = isPast ? '#6a7a5a' : '#8a9060';
+    return `<div style="position:absolute;left:${leftPct}%;top:0;bottom:0;">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);">
+        <div style="width:11px;height:11px;border-radius:50%;background:${dc};box-shadow:0 0 8px ${dc}99;border:1.5px solid #0a0d18;"></div>
+      </div>
+      ${year ? `<div style="position:absolute;bottom:1px;left:50%;transform:translateX(-50%);font-size:7.5px;color:${yearColor};white-space:nowrap;">${year}</div>` : ''}
     </div>`;
   }).join('');
 
+  // 현재 나이 마커 — "현재나이 / X세" 두 줄 라벨
   const nowLeftPct = nowAge > 0 ? (Math.min(nowAge, maxAge) / maxAge * 100).toFixed(1) : null;
   const nowMarkerHtml = nowLeftPct ? `
-    <div style="position:absolute;left:${nowLeftPct}%;top:0;bottom:0;width:1px;background:rgba(255,211,106,.35);"></div>
-    <div style="position:absolute;left:${nowLeftPct}%;top:2px;transform:translateX(-50%);font-size:8.5px;color:#ffd36a;font-weight:600;white-space:nowrap;">${nowAge.toFixed(1)}세</div>
+    <div style="position:absolute;left:${nowLeftPct}%;top:0;bottom:0;width:1px;background:rgba(255,211,106,.35);z-index:2;"></div>
+    <div style="position:absolute;left:${nowLeftPct}%;top:2px;transform:translateX(-50%);text-align:center;white-space:nowrap;z-index:4;">
+      <div style="font-size:7.5px;color:#ffd36a;font-weight:700;line-height:1.3;">현재나이</div>
+      <div style="font-size:8.5px;color:#ffd36a;font-weight:600;line-height:1.2;">${nowAge.toFixed(1)}세</div>
+    </div>
     <div style="position:absolute;left:${nowLeftPct}%;top:50%;transform:translate(-50%,-50%);z-index:3;">
       <div style="width:13px;height:13px;border-radius:50%;background:#fffae0;box-shadow:0 0 8px #ffd36a;border:2px solid #ffd36a;"></div>
     </div>` : '';
@@ -2349,14 +2365,11 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
     return `<span style="position:absolute;left:${leftPct}%;transform:translateX(-50%);font-size:9px;color:#7d87ab;">${age}세</span>`;
   }).join('');
 
-  // 실제 년도 계산 (현재 연도 - 현재 나이로 출생년도 역산)
-  const currentYear = new Date().getFullYear();
-  const birthYear = nowAge > 0 ? Math.round(currentYear - nowAge) : null;
+  // 하단 요약 줄 — 지난/다음 연도 텍스트
   let yearRowHtml = '';
   if (birthYear) {
     const yearEntries = shownAges.map(age => ({ age, year: birthYear + age }));
-    const pastYears = yearEntries.filter(e => e.age <= nowAge - 1).reverse(); // 최근 순
-    const nextEntry = yearEntries.find(e => e.age > nowAge);
+    const pastYears = yearEntries.filter(e => e.age <= nowAge - 1).reverse();
     const futureYears = yearEntries.filter(e => e.age > nowAge);
     const pastHtml = pastYears.slice(0, 4).map((e, i) =>
       `<span style="color:${i === 0 ? '#b8a97a' : '#6a7a9a'};font-size:${i === 0 ? '11' : '10'}px;">${e.year}년</span>`
@@ -2388,7 +2401,7 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
   return `
     <div style="margin-bottom:18px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(255,211,106,.07),rgba(10,13,24,.2));border:1px solid rgba(255,211,106,.22);">
       <div style="color:#ffd36a;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:10px;">💰 재물운 타이밍 — 프로펙션(2하우스)</div>
-      <div style="position:relative;height:40px;margin:0 6px 4px;">
+      <div style="position:relative;height:56px;margin:0 6px 4px;">
         <div style="position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(255,255,255,.1);transform:translateY(-50%);"></div>
         ${markers}
         ${nowMarkerHtml}
