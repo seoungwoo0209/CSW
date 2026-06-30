@@ -2349,6 +2349,28 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
     return `<span style="position:absolute;left:${leftPct}%;transform:translateX(-50%);font-size:9px;color:#7d87ab;">${age}세</span>`;
   }).join('');
 
+  // 실제 년도 계산 (현재 연도 - 현재 나이로 출생년도 역산)
+  const currentYear = new Date().getFullYear();
+  const birthYear = nowAge > 0 ? Math.round(currentYear - nowAge) : null;
+  let yearRowHtml = '';
+  if (birthYear) {
+    const yearEntries = shownAges.map(age => ({ age, year: birthYear + age }));
+    const pastYears = yearEntries.filter(e => e.age <= nowAge - 1).reverse(); // 최근 순
+    const nextEntry = yearEntries.find(e => e.age > nowAge);
+    const futureYears = yearEntries.filter(e => e.age > nowAge);
+    const pastHtml = pastYears.slice(0, 4).map((e, i) =>
+      `<span style="color:${i === 0 ? '#b8a97a' : '#6a7a9a'};font-size:${i === 0 ? '11' : '10'}px;">${e.year}년</span>`
+    ).join('<span style="color:#3a4560;margin:0 3px;">·</span>');
+    const futureHtml = futureYears.slice(0, 4).map((e, i) =>
+      `<span style="color:${i === 0 ? '#ffd36a' : '#7a8aaa'};font-weight:${i === 0 ? '700' : '400'};font-size:${i === 0 ? '11.5' : '10'}px;">${e.year}년${i === 0 ? ' →' : ''}</span>`
+    ).join('<span style="color:#3a4560;margin:0 3px;">·</span>');
+    yearRowHtml = `
+    <div style="margin-top:10px;padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);display:flex;flex-wrap:wrap;gap:6px 0;align-items:center;">
+      ${pastYears.length ? `<span style="font-size:9.5px;color:#5a6a8a;margin-right:5px;flex-shrink:0;">지난</span>${pastHtml}<span style="color:#2a3450;margin:0 8px;">│</span>` : ''}
+      <span style="font-size:9.5px;color:#8a7a50;margin-right:5px;flex-shrink:0;">다음</span>${futureHtml}
+    </div>`;
+  }
+
   let accStr = '';
   if (ctx && rulerKey && ctx.natal?.[rulerKey]) {
     const acc = _zrAccidentalDignity(rulerKey, ctx.natal[rulerKey], ctx.ascSignIndex, ctx.isDayChart, ctx.sunLongitude);
@@ -2372,6 +2394,7 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
         ${nowMarkerHtml}
       </div>
       <div style="position:relative;height:14px;margin:2px 6px 0;">${ageRow}</div>
+      ${yearRowHtml}
       <div style="margin-top:14px;background:rgba(255,211,106,.08);border:1px solid rgba(255,211,106,.28);border-radius:12px;padding:10px 12px;">
         <div style="font-size:13px;font-weight:700;color:#ffe9b8;margin-bottom:5px;">${glyph}${rulerLabel} (${rulerNatalSign}) <span style="color:${dc};">${dl}</span></div>
         ${accStr ? `<div style="font-size:11px;color:${dim};margin-bottom:3px;">우연적: ${accStr}</div>` : ''}
