@@ -127,11 +127,13 @@ export default async function handler(req, res) {
     const ZR_DIGNITY_KR = { rulership:'본진(가장 강함)', exaltation:'강함',
       detriment:'변칙(약화됨)', fall:'약함(가장 약함)', peregrine:'중립' };
     const ZR_SECT_DAY = ['sun','jupiter','saturn'], ZR_SECT_NIGHT = ['moon','venus','mars'];
-    const ZR_HOUSE_TIER_KR = { angular:'앵글(강함)', succedent:'보통', cadent:'약함' };
+    const ZR_HOUSE_TIER_KR = { angular:'앵글(강함)', succedent:'석시던트(보통)', cadent:'케이던트(약함)' };
     const ZR_COMBUSTION_KR = { none:'', cazimi:'카지미(매우 강함)', combust:'컴버스천(약화)', underbeams:'빔 아래(약간 약화)' };
-    const ZR_SECT_KR = { infavor:'섹트상 유리', contrary:'섹트상 불리', neutral:'섹트 중립' };
+    const ZR_SECT_KR = { infavor:'In Sect', contrary:'Out of Sect', neutral:'Sect 중립' };
+    const ZR_MOTION_KR = { direct:'순행', station_direct:'정류(SD)', station_retro:'정류(SR)', retrograde:'역행' };
     const ascSignIndexForZR = angles?.asc?.signIndex ?? 0;
-    const isDayChartForZR = (natal?.sun?.house ?? 0) >= 7 && (natal?.sun?.house ?? 0) <= 12;
+    const sunSignIndexForZR = natal?.sun?.signIndex ?? 0;
+    const isDayChartForZR = ((sunSignIndexForZR - ascSignIndexForZR + 12) % 12) + 1 >= 7;
     const sunLongitudeForZR = natal?.sun?.longitude ?? 0;
     function zrAccidentalDignity(planetKey, planetNatal) {
       const house = ((planetNatal.signIndex - ascSignIndexForZR + 12) % 12) + 1;
@@ -144,11 +146,10 @@ export default async function handler(req, res) {
       let sect = 'neutral';
       if (ZR_SECT_DAY.includes(planetKey)) sect = isDayChartForZR ? 'infavor' : 'contrary';
       else if (ZR_SECT_NIGHT.includes(planetKey)) sect = isDayChartForZR ? 'contrary' : 'infavor';
-      return { house, houseTier, combustion, sect, retrograde: !!planetNatal.retrograde };
+      return { house, houseTier, combustion, sect, motion: planetNatal.motion || 'direct' };
     }
     function zrAccidentalStr(acc) {
-      const parts = [`${acc.house}H(${ZR_HOUSE_TIER_KR[acc.houseTier]})`, ZR_SECT_KR[acc.sect]];
-      if (acc.retrograde) parts.push('역행');
+      const parts = [`${acc.house}H(${ZR_HOUSE_TIER_KR[acc.houseTier]})`, ZR_SECT_KR[acc.sect], ZR_MOTION_KR[acc.motion] || '순행'];
       if (acc.combustion !== 'none') parts.push(ZR_COMBUSTION_KR[acc.combustion]);
       return parts.join(' · ');
     }
@@ -223,6 +224,39 @@ export default async function handler(req, res) {
     }
     const zrCrossStr = buildZRCrossStr();
 
+    // ── 네이탈 12하우스 위계 전체 분석 (Gemini에 전달)
+    function buildNatalHouseStr() {
+      const lines = [];
+      for (let h = 1; h <= 12; h++) {
+        const signIndex = (ascSignIndexForZR + h - 1) % 12;
+        const info = zrPeriodInfo(signIndex);
+        lines.push(
+          `${h}H(${ZR_SIGNS_KR[signIndex]}·${info.houseMeaning}): 지배성=${info.rulerLabel} | 본질적위계=${ZR_DIGNITY_KR[info.dignity]} | 우연적=${zrAccidentalStr(info.accidental)} | 각도=${zrAspectStr(info)}`
+        );
+      }
+      return lines.join('\n');
+    }
+    const natalHouseStr = buildNatalHouseStr();
+
+    // ── 포르투나/스피릿 전체 L1 타임라인 (인생 전 구간)
+    function buildFullL1Str(zr, label) {
+      if (!zr?.l1Periods?.length) return '(데이터 없음)';
+      const nowAge = lunationCycle?.currentAgeYears ?? 0;
+      return zr.l1Periods.map(l1 => {
+        const info = zrPeriodInfo(l1.signIndex);
+        const isCurrent = l1.fromAge <= nowAge && nowAge < l1.toAge;
+        const markers = (l1.l2 || []).filter(s => s.marker).map(s => {
+          const mi = zrPeriodInfo(s.signIndex);
+          const tag = s.toAge <= nowAge ? '지남' : s.fromAge <= nowAge ? '현재' : '예정';
+          return `    [${ZR_MARKER_KR[s.marker]}·${tag}] ${s.fromAge.toFixed(1)}세: ${mi.house}H(${mi.houseMeaning}) 지배성=${mi.rulerLabel}(${ZR_DIGNITY_KR[mi.dignity]}) 우연적=${zrAccidentalStr(mi.accidental)}`;
+        });
+        return `${isCurrent ? '★현재▶' : '  '}${ZR_SIGNS_KR[l1.signIndex]} ${l1.fromAge.toFixed(1)}~${l1.toAge.toFixed(1)}세: ${info.house}H(${info.houseMeaning}) 지배성=${info.rulerLabel}(${ZR_DIGNITY_KR[info.dignity]}) 우연적=${zrAccidentalStr(info.accidental)} 각도=${zrAspectStr(info)}` +
+          (markers.length ? '\n' + markers.join('\n') : '');
+      }).join('\n');
+    }
+    const fortuneFullStr = buildFullL1Str(zrFortune, '포르투나');
+    const spiritFullStr  = buildFullL1Str(zrSpirit,  '스피릿');
+
     // ── 노드 문자열
     const nodesStr = nodes
       ? `북노드(☊): ${nodes.north.sign} ${nodes.north.degree}°${nodes.north.minute}'\n` +
@@ -282,53 +316,78 @@ ${question}
 - 친근하고 따뜻한 톤으로 작성하세요.`;
 
     } else {
-      // 전체 리딩 모드 — 진행월령 + 프로펙션 재물 기반 인생 전체 흐름
+      // 전체 리딩 모드 — 네이탈 위계 + 전체 ZR 타임라인 + 진행월령 + 프로펙션 종합
       prompt = baseData + `
 
-[리딩 지침 — 반드시 준수]
-- 자기소개 문장 없이 바로 시작하세요.
-- 결과 텍스트에 행성 이름(태양·달·목성 등), 사인 이름(양자리·전갈자리 등), 각도 숫자, 기호(☌△□☍⚹), 하우스 번호를 절대 쓰지 마세요.
-- 대신 그 의미와 영향을 자연스러운 한국어 문장으로만 표현하세요.
-  예시) X "목성이 10하우스에서 MC와 트라인" → O "사회적 성취와 커리어 확장의 에너지가 강하게 작동하는 시기"
-  예시) X "프로그레션 달이 양자리 5하우스" → O "지금은 새로운 도전에 본능적으로 끌리고 창의적 표현 욕구가 강해지는 때"
-- 완성된 문장으로 마무리하고 중간에 절대 끊지 마세요.
+[네이탈 12하우스 위계 전체 분석 — 인생의 타고난 구조]
+(각 하우스의 지배성, 본질적위계=자기별자리/승격/변칙/약함/중립, 우연적위계=하우스강도·섹트·운동상태·컴버스천, 주요각도 포함)
+${natalHouseStr}
 
-[출력 양식 — 반드시 아래 헤드라인으로 작성]
-
-## 🌌 인생 전체 흐름
-
-[진행월령 데이터 — 인생의 심리적 계절 흐름]
+[진행월령 — 인생 전체 심리적 계절]
 ${lunationStr}
 
 [프로펙션 재물(2하우스) 데이터]
 ${profectionStr}
 
-[ZR(조디악 릴리징) 포르투나 — 재물·몸 타이밍]
-${zrFortuneStr}
+[ZR 포르투나(재물·몸) — 인생 전체 L1 타임라인 + 전환점]
+(★현재▶ 표시가 현재 구간. [절정]·[결속풀림] 마커가 핵심 전환점)
+${fortuneFullStr}
 
-[ZR(조디악 릴리징) 스피릿 — 행위·직업 타이밍]
-${zrSpiritStr}
+[ZR 스피릿(행위·직업) — 인생 전체 L1 타임라인 + 전환점]
+${spiritFullStr}
 
-[ZR 포르투나×스피릿 교차신호 — 5년 내 같은 하우스로 겹치는 구간]
+[ZR 포르투나×스피릿 교차신호 — 5년 내 같은 하우스 겹치는 구간]
 ${zrCrossStr}
 
-위 다섯 가지 데이터를 모두 종합해서, 이 사람의 인생 전체를 가로지르는 큰 흐름을 하나의 서사로 써주세요:
-· 진행월령 8단계가 보여주는 인생의 시기별 성격 변화 — 지금이 어느 단계인지, 그 단계가 어떤 의미인지 구체적으로
-· ZR의 "절정"·"결속풀림" 마커가 가장 구체적인 전환 시점이니 이를 중심으로 짚어주고(포르투나=재물·몸, 스피릿=행위·직업 양쪽 다 확인해서, 같은 시기에 겹치면 "외부 기회와 본인 행동력이 동시에 정점"이라는 식으로, 안 겹치면 각자 의미를 따로), 프로펙션 재물 활성화 나이와 진행월령 단계는 그 흐름을 보강하는 맥락으로 쓰세요
-· ZR 각 시기의 지배성에는 본질적 위계(자기별자리/승격/디트리먼트/함몰/중립)와 우연적 위계(하우스 위치·역행·컴버스천·섹트) 두 가지가 같이 나와요. 본질적 위계가 더 근본적인 성격이고 우연적 위계는 그 위에 얹히는 부가적 컨디션이니, 둘이 다르게 나오면(예: 본질적으론 중립인데 우연적으론 강함) "타고난 그릇은 평범하지만 지금 처한 상황은 유리하다"처럼 우선순위를 두고 종합해서 설명하세요
-· 포르투나×스피릿 교차신호가 있으면(5년 내 교차 없음이 아니라면), 두 독립적인 계산이 같은 결론을 가리키는 더 강한 신호로 특별히 짚어주세요
-· 위에 나온 재물운 활성화 나이들이 실제로 이 사람 인생에서 어떤 시기들인지(이미 지난 나이는 "그때 이런 흐름이 있었을 것"으로, 앞으로 올 나이는 "다가올 시기"로) 자연스럽게 짚어주기
-· 재물 지배성의 위계(자기 별자리/승격이면 타고난 재물 그릇이 좋다는 뜻, 디트리먼트/함몰이면 애를 먹지만 노력으로 극복 가능, 중립이면 평범하게 안정적)와 그 행성의 주요각이 보여주는 재물운의 "질감"(꾸준한지, 들쑥날쑥한지, 마찰이 있는지)
-· 타고난 강점과 반복되는 과제, 인생에서 중요한 성장 방향
-이 섹션에서는 나이 숫자를 자연스럽게 언급해도 됩니다(다른 곳과 달리 시기를 짚어주는 게 핵심이므로).
-행성 이름·사인 이름·각도 숫자·기호·하우스 번호는 여기서도 쓰지 말고 의미만 풀어서 설명하세요.
-500자 이상 충분히 써주세요.
+──────────────────────────────────────────
+위 모든 데이터를 완전히 읽고 소화한 뒤, 아래 지침에 따라 이 사람의 인생 전체 흐름을 써주세요.
 
-[절대 금지 사항]
-- 행성 이름, 사인 이름, 각도 숫자, 기호, 하우스 번호 언급 금지(나이 숫자는 허용)
-- "새로운 시작", "긍정적인 변화", "신중함이 필요" 같은 모호한 표현 금지
-- 누구에게나 해당되는 일반적인 조언 금지
-- 반드시 이 사람의 데이터에서 근거를 찾아 구체적으로 써야 함`;
+[작성 지침 — 반드시 준수]
+1. 자기소개 없이 바로 시작.
+2. 행성·별자리·각도 숫자·기호·하우스 번호를 절대 쓰지 말고, 의미만 자연스러운 한국어로 표현.
+   예) X "목성이 4H 앵글" → O "가정과 뿌리 영역에서 확장 에너지가 강하게 작동"
+3. 완성된 문장으로 마무리. 중간에 끊지 말 것.
+4. 나이 숫자는 자유롭게 써도 됨(시기 특정이 핵심).
+
+[출력 구조 — 반드시 아래 순서로]
+
+## 타고난 구조 — 이 사람의 그릇
+
+네이탈 12하우스 데이터를 바탕으로:
+· 어떤 삶의 영역(자아/재물/관계/직업/성취 등)이 타고나게 유리한지(지배성이 앵글+본질위계 좋음), 어느 영역이 구조적으로 약한지(케이던트+약함·변칙) 구체적으로 서술
+· 특히 강한 하우스(지배성이 본진/승격 + 앵글 + In Sect + 순행이 겹치는 곳)와 약한 하우스(케이던트 + 약함/변칙 + Out of Sect + 컴버스천 등 악조건 겹치는 곳)를 명확히 짚어서, 이 사람이 어떤 분야에서 자연스럽게 힘을 발휘하고 어떤 분야에서 노력이 필요한지 설명
+· 본질적 위계와 우연적 위계가 다를 때(예: 본진인데 케이던트·Out of Sect)는 "타고난 자질은 강하지만 외부 여건·상황에서 그 힘을 발휘하기 어려운 구조" 같이 두 레이어를 구분해서 설명
+· 운동상태(정류SD=역행→순행 직전 가장 강한 집중, 역행=내향화)가 특이한 행성이 있으면 그 의미도 언급
+
+## 인생의 큰 흐름 — 시기별 서사
+
+ZR 포르투나(재물·몸)와 스피릿(행위·직업)의 전체 L1 타임라인을 인생 챕터별로 서술:
+· 각 L1 대시기가 어떤 삶의 영역을 활성화하는지, 그 시기의 지배성 컨디션(본질적·우연적 위계 종합)이 좋으면 "그 영역에서 외부 기회와 내부 역량이 잘 맞아떨어지는 시기", 나쁘면 "기회는 오지만 실행력이나 여건이 받쳐주지 않는 시기" 같이 풀어서 서술
+· [절정] 마커: 그 시기의 에너지가 정점에 달하는 순간 — 이미 지난 것은 "그때 어떤 일이 있었을 것"으로, 앞으로 올 것은 "어떤 흐름이 다가온다"로
+· [결속풀림] 마커: 큰 전환점, 한 챕터가 끝나고 다음이 시작되는 분기점
+· 포르투나와 스피릿이 같은 시기에 같은 영역을 가리키면(교차신호) 특별히 강조 — "재물·몸과 행동력·직업이 동시에 같은 방향을 향하는, 인생에서 보기 드문 강한 정렬"
+· 진행월령 단계(심리적 계절)와 ZR 시기가 겹치면 그 시너지·충돌도 언급
+
+## 지금 이 순간
+
+현재 ZR 대시기·소시기 + 현재 진행월령 단계 + 프로펙션 활성 하우스를 종합해서:
+· 지금이 인생에서 어떤 위치인지 (씨 뿌리는 시기인지, 수확기인지, 전환점인지)
+· 현재 컨디션의 강점과 약점 (지금 활성화된 영역의 위계가 좋은지 나쁜지)
+· 가장 가까운 전환점(절정·결속풀림)이 언제 어떤 식으로 오는지
+
+## 재물 흐름의 질감
+
+프로펙션 재물 데이터와 ZR 포르투나를 종합해서:
+· 타고난 재물 그릇(지배성 본질위계)과 재물을 담는 그릇의 컨디션(우연적 위계·각도)
+· 재물 활성화 나이들이 이 사람 인생에서 어떤 시기들과 겹치는지
+· 재물운의 "질감" — 꾸준히 쌓이는 타입인지, 크게 들어왔다 나가는 타입인지, 특정 시기에 집중되는지
+
+[절대 금지]
+- 행성명·별자리명·각도 숫자·기호·하우스 번호
+- "새로운 시작", "긍정적 변화", "신중함 필요" 같은 뭉뚱그린 표현
+- 누구에게나 해당되는 일반 조언
+- 데이터 근거 없는 추측
+1000자 이상 충분히 써주세요.`;
     }
 
     // ── Gemini API 호출 (시간차 이중 요청 — 1번이 실패/5초경과 시 2번 발사, 먼저 성공하는 응답 채택)
