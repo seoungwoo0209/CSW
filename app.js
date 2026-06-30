@@ -3569,6 +3569,40 @@ function _natalHouseAnalysisHtml(astroResult) {
     </div>`;
   }
 
+  // 외행성 — 지배성 없음, 위치·운동상태·각도만 표시
+  const OUTER_PLANETS = [
+    { key: 'uranus',  kr: '천왕성', glyph: '♅' },
+    { key: 'neptune', kr: '해왕성', glyph: '♆' },
+    { key: 'pluto',   kr: '명왕성', glyph: '♇' },
+  ];
+  let outerRows = '';
+  for (const { key, kr, glyph } of OUTER_PLANETS) {
+    const p = ctx.natal[key];
+    if (!p) continue;
+    const signName = _ZR_SIGN_SHORT[p.signIndex ?? 0];
+    const house = p.house ?? (((p.signIndex ?? 0) - ctx.ascSignIndex + 12) % 12 + 1);
+    const houseMeaning = _ZR_HOUSE_MEANING[house - 1] || '';
+    const motionHtml = _ZR_MOTION_HTML[p.motion || 'direct'];
+    const aspects = (ctx.natalAspectsFull || []).filter(a => a.point1 === kr || a.point2 === kr);
+    const aspectStr = aspects.length
+      ? aspects.slice(0, 4).map(a => {
+          const other = a.point1 === kr ? a.point2 : a.point1;
+          return `${other}${a.symbol}${a.aspect}(${a.orb}°)`;
+        }).join(' · ')
+      : '주요각 없음';
+    outerRows += `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:6px 10px;border-radius:7px;border-bottom:1px solid rgba(255,255,255,.04);">
+      <div style="min-width:128px;flex-shrink:0;padding-top:1px;">
+        <span style="display:inline-block;background:rgba(255,255,255,.06);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;color:#8888b0;letter-spacing:.4px;margin-right:4px;">${house}H</span>
+        <span style="font-size:11px;color:#7878a0;">${signName} · ${houseMeaning}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:#9898c0;margin-bottom:3px;">${glyph} ${kr} · ${motionHtml}</div>
+        <div style="font-size:10.5px;color:${dim};">각도: ${aspectStr}</div>
+      </div>
+    </div>`;
+  }
+
   return `
   <div style="background:rgba(13,19,48,.82);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 16px 12px;margin-bottom:18px;box-shadow:0 4px 24px rgba(0,0,0,.35);">
     <div style="margin-bottom:12px;">
@@ -3577,6 +3611,10 @@ function _natalHouseAnalysisHtml(astroResult) {
       <div style="font-size:11px;color:${dim};margin-top:2px;">각 하우스 지배성의 본질적·우연적 위계와 주요 각도</div>
     </div>
     ${rows}
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.07);">
+      <div style="font-size:9px;color:${dim};letter-spacing:1.5px;margin:4px 10px 6px;text-transform:uppercase;">외행성 · 세대적 특성</div>
+      ${outerRows}
+    </div>
   </div>`;
 }
 
