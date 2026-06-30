@@ -2314,41 +2314,63 @@ const _DIGNITY_KR = {
   rulership: '본진', exaltation: '강함', peregrine: '중립',
   detriment: '변칙', fall: '약함'
 };
-function _profectionWealthTimelineHtml(profectionWealth) {
+function _profectionWealthTimelineHtml(profectionWealth, ctx) {
   if (!profectionWealth || !Array.isArray(profectionWealth.activeAges) || !profectionWealth.activeAges.length) return '';
-  const { rulerLabel, rulerNatalSign, dignity, activeAges, rulerAspects } = profectionWealth;
+  const { rulerKey, rulerLabel, rulerNatalSign, dignity, activeAges, rulerAspects } = profectionWealth;
+  const nowAge = ctx?.nowAge ?? 0;
   const maxAge = 100;
-  const color = _DIGNITY_COLOR[dignity] || '#9aa3c0';
+  const dc = _DIGNITY_COLOR[dignity] || '#9aa3c0';
+  const dl = _DIGNITY_KR[dignity] || '중립';
+  const dim = '#695e84';
   const shownAges = activeAges.filter(a => a <= maxAge);
 
   const markers = shownAges.map(age => {
     const leftPct = (age / maxAge) * 100;
-    return `
-      <div style="position:absolute;left:${leftPct}%;top:50%;transform:translate(-50%,-50%);">
-        <div style="width:11px;height:11px;border-radius:50%;background:${color};box-shadow:0 0 8px ${color}99;border:1.5px solid #0a0d18;"></div>
-      </div>
-    `;
+    return `<div style="position:absolute;left:${leftPct}%;top:50%;transform:translate(-50%,-50%);">
+      <div style="width:11px;height:11px;border-radius:50%;background:${dc};box-shadow:0 0 8px ${dc}99;border:1.5px solid #0a0d18;"></div>
+    </div>`;
   }).join('');
+
+  const nowLeftPct = nowAge > 0 ? (Math.min(nowAge, maxAge) / maxAge * 100).toFixed(1) : null;
+  const nowMarkerHtml = nowLeftPct ? `
+    <div style="position:absolute;left:${nowLeftPct}%;top:0;bottom:0;width:1px;background:rgba(255,211,106,.35);"></div>
+    <div style="position:absolute;left:${nowLeftPct}%;top:2px;transform:translateX(-50%);font-size:8.5px;color:#ffd36a;font-weight:600;white-space:nowrap;">${nowAge.toFixed(1)}세</div>
+    <div style="position:absolute;left:${nowLeftPct}%;top:50%;transform:translate(-50%,-50%);z-index:3;">
+      <div style="width:13px;height:13px;border-radius:50%;background:#fffae0;box-shadow:0 0 8px #ffd36a;border:2px solid #ffd36a;"></div>
+    </div>` : '';
 
   const ageRow = [0, 20, 40, 60, 80, 100].map(age => {
     const leftPct = (age / maxAge) * 100;
     return `<span style="position:absolute;left:${leftPct}%;transform:translateX(-50%);font-size:9px;color:#7d87ab;">${age}세</span>`;
   }).join('');
 
-  const aspectStr = (rulerAspects || []).slice(0, 3)
-    .map(a => `${a.point1 === rulerLabel ? a.point2 : a.point1}(${a.aspect})`).join(', ');
+  let accStr = '';
+  if (ctx && rulerKey && ctx.natal?.[rulerKey]) {
+    const acc = _zrAccidentalDignity(rulerKey, ctx.natal[rulerKey], ctx.ascSignIndex, ctx.isDayChart, ctx.sunLongitude);
+    accStr = _zrAccidentalStr(acc);
+  }
+
+  const glyph = _ZR_PLANET_GLYPH[rulerKey] || '';
+  const aspectStr = (rulerAspects || []).length
+    ? rulerAspects.slice(0, 4).map(a => {
+        const other = a.point1 === rulerLabel ? a.point2 : a.point1;
+        return `${other}${a.symbol || ''}${a.aspect}(${a.orb}°)`;
+      }).join(' · ')
+    : '주요각 없음';
 
   return `
     <div style="margin-bottom:18px;padding:16px;border-radius:14px;background:linear-gradient(160deg,rgba(255,211,106,.07),rgba(10,13,24,.2));border:1px solid rgba(255,211,106,.22);">
       <div style="color:#ffd36a;font-size:12.5px;font-weight:700;letter-spacing:.3px;margin-bottom:10px;">💰 재물운 타이밍 — 프로펙션(2하우스)</div>
-      <div style="position:relative;height:24px;margin:0 6px 4px;">
+      <div style="position:relative;height:40px;margin:0 6px 4px;">
         <div style="position:absolute;left:0;right:0;top:50%;height:2px;background:rgba(255,255,255,.1);transform:translateY(-50%);"></div>
         ${markers}
+        ${nowMarkerHtml}
       </div>
       <div style="position:relative;height:14px;margin:2px 6px 0;">${ageRow}</div>
-      <div style="margin-top:12px;background:rgba(255,211,106,.08);border:1px solid rgba(255,211,106,.28);border-radius:12px;padding:8px 12px;">
-        <div style="font-size:13px;font-weight:700;color:#ffe9b8;margin-bottom:4px;">${rulerLabel}(${rulerNatalSign}) · ${_DIGNITY_KR[dignity] || '중립'}</div>
-        <div style="font-size:11px;color:#9badcf;">12년마다 재물운이 활성화돼요${aspectStr ? ` · 주요각: ${aspectStr}` : ''}</div>
+      <div style="margin-top:14px;background:rgba(255,211,106,.08);border:1px solid rgba(255,211,106,.28);border-radius:12px;padding:10px 12px;">
+        <div style="font-size:13px;font-weight:700;color:#ffe9b8;margin-bottom:5px;">${glyph}${rulerLabel} (${rulerNatalSign}) <span style="color:${dc};">${dl}</span></div>
+        ${accStr ? `<div style="font-size:11px;color:${dim};margin-bottom:3px;">우연적: ${accStr}</div>` : ''}
+        <div style="font-size:11px;color:${dim};">각도: ${aspectStr}</div>
       </div>
     </div>
   `;
@@ -3515,7 +3537,7 @@ function renderAstroZRCards(astroData) {
 
   const zrCtx = _zrBuildCtx(astroData);
   const lunationHtml      = _lunationCycleWaveHtml(astroData.lunationCycle);
-  const profectionHtml    = _profectionWealthTimelineHtml(astroData.profectionWealth);
+  const profectionHtml    = _profectionWealthTimelineHtml(astroData.profectionWealth, zrCtx);
   const houseAnalysisHtml = _natalHouseAnalysisHtml(astroData);
   const zrFortuneHtml  = _zodiacalReleasingHtml(astroData.zrFortune, {
     eyebrowKr: '재신지운', eyebrowHanja: '財身之運', title: '부와 신체의 흐름',
