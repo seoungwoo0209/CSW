@@ -350,12 +350,17 @@ function findAspectsBetweenPlanets(aspects, planetA, planetB) {
     (a.point1 === `나 ${planetB}` && a.point2 === `상대 ${planetA}`)
   );
 }
-function aspectPairScore(aspects, pairs) {
+// oppAsPos: 오포지션을 -1 대신 +1로 처리할 쌍 목록 (전통적으로 자석 인력을 만드는 각도)
+// sqAsNeutral: 스퀘어를 -1 대신 0으로 처리할 쌍 목록 (긴장감이지만 끌림도 동반)
+function aspectPairScore(aspects, pairs, { oppAsPos = [], sqAsNeutral = [] } = {}) {
   let s = 0;
   for (const [pa, pb] of pairs) {
+    const isOppPos = oppAsPos.some(([a, b]) => (a === pa && b === pb) || (a === pb && b === pa));
+    const isSqNeutral = sqAsNeutral.some(([a, b]) => (a === pa && b === pb) || (a === pb && b === pa));
     for (const a of findAspectsBetweenPlanets(aspects, pa, pb)) {
       if (a.aspect === '트라인' || a.aspect === '섹스타일') s += 1;
-      if (a.aspect === '스퀘어' || a.aspect === '어포지션') s -= 1;
+      if (a.aspect === '어포지션') s += isOppPos ? 1 : -1;
+      if (a.aspect === '스퀘어') s += isSqNeutral ? 0 : -1;
     }
   }
   return s;
@@ -373,17 +378,29 @@ function houseOverlayBonus(houseOverlay, partnerTimeUnknown, planetKeys, targetH
 // 강함 쪽으로 과하게 치우치지 않게 한다(시뮬레이션으로 확인).
 // 첫인상 끌림 — ASC(겉모습·첫 느낌)↔금성, 금성↔금성(서로의 미적 취향), 1하우스(첫인상의 집) 오버레이
 function firstImpressionScore(aspects, houseOverlay, partnerTimeUnknown) {
-  return aspectPairScore(aspects, [['ASC', '금성'], ['금성', '금성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['venus'], [1]);
+  return aspectPairScore(
+    aspects,
+    [['ASC', '금성'], ['금성', '금성']],
+    { sqAsNeutral: [['ASC', '금성']] }  // ASC-금성 스퀘어 = 전기적 긴장감, 부정이 아닌 중립
+  ) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['venus'], [1]);
 }
 // 육체적 끌림(속궁합) — 화성-화성(원초적 욕망 매칭)·태양-화성(매그너틱 케미)·금성-화성, 8하우스(육체적·성적 친밀감)
 function physicalAttractionScore(aspects, houseOverlay, partnerTimeUnknown) {
-  return aspectPairScore(aspects, [['금성', '화성'], ['화성', '화성'], ['태양', '화성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [8]);
+  return aspectPairScore(
+    aspects,
+    [['금성', '화성'], ['화성', '화성'], ['태양', '화성']],
+    { oppAsPos: [['금성', '화성']] }  // 금성-화성 오포지션 = 고전적 자석 끌림(서로 다른 극이 당기는 각도)
+  ) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mars'], [8]);
 }
 function communicationScore(aspects, houseOverlay, partnerTimeUnknown) {
   return aspectPairScore(aspects, [['수성', '수성']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['mercury'], [3]);
 }
 function emotionalSafetyScore(aspects, houseOverlay, partnerTimeUnknown) {
-  return aspectPairScore(aspects, [['달', '달'], ['달', '태양']]) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['moon'], [4]);
+  return aspectPairScore(
+    aspects,
+    [['달', '달'], ['달', '태양']],
+    { oppAsPos: [['달', '태양']] }  // 달-태양 오포지션 = 결혼 차트 최다 각도, 보완적 자석 인력
+  ) + houseOverlayBonus(houseOverlay, partnerTimeUnknown, ['moon'], [4]);
 }
 function longTermSynergyScore(aspects, houseOverlay, partnerTimeUnknown) {
   return aspectPairScore(aspects, [['토성', '토성'], ['토성', '태양'], ['토성', '달'], ['토성', '금성']])
