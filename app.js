@@ -2441,7 +2441,7 @@ const _ZR_MARKER_KR = { preLB: '전환예고', culm: '절정', lb: '결속풀림
 const _ZR_MARKER_COLOR = { preLB: '#9ed0ff', culm: '#ffd36a', lb: '#ff9e7a' };
 const _ZR_SECT_DAY = ['sun','jupiter','saturn'];
 const _ZR_SECT_NIGHT = ['moon','venus','mars'];
-const _ZR_HOUSE_TIER_KR = { angular: '앵글(강함)', succedent: '보통', cadent: '약함' };
+const _ZR_HOUSE_TIER_KR = { angular: '앵글(강함)', succedent: '석시던트(보통)', cadent: '케이던트(약함)' };
 const _ZR_COMBUSTION_KR = {
   none: '',
   cazimi:    '<span style="color:#ffd36a;font-weight:700;">카지미(매우 강함)</span>',
