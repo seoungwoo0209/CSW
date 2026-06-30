@@ -2443,7 +2443,7 @@ const _ZR_SECT_DAY = ['sun','jupiter','saturn'];
 const _ZR_SECT_NIGHT = ['moon','venus','mars'];
 const _ZR_HOUSE_TIER_KR = { angular: '앵글(강함)', succedent: '보통', cadent: '약함' };
 const _ZR_COMBUSTION_KR = { none: '', cazimi: '카지미(매우 강함)', combust: '컴버스천(약화)', underbeams: '빔 아래(약간 약화)' };
-const _ZR_SECT_KR = { infavor: '섹트상 유리', contrary: '섹트상 불리', neutral: '섹트 중립' };
+const _ZR_SECT_KR = { infavor: 'In Sect', contrary: 'Out of Sect', neutral: 'Sect 중립' };
 
 function _zrEssentialDignity(planetKey, signIndex) {
   const d = _ZR_ESSENTIAL_DIGNITIES[planetKey];
@@ -2507,12 +2507,15 @@ function _zrAccidentalStr(acc) {
 // astroResult 응답 하나로 _zrPeriodInfo/_zrAccidentalDignity에 필요한 컨텍스트를 구성
 function _zrBuildCtx(astroResult) {
   const natal = astroResult?.natal || {};
-  const sunHouse = natal.sun?.house ?? 0;
+  const ascSignIndex = astroResult?.angles?.asc?.signIndex ?? 0;
+  const sunSignIndex = natal.sun?.signIndex ?? 0;
+  // 홀사인 기준으로 낮/밤차트 판별 (ZR 헬레니즘 기법과 동일 체계)
+  const sunWholeSignHouse = ((sunSignIndex - ascSignIndex + 12) % 12) + 1;
   return {
-    ascSignIndex: astroResult?.angles?.asc?.signIndex ?? 0,
+    ascSignIndex,
     natal,
     natalAspectsFull: astroResult?.natalAspectsFull || [],
-    isDayChart: sunHouse >= 7 && sunHouse <= 12,
+    isDayChart: sunWholeSignHouse >= 7,
     sunLongitude: natal.sun?.longitude ?? 0,
     nowAge: astroResult?.lunationCycle?.currentAgeYears ?? astroResult?.progression?.meta?.ageYears ?? 0,
   };
