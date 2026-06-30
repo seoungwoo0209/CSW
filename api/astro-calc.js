@@ -37,17 +37,28 @@ export default async function handler(req, res) {
       offsetHours
     } = computeNatalChart(birthDate, birthTime, lat, lng, utcOffset);
 
-    // 역행 판별 — 라이브러리 is_retrograde는 신뢰 불가(반전/불일치)
-    // 하루 전 경도와 비교해 경도 감소 = 역행으로 직접 판정
+    // 운동 상태 판별 — 라이브러리 is_retrograde 버그로 직접 계산
+    // 하루 전 경도와 비교: 감소=역행, 행성별 정류 임계값(°/day) 적용
     {
       const prevRaw = Ephemeris.getAllPlanets(new Date(birthUTC.getTime() - 86400000), lng, lat, 0);
       const prevPlanets = extractPlanets(prevRaw.observed);
+      const MOTION_THRESH = {
+        sun: 99, moon: 99, // 태양·달은 역행 없음
+        mercury: 0.2, venus: 0.15, mars: 0.08,
+        jupiter: 0.02, saturn: 0.01,
+        uranus: 0.005, neptune: 0.003, pluto: 0.003,
+      };
       const RK = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
       RK.forEach(k => {
         let diff = planets[k].lon - prevPlanets[k].lon;
         if (diff > 180) diff -= 360;
         if (diff < -180) diff += 360;
+        const t = MOTION_THRESH[k] ?? 0.1;
         planets[k].retrograde = diff < 0;
+        planets[k].motion = diff >= t ? 'direct'
+          : diff >= 0  ? 'station_direct'
+          : diff > -t  ? 'station_retro'
+          : 'retrograde';
       });
     }
 
@@ -127,6 +138,7 @@ export default async function handler(req, res) {
         ...toSignInfo(planetsWithHouse[k].lon),
         house: planetsWithHouse[k].house,
         retrograde: !!planets[k].retrograde,
+        motion: planets[k].motion || 'direct',
       };
     });
 

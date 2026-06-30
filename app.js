@@ -2470,7 +2470,7 @@ function _zrAccidentalDignity(planetKey, planetNatal, ascSignIndex, isDayChart, 
   let sect = 'neutral';
   if (_ZR_SECT_DAY.includes(planetKey)) sect = isDayChart ? 'infavor' : 'contrary';
   else if (_ZR_SECT_NIGHT.includes(planetKey)) sect = isDayChart ? 'contrary' : 'infavor';
-  return { house, houseTier, combustion, sect, retrograde: !!planetNatal.retrograde };
+  return { house, houseTier, combustion, sect, retrograde: !!planetNatal.retrograde, motion: planetNatal.motion || 'direct' };
 }
 
 // 별자리(signIndex) 하나에 대해 하우스·지배성·본질적+우연적 위계·각도를 한번에 계산
@@ -2489,9 +2489,18 @@ function _zrAspectStr(info) {
   return info.rulerAspects.slice(0, 4)
     .map(a => `${a.point1 === info.rulerLabel ? a.point2 : a.point1}${a.symbol}${a.aspect}(${a.orb}°)`).join(' · ');
 }
+const _ZR_MOTION_HTML = {
+  direct:        '<span style="color:#ffd36a;">순행</span>',
+  station_direct:'<span style="color:#fff7c0;font-weight:700;">정류(SD)</span>',
+  station_retro: '<span style="color:#ffb347;">정류(SR)</span>',
+  retrograde:    '<span style="color:#ff7a7a;">역행</span>',
+};
 function _zrAccidentalStr(acc) {
-  const parts = [`${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})`, _ZR_SECT_KR[acc.sect]];
-  if (acc.retrograde) parts.push('역행');
+  const parts = [
+    `${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})`,
+    _ZR_SECT_KR[acc.sect],
+    _ZR_MOTION_HTML[acc.motion] || _ZR_MOTION_HTML.direct,
+  ];
   if (acc.combustion !== 'none') parts.push(_ZR_COMBUSTION_KR[acc.combustion]);
   return parts.join(' · ');
 }
