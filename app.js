@@ -2362,7 +2362,8 @@ function _profectionWealthTimelineHtml(profectionWealth, ctx) {
 
   const ageRow = [0, 20, 40, 60, 80, 100].map(age => {
     const leftPct = (age / maxAge) * 100;
-    return `<span style="position:absolute;left:${leftPct}%;transform:translateX(-50%);font-size:9px;color:#7d87ab;">${age}세</span>`;
+    const align = age === 0 ? 'translateX(0%)' : age === 100 ? 'translateX(-100%)' : 'translateX(-50%)';
+    return `<span style="position:absolute;left:${leftPct}%;transform:${align};font-size:9px;color:#7d87ab;">${age}세</span>`;
   }).join('');
 
   // 하단 요약 줄 — 지난/다음 연도 텍스트
