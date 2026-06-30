@@ -2501,8 +2501,13 @@ const _ZR_MOTION_HTML = {
   retrograde:    '<span style="color:#ff7a7a;">역행</span>',
 };
 function _zrAccidentalStr(acc) {
+  const houseTierHtml = acc.houseTier === 'angular'
+    ? `<span style="color:#ffd36a;font-weight:700;">${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})</span>`
+    : acc.houseTier === 'cadent'
+    ? `<span style="color:#8888a8;">${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})</span>`
+    : `${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})`;
   const parts = [
-    `${acc.house}H(${_ZR_HOUSE_TIER_KR[acc.houseTier]})`,
+    houseTierHtml,
     _ZR_SECT_KR[acc.sect],
     _ZR_MOTION_HTML[acc.motion] || _ZR_MOTION_HTML.direct,
   ];
