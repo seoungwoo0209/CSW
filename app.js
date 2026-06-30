@@ -2224,12 +2224,17 @@ function _lunationCycleWaveHtml(lunationCycle) {
     const nameY = isFull ? y + 30 : y - 22;
     const ageY = isFull ? y + 44 : y - 10;
     const icon = _lunMoonIconSvg(r, _LUNATION_STAGE_FRAC[s.stageName], { style: 'animation:moon-float 3.2s ease-in-out infinite;' });
+    const nameW = s.stageName.length * 7.8 + 10;
+    const ageText = `${s.fromAge.toFixed(1)}세`;
+    const ageW = ageText.length * 6.4 + 8;
     return `<g transform="translate(${(x - r).toFixed(1)},${(y - r).toFixed(1)})">
       ${isCurrent ? `<circle cx="${r}" cy="${r}" r="${r + 4}" fill="none" stroke="rgba(245,205,90,.5)" stroke-width="1.4" filter="url(#lunGlow)"/>` : ''}
       ${icon}
     </g>
-    <text x="${x.toFixed(1)}" y="${nameY.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#f3f5ff" style="paint-order:stroke;stroke:#070b14;stroke-width:3px;">${s.stageName}</text>
-    <text x="${x.toFixed(1)}" y="${ageY.toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="#ffe9a8" style="paint-order:stroke;stroke:#070b14;stroke-width:3px;">${s.fromAge.toFixed(1)}세</text>`;
+    <rect x="${(x - nameW / 2).toFixed(1)}" y="${(nameY - 12).toFixed(1)}" width="${nameW.toFixed(0)}" height="15" rx="3" fill="rgba(5,8,20,0.75)"/>
+    <text x="${x.toFixed(1)}" y="${nameY.toFixed(1)}" text-anchor="middle" font-size="11" font-weight="800" fill="#f3f5ff">${s.stageName}</text>
+    <rect x="${(x - ageW / 2).toFixed(1)}" y="${(ageY - 11).toFixed(1)}" width="${ageW.toFixed(0)}" height="13" rx="2" fill="rgba(5,8,20,0.75)"/>
+    <text x="${x.toFixed(1)}" y="${ageY.toFixed(1)}" text-anchor="middle" font-size="10" font-weight="800" fill="#ffe9a8">${ageText}</text>`;
   }).join('');
 
   // 나머지 5단계 — strip 줄에 작은 달 아이콘 + 이름 + 나이. 라벨은 위/아래 두 줄에
