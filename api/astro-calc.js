@@ -37,6 +37,20 @@ export default async function handler(req, res) {
       offsetHours
     } = computeNatalChart(birthDate, birthTime, lat, lng, utcOffset);
 
+    // 역행 판별 — 라이브러리 is_retrograde는 신뢰 불가(반전/불일치)
+    // 하루 전 경도와 비교해 경도 감소 = 역행으로 직접 판정
+    {
+      const prevRaw = Ephemeris.getAllPlanets(new Date(birthUTC.getTime() - 86400000), lng, lat, 0);
+      const prevPlanets = extractPlanets(prevRaw.observed);
+      const RK = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+      RK.forEach(k => {
+        let diff = planets[k].lon - prevPlanets[k].lon;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        planets[k].retrograde = diff < 0;
+      });
+    }
+
     // ── 세컨더리 프로그레션 (태양 실제 이동 기반 정밀 공식)
     // 1일 = 1년. 현재 나이(년) = 출생일로부터 경과한 일수
     // 현재 날짜 (KST 기준 오늘 자정)
@@ -246,7 +260,7 @@ function extractPlanets(observed) {
   const result = {};
   KEYS.forEach(k => {
     const lon = observed[k]?.apparentLongitudeDd ?? 0;
-    result[k] = { lon: ((lon % 360) + 360) % 360, retrograde: !!observed[k]?.is_retrograde };
+    result[k] = { lon: ((lon % 360) + 360) % 360, retrograde: false };
   });
   return result;
 }
