@@ -3458,6 +3458,55 @@ function renderAspectAccordion(aspects, title, icon, accentColor) {
 /* =========================================================
    네이탈 차트 렌더링 (네이탈만 표시 — 데이터는 풀 패키지)
    ========================================================= */
+
+// 네이탈 하우스 위계 분석 카드 — 1~12하우스 각각의 지배성·본질적위계·우연적위계·주요각
+function _natalHouseAnalysisHtml(astroResult) {
+  if (!astroResult?.natal || !astroResult?.angles) return '';
+  const ctx = _zrBuildCtx(astroResult);
+  const muted = '#8d81a8', dim = '#695e84';
+
+  let rows = '';
+  for (let h = 1; h <= 12; h++) {
+    const signIndex = (ctx.ascSignIndex + h - 1) % 12;
+    const info = _zrPeriodInfo(signIndex, ctx);
+    const signName = _ZR_SIGN_SHORT[signIndex];
+    const rulerSignName = _ZR_SIGN_SHORT[ctx.natal[info.rulerKey]?.signIndex ?? 0];
+    const dc = _DIGNITY_COLOR[info.dignity] || '#9aa3c0';
+    const dl = _DIGNITY_KR[info.dignity] || '중립';
+    const accStr = _zrAccidentalStr(info.accidental);
+    const aspectStr = _zrAspectStr(info);
+    const isAngular = [1, 4, 7, 10].includes(h);
+    const rowBg = isAngular ? 'rgba(255,211,106,.04)' : 'transparent';
+
+    rows += `
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 10px;border-radius:7px;background:${rowBg};border-bottom:1px solid rgba(255,255,255,.05);">
+      <div style="min-width:128px;flex-shrink:0;padding-top:1px;">
+        <span style="display:inline-block;background:rgba(255,255,255,.08);border-radius:4px;padding:1px 6px;font-size:11px;font-weight:700;color:#cbd3f0;letter-spacing:.4px;margin-right:4px;">${h}H</span>
+        <span style="font-size:11px;color:#a09bb8;">${signName} · ${info.houseMeaning}</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;color:#cbbfe3;margin-bottom:3px;">
+          <span style="margin-right:2px;">${_ZR_PLANET_GLYPH[info.rulerKey] || ''}</span>${info.rulerLabel}
+          <span style="font-size:10px;color:${muted};">(${rulerSignName}자리)</span>
+          <span style="display:inline-block;background:${dc}18;border:1px solid ${dc}50;border-radius:3px;padding:0 5px;font-size:10px;font-weight:700;color:${dc};margin-left:5px;">${dl}</span>
+        </div>
+        <div style="font-size:10.5px;color:${dim};line-height:1.6;">우연적: ${accStr}</div>
+        <div style="font-size:10.5px;color:${dim};margin-top:1px;">각도: ${aspectStr}</div>
+      </div>
+    </div>`;
+  }
+
+  return `
+  <div style="background:rgba(13,19,48,.82);border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:20px 16px 12px;margin-bottom:18px;box-shadow:0 4px 24px rgba(0,0,0,.35);">
+    <div style="margin-bottom:12px;">
+      <div style="font-size:9px;letter-spacing:2px;color:${muted};text-transform:uppercase;margin-bottom:3px;">天宮 · 位階</div>
+      <div style="font-size:15px;font-weight:700;color:#e8deff;">네이탈 하우스 위계 분석</div>
+      <div style="font-size:11px;color:${dim};margin-top:2px;">각 하우스 지배성의 본질적·우연적 위계와 주요 각도</div>
+    </div>
+    ${rows}
+  </div>`;
+}
+
 // 진행월령·프로펙션재물·ZR(포르투나/스피릿)·교차신호 카드 — 네이탈/세컨더리와 동일하게
 // AI 해석(gemini-astro) 호출 없이 astro-calc 응답만으로 즉시 렌더링된다.
 function renderAstroZRCards(astroData) {
@@ -3465,8 +3514,9 @@ function renderAstroZRCards(astroData) {
   if (!panel) return;
 
   const zrCtx = _zrBuildCtx(astroData);
-  const lunationHtml   = _lunationCycleWaveHtml(astroData.lunationCycle);
-  const profectionHtml = _profectionWealthTimelineHtml(astroData.profectionWealth);
+  const lunationHtml      = _lunationCycleWaveHtml(astroData.lunationCycle);
+  const profectionHtml    = _profectionWealthTimelineHtml(astroData.profectionWealth);
+  const houseAnalysisHtml = _natalHouseAnalysisHtml(astroData);
   const zrFortuneHtml  = _zodiacalReleasingHtml(astroData.zrFortune, {
     eyebrowKr: '재신지운', eyebrowHanja: '財身之運', title: '부와 신체의 흐름',
     grad: 'linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%)', accent: '#caa74e',
@@ -3477,7 +3527,7 @@ function renderAstroZRCards(astroData) {
   }, zrCtx);
   const zrCrossHtml = _zrCrossSignalHtml(astroData.zrFortune, astroData.zrSpirit, zrCtx);
 
-  const combined = lunationHtml + profectionHtml + zrFortuneHtml + zrSpiritHtml + zrCrossHtml;
+  const combined = lunationHtml + profectionHtml + houseAnalysisHtml + zrFortuneHtml + zrSpiritHtml + zrCrossHtml;
   if (!combined) {
     panel.style.display = "none";
     panel.innerHTML = "";
