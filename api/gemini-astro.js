@@ -87,8 +87,8 @@ export default async function handler(req, res) {
 
     // ── 프로펙션 재물(2하우스) 문자열
     const DIGNITY_KR = {
-      rulership: '자기 별자리(가장 강함)', exaltation: '승격(매우 좋음)',
-      detriment: '디트리먼트(약화됨)', fall: '함몰(가장 약함)', peregrine: '중립'
+      rulership: '본진(가장 강함)', exaltation: '강함',
+      detriment: '변칙(약화됨)', fall: '약함(가장 약함)', peregrine: '중립'
     };
     const profectionStr = profectionWealth
       ? `재물(2하우스) 지배성: ${profectionWealth.rulerLabel} (위계: ${DIGNITY_KR[profectionWealth.dignity]})\n` +
@@ -124,8 +124,8 @@ export default async function handler(req, res) {
       if (d.fall.includes(signIndex)) return 'fall';
       return 'peregrine';
     }
-    const ZR_DIGNITY_KR = { rulership:'자기 별자리(가장 강함)', exaltation:'승격(매우 좋음)',
-      detriment:'디트리먼트(약화됨)', fall:'함몰(가장 약함)', peregrine:'중립' };
+    const ZR_DIGNITY_KR = { rulership:'본진(가장 강함)', exaltation:'강함',
+      detriment:'변칙(약화됨)', fall:'약함(가장 약함)', peregrine:'중립' };
     const ZR_SECT_DAY = ['sun','jupiter','saturn'], ZR_SECT_NIGHT = ['moon','venus','mars'];
     const ZR_HOUSE_TIER_KR = { angular:'앵글(강함)', succedent:'보통', cadent:'약함' };
     const ZR_COMBUSTION_KR = { none:'', cazimi:'카지미(매우 강함)', combust:'컴버스천(약화)', underbeams:'빔 아래(약간 약화)' };
