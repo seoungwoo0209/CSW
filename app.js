@@ -2442,7 +2442,12 @@ const _ZR_MARKER_COLOR = { preLB: '#9ed0ff', culm: '#ffd36a', lb: '#ff9e7a' };
 const _ZR_SECT_DAY = ['sun','jupiter','saturn'];
 const _ZR_SECT_NIGHT = ['moon','venus','mars'];
 const _ZR_HOUSE_TIER_KR = { angular: '앵글(강함)', succedent: '보통', cadent: '약함' };
-const _ZR_COMBUSTION_KR = { none: '', cazimi: '카지미(매우 강함)', combust: '컴버스천(약화)', underbeams: '빔 아래(약간 약화)' };
+const _ZR_COMBUSTION_KR = {
+  none: '',
+  cazimi:    '<span style="color:#ffd36a;font-weight:700;">카지미(매우 강함)</span>',
+  combust:   '<span style="color:#ff6b6b;font-weight:700;">컴버스천(약화)</span>',
+  underbeams:'<span style="color:#ff9a9a;">빔 아래(약간 약화)</span>',
+};
 const _ZR_SECT_KR = { infavor: 'In Sect', contrary: 'Out of Sect', neutral: 'Sect 중립' };
 
 function _zrEssentialDignity(planetKey, signIndex) {
