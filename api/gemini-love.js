@@ -125,8 +125,8 @@ function strengthFromScore(score) {
   return '보통';
 }
 function loveScoreAt(monthIdx, ctx) {
-  const { transits, venusLon, house7RulerLon, eclipseMonth, venusRetroFlags } = ctx;
-  let s = 0;
+  const { transits, venusLon, house7RulerLon, eclipseMonth, venusRetroFlags, zrLoveBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrLoveBonus + profectionBonus; // ZR·프로펙션 연간 베이스 (올해 내내 유효한 타이밍 신호)
   if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
   if ([5, 7].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
   if (venusRetroFlags?.[monthIdx]) s -= 1;
@@ -222,8 +222,8 @@ function frictionTrajectoryInstruction(worstIndices, nowMonthIdx, reasonFn, ctx)
   return `올해 중 마찰이 가장 두드러졌던 시기는 이미 지나간 ${worstMonths.join('·')}월이다(${reason}). "다가올"이라는 표현은 쓰지 말고, 그 시점을 돌아본 뒤 올해 남은 기간은 그보다 평온한 흐름이라는 걸 솔직하게 써라.`;
 }
 function marriageWaveScoreAt(monthIdx, ctx) {
-  const { transits, saturnLon, house7RulerLon } = ctx;
-  let s = 0;
+  const { transits, saturnLon, house7RulerLon, zrMarriageBonus = 0, profectionBonus7H = 0 } = ctx;
+  let s = zrMarriageBonus + profectionBonus7H; // ZR·프로펙션 7H 신호 — 결혼·파트너십 테마가 열려있는 해
   if (monthlyHouse(transits, monthIdx, 'jupiter') === 7) s += 1;
   if (monthlyHouse(transits, monthIdx, 'saturn') === 7) s += 1;
   s += aspectScore(monthlyLon(transits, monthIdx, 'jupiter'), [saturnLon, house7RulerLon]);
@@ -441,12 +441,16 @@ function buildLovePrompt(body) {
     const nowMonthIdx = new Date().getMonth();
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const zrLoveBonus = ([5,7,8].includes(zrFortune?.l2House) || [5,7,8].includes(zrSpirit?.l2House)) ? 1 : 0;
+    const profectionBonus = [5,7].includes(profectionHouse) ? 1 : 0;
     const ctx = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
       venusLon: venus?.longitude,
       house7RulerLon: house7Ruler?.longitude,
       eclipseMonth: eclipseMonthIndex(eclipseSignal),
       venusRetroFlags,
+      zrLoveBonus,
+      profectionBonus,
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => loveScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
@@ -461,6 +465,8 @@ function buildLovePrompt(body) {
   if (!isSolo && Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const nowMonthIdx2 = new Date().getMonth();
     const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
+    const zrMarriageBonus = ([7].includes(zrFortune?.l2House) || [7].includes(zrSpirit?.l2House)) ? 1 : 0;
+    const profectionBonus7H = profectionHouse === 7 ? 1 : 0;
     const ctx2 = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx2, ['jupiter', 'saturn']),
       venusLon: venus?.longitude,
@@ -468,6 +474,8 @@ function buildLovePrompt(body) {
       saturnLon: saturn?.longitude,
       house7RulerLon: house7Ruler?.longitude,
       mercuryRetroFlags,
+      zrMarriageBonus,
+      profectionBonus7H,
     };
     const frictionScores = Array.from({ length: 12 }, (_, m) => frictionScoreAt(m, ctx2));
     frictionStrength = buildMonthlyStrength(frictionScores, nowMonthIdx2, frictionTierFn);
