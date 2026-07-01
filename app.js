@@ -1912,6 +1912,9 @@ function _buildCareerCommonFields(astroData) {
     transits: astroData.transits,
     mcLon:  astroData.angles.mc.longitude,
     ascLon: astroData.angles.asc.longitude,
+    profectionHouse: Math.floor(((astroData.lunationCycle?.currentAgeYears ?? astroData.progression?.meta?.ageYears ?? 0) % 12)) + 1,
+    zrFortune: _zrLoveSummary(astroData.zrFortune, astroData.angles?.asc?.signIndex ?? 0),
+    zrSpirit:  _zrLoveSummary(astroData.zrSpirit,  astroData.angles?.asc?.signIndex ?? 0),
   };
 }
 

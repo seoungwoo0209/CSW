@@ -216,8 +216,8 @@ function monthlyShapeDetail(scores, nowMonthIdx) {
 // 4개 기능 각각의 점수식 — "몇 번째 달인지"만 받아서 그 달 기준으로 계산.
 // "지금" 강도도 이 함수에 nowMonthIdx를 넣어 호출하므로, 배지 값과 타임라인의 이번달 막대가 항상 일치한다.
 function jobHuntingScoreAt(monthIdx, ctx) {
-  const { transits, mercuryLon, eclipseMonth, mercuryRetroFlags } = ctx;
-  let s = 0;
+  const { transits, mercuryLon, eclipseMonth, mercuryRetroFlags, zrCareerBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrCareerBonus + profectionBonus;
   if ([6, 10].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
   if ([6, 10].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
   if (mercuryRetroFlags?.[monthIdx]) s -= 1;
@@ -227,8 +227,8 @@ function jobHuntingScoreAt(monthIdx, ctx) {
   return s;
 }
 function promotionScoreAt(monthIdx, ctx) {
-  const { transits, mcLon, sunLon, eclipseMonth, marsRetroFlags } = ctx;
-  let s = 0;
+  const { transits, mcLon, sunLon, eclipseMonth, marsRetroFlags, zrCareerBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrCareerBonus + profectionBonus;
   if ([2, 10, 11].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
   if ([10, 12].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
   if (eclipseMonth === monthIdx) s += 1;
@@ -238,8 +238,8 @@ function promotionScoreAt(monthIdx, ctx) {
   return s;
 }
 function startupScoreAt(monthIdx, ctx) {
-  const { transits, marsLon, eclipseMonth, jupiterRetroFlags, natalJupiterLon } = ctx;
-  let s = 0;
+  const { transits, marsLon, eclipseMonth, jupiterRetroFlags, natalJupiterLon, zrCareerBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrCareerBonus + profectionBonus;
   if ([2, 8, 10].includes(monthlyHouse(transits, monthIdx, 'jupiter'))) s += 1;
   if ([2, 8, 10].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s -= 1;
   if (eclipseMonth === monthIdx) s += 1;
@@ -251,7 +251,7 @@ function startupScoreAt(monthIdx, ctx) {
   return s;
 }
 function jobChangeFavCountAt(monthIdx, ctx) {
-  const { transits, mcLon, ascLon, eclipseMonth, natalJupiterLon, mcChanged } = ctx;
+  const { transits, mcLon, ascLon, eclipseMonth, natalJupiterLon, mcChanged, zrJobChangeBonus = false, profectionJobChangeFav = false } = ctx;
   const uranusHouseFav = [1, 10].includes(monthlyHouse(transits, monthIdx, 'uranus'));
   const uranusLonM = monthlyLon(transits, monthIdx, 'uranus');
   const uranusAspectFav = [mcLon, ascLon].some(lon => {
@@ -260,7 +260,7 @@ function jobChangeFavCountAt(monthIdx, ctx) {
   });
   const jLonM = monthlyLon(transits, monthIdx, 'jupiter');
   const jupiterReturnActiveM = natalJupiterLon != null && jLonM != null && angularDistance(jLonM, natalJupiterLon) <= 5;
-  return [uranusHouseFav, !!mcChanged, jupiterReturnActiveM, uranusAspectFav, eclipseMonth === monthIdx].filter(Boolean).length;
+  return [uranusHouseFav, !!mcChanged, jupiterReturnActiveM, uranusAspectFav, eclipseMonth === monthIdx, zrJobChangeBonus, profectionJobChangeFav].filter(Boolean).length;
 }
 
 // 직업 4종류 공통 — "지금 하늘" 시그널 한 번에 계산 (Ephemeris 호출, 새 계산 파일 불필요)
@@ -281,6 +281,25 @@ function computeCareerSkySignals(houses, natalJupiterLon) {
     uranusHouse,
     jupiterReturnActive,
   };
+}
+
+const PROFECTION_CAREER_NOTE = {
+  6:  '(직업·업무 하우스 활성화 — 취업·고용 관계가 올해 핵심 주제)',
+  10: '(경력·명성 하우스 활성화 — 사회적 성취가 올해 핵심 주제)',
+  2:  '(재물·소득 하우스 활성화 — 연봉·수입이 올해 핵심 주제)',
+  8:  '(투자·공유재산 하우스 활성화 — 리스크와 타인 자본이 올해 핵심 주제)',
+  9:  '(확장·도약 하우스 활성화 — 이동과 새 무대로의 진출이 올해 핵심 주제)',
+  7:  '(계약·파트너십 하우스 활성화 — 비즈니스 파트너와 계약이 올해 핵심 주제)',
+  11: '(공동체·결실 하우스 활성화 — 인맥과 협력으로 성취가 열리는 해)',
+};
+function _zrCareerLineStr(z, lotName) {
+  if (!z) return '';
+  const hNote = h => ({ 6:'업무·직장', 10:'경력·명성', 2:'재물·소득', 8:'투자·리스크', 9:'확장·도약', 7:'계약·파트너십', 11:'인맥·결실' }[h] || '');
+  const l1n = hNote(z.l1House) ? ` (${hNote(z.l1House)})` : '';
+  const l2n = z.l2House && hNote(z.l2House) ? ` (${hNote(z.l2House)})` : '';
+  const parts = [`ZR ${lotName}: 대시기 ${z.l1House}하우스${l1n}`];
+  if (z.l2House) parts.push(`소시기 ${z.l2House}하우스${l2n} (${z.l2To}세까지)`);
+  return parts.join(' / ');
 }
 
 function eclipseStr(eclipseSignal) {
@@ -329,7 +348,8 @@ function buildJobHuntingPrompt(body, sky) {
     name, gender, ascSign, ascRuler, mcSign, mcRuler, progMcSign,
     house6Sign, house6Occupants, house6Ruler, house10Sign, house10Occupants,
     mercury, mars, jupiterSign, saturn, eclipseSignal,
-    jupiterTransitWindow, saturnTransitWindow, transits, houses
+    jupiterTransitWindow, saturnTransitWindow, transits, houses,
+    zrFortune, zrSpirit, profectionHouse
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -340,11 +360,15 @@ function buildJobHuntingPrompt(body, sky) {
   const nowMonthIdx = new Date().getMonth();
   const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
   if (mercuryRetroFlags) mercuryRetroFlags[nowMonthIdx] = sky.mercuryRetro;
+  const zrCareerBonus = ([6,10].includes(zrFortune?.l2House) || [6,10].includes(zrSpirit?.l2House)) ? 1 : 0;
+  const profectionBonus = [6,10].includes(profectionHouse) ? 1 : 0;
   const ctx = {
     transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
     mercuryLon: mercury.longitude,
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
     mercuryRetroFlags,
+    zrCareerBonus,
+    profectionBonus,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => jobHuntingScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
@@ -379,6 +403,10 @@ ${aspectStr(currentLongitude('saturn'), mercury.longitude, '트랜짓 토성', '
 수성 역행 여부: ${sky.mercuryRetro ? '역행 중 — 전통적으로 면접·계약·서류에 불리하거나 재시도가 필요한 시기' : '순행 중'}
 프로그레션 MC: ${progMcSign || '정보 없음'} (네이탈 MC ${mcSign}과 다르면 경력 테마 전환기)
 ${eclipseStr(eclipseSignal)}
+[ZR 타이밍 + 프로펙션 — 지금 어떤 직업 주제가 열려 있는가]
+${[_zrCareerLineStr(zrFortune, '포르투나'), _zrCareerLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스 ${PROFECTION_CAREER_NOTE[profectionHouse] || ''}` : ''}
+(해석 지침: 6H·10H가 ZR 또는 프로펙션으로 활성화된 경우 취업·경력 테마가 구조적으로 열린 해다. 이 신호와 트랜짓 신호를 종합해서 써라.)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -424,7 +452,8 @@ function buildPromotionPrompt(body, sky) {
     name, gender, mcSign, mcRuler, house10Occupants,
     saturn, sun, mars, venus, house11Sign, house11Occupants, house12Sign,
     house2Sign, house2Occupants, house2Ruler, jupiterSign,
-    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow, mcLon, transits, houses
+    eclipseSignal, jupiterTransitWindow, saturnTransitWindow, marsRetroWindow, mcLon, transits, houses,
+    zrFortune, zrSpirit, profectionHouse
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -438,11 +467,15 @@ function buildPromotionPrompt(body, sky) {
   const nowMonthIdx = new Date().getMonth();
   const marsRetroFlags = monthlyRetroFlags(transits, 'mars');
   if (marsRetroFlags) marsRetroFlags[nowMonthIdx] = sky.marsRetro;
+  const zrCareerBonus = ([2,10,11].includes(zrFortune?.l2House) || [2,10,11].includes(zrSpirit?.l2House)) ? 1 : 0;
+  const profectionBonus = [2,10,11].includes(profectionHouse) ? 1 : 0;
   const ctx = {
     transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
     mcLon, sunLon: sun.longitude,
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
     marsRetroFlags,
+    zrCareerBonus,
+    profectionBonus,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => promotionScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
@@ -476,6 +509,10 @@ ${aspectStr(currentLongitude('jupiter'), mcLon, '트랜짓 목성', '네이탈 M
 ${aspectStr(currentLongitude('saturn'), sun.longitude, '트랜짓 토성', '네이탈 태양')}
 화성 역행 여부: ${sky.marsRetro ? (marsRetroStr || '역행 중') + ' — 협상·assertive한 행동을 서두르면 역효과 가능' : '순행 중'}
 ${eclipseStr(eclipseSignal)}
+[ZR 타이밍 + 프로펙션 — 지금 어떤 직업 주제가 열려 있는가]
+${[_zrCareerLineStr(zrFortune, '포르투나'), _zrCareerLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스 ${PROFECTION_CAREER_NOTE[profectionHouse] || ''}` : ''}
+(해석 지침: 2H·10H·11H가 ZR 또는 프로펙션으로 활성화된 경우 소득·성취·인맥 테마가 구조적으로 열린 해다. 이 신호를 승진·연봉협상 타이밍 해석에 종합해서 써라.)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -519,7 +556,8 @@ ${eclipseStr(eclipseSignal)}
 function buildJobChangePrompt(body, sky) {
   const {
     name, gender, mcSign, progMcSign, uranus, northNodeSign, northNodeHouse,
-    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign, mcLon, ascLon, jupiter, transits, houses
+    house9Sign, eclipseSignal, uranusTransitWindow, jupiterSign, mcLon, ascLon, jupiter, transits, houses,
+    zrFortune, zrSpirit, profectionHouse
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -530,11 +568,15 @@ function buildJobChangePrompt(body, sky) {
   const uranusLonNow = currentLongitude('uranus');
 
   const nowMonthIdx = new Date().getMonth();
+  const zrJobChangeBonus = [9,10].includes(zrFortune?.l2House) || [9,10].includes(zrSpirit?.l2House);
+  const profectionJobChangeFav = [9,10].includes(profectionHouse);
   const ctx = {
     transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['uranus', 'jupiter']),
     mcLon, ascLon, mcChanged,
     natalJupiterLon: jupiter?.longitude,
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
+    zrJobChangeBonus,
+    profectionJobChangeFav,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => jobChangeFavCountAt(m, ctx));
   const favorableCount = monthlyScores[nowMonthIdx];
@@ -566,6 +608,10 @@ ${aspectStr(uranusLonNow, ascLon, '트랜짓 천왕성', '네이탈 ASC')}
 프로그레션 MC: ${progMcSign || '정보 없음'}${mcChanged ? ' — 네이탈 MC와 달라짐 (경력 테마 전환기, 떠날 준비가 된 시기로 해석 가능)' : ' — 네이탈 MC와 동일 (아직 전환기 아님)'}
 목성 회귀 진행 중인가(네이탈 목성 위치로 트랜짓 목성이 돌아옴, ~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
+[ZR 타이밍 + 프로펙션 — 지금 어떤 직업 주제가 열려 있는가]
+${[_zrCareerLineStr(zrFortune, '포르투나'), _zrCareerLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스 ${PROFECTION_CAREER_NOTE[profectionHouse] || ''}` : ''}
+(해석 지침: 9H·10H가 ZR 또는 프로펙션으로 활성화된 경우 새 무대로의 도약·경력 전환 테마가 구조적으로 열린 해다. 이 신호를 이직·스카웃 타이밍 해석에 종합해서 써라.)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -612,7 +658,8 @@ function buildStartupPrompt(body, sky) {
     house8Sign, house8Occupants, house8Ruler,
     mars, jupiterSign, sun, house5Sign, eclipseSignal,
     jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow,
-    mcSign, mcRuler, saturn, jupiter, transits, houses
+    mcSign, mcRuler, saturn, jupiter, transits, houses,
+    zrFortune, zrSpirit, profectionHouse
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -625,12 +672,16 @@ function buildStartupPrompt(body, sky) {
   const nowMonthIdx = new Date().getMonth();
   const jupiterRetroFlags = monthlyRetroFlags(transits, 'jupiter');
   if (jupiterRetroFlags) jupiterRetroFlags[nowMonthIdx] = sky.jupiterRetro;
+  const zrCareerBonus = ([2,8,10].includes(zrFortune?.l2House) || [2,8,10].includes(zrSpirit?.l2House)) ? 1 : 0;
+  const profectionBonus = [2,8,10].includes(profectionHouse) ? 1 : 0;
   const ctx = {
     transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
     marsLon: mars.longitude,
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
     jupiterRetroFlags,
     natalJupiterLon: jupiter?.longitude,
+    zrCareerBonus,
+    profectionBonus,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => startupScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
@@ -664,6 +715,10 @@ ${aspectStr(currentLongitude('saturn'), mars.longitude, '트랜짓 토성', '네
 목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
+[ZR 타이밍 + 프로펙션 — 지금 어떤 직업 주제가 열려 있는가]
+${[_zrCareerLineStr(zrFortune, '포르투나'), _zrCareerLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스 ${PROFECTION_CAREER_NOTE[profectionHouse] || ''}` : ''}
+(해석 지침: 2H·8H·10H가 ZR 또는 프로펙션으로 활성화된 경우 재물·자본·사업 정체성 테마가 구조적으로 열린 해다. 이 신호를 창업·부업 타이밍 해석에 종합해서 써라.)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
@@ -705,8 +760,8 @@ ${eclipseStr(eclipseSignal)}
    5) 기업가·CEO 비즈니스운
    ========================================================= */
 function businessScoreAt(m, ctx) {
-  const { transits, mcLon, house7RulerLon, eclipseMonth, mercuryRetroFlags, natalJupiterLon } = ctx;
-  let s = 0;
+  const { transits, mcLon, house7RulerLon, eclipseMonth, mercuryRetroFlags, natalJupiterLon, zrCareerBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrCareerBonus + profectionBonus;
   if ([6, 7, 10].includes(monthlyHouse(transits, m, 'jupiter'))) s += 1;
   if ([6, 7, 10].includes(monthlyHouse(transits, m, 'saturn'))) s -= 1;
   if (mercuryRetroFlags?.[m]) s -= 1;
@@ -731,7 +786,8 @@ function buildBusinessPrompt(body, sky) {
     name, gender, house6Sign, house6Occupants, house6Ruler,
     house7Sign, house7Occupants, house7Ruler,
     mcSign, mcRuler, saturn, mars, mercury, jupiter, eclipseSignal,
-    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow, transits, houses, mcLon
+    jupiterTransitWindow, saturnTransitWindow, jupiterRetroWindow, transits, houses, mcLon,
+    zrFortune, zrSpirit, profectionHouse
   } = body;
 
   const displayName = name?.trim() || '당신';
@@ -745,6 +801,8 @@ function buildBusinessPrompt(body, sky) {
   const nowMonthIdx = new Date().getMonth();
   const mercuryRetroFlags = monthlyRetroFlags(transits, 'mercury');
   if (mercuryRetroFlags) mercuryRetroFlags[nowMonthIdx] = sky.mercuryRetro;
+  const zrCareerBonus = ([6,7,10].includes(zrFortune?.l2House) || [6,7,10].includes(zrSpirit?.l2House)) ? 1 : 0;
+  const profectionBonus = [6,7,10].includes(profectionHouse) ? 1 : 0;
   const ctx = {
     transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn']),
     mcLon,
@@ -752,6 +810,8 @@ function buildBusinessPrompt(body, sky) {
     eclipseMonth: eclipseMonthIndex(eclipseSignal),
     mercuryRetroFlags,
     natalJupiterLon: jupiter?.longitude,
+    zrCareerBonus,
+    profectionBonus,
   };
   const monthlyScores = Array.from({ length: 12 }, (_, m) => businessScoreAt(m, ctx));
   const strengthScore = monthlyScores[nowMonthIdx];
@@ -784,6 +844,10 @@ ${aspectStr(currentLongitude('saturn'), mcLon, '트랜짓 토성', '네이탈 MC
 목성 역행 여부: ${sky.jupiterRetro ? (jupiterRetroStr || '역행 중') + ' — 확장이 둔화되는 시기, 신중한 준비기로 해석' : '순행 중'}
 목성 회귀 진행 중인가(~12년 주기): ${sky.jupiterReturnActive ? '예 — 확장·기회의 시기' : '아니오'}
 ${eclipseStr(eclipseSignal)}
+[ZR 타이밍 + 프로펙션 — 지금 어떤 경영 주제가 열려 있는가]
+${[_zrCareerLineStr(zrFortune, '포르투나'), _zrCareerLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스 ${PROFECTION_CAREER_NOTE[profectionHouse] || ''}` : ''}
+(해석 지침: 6H·7H·10H가 ZR 또는 프로펙션으로 활성화된 경우 조직관리·계약·명성 테마가 구조적으로 열린 해다. 이 신호를 경영 타이밍 해석에 종합해서 써라.)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 [글쓰기 스타일 — 반드시 따를 것]
