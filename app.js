@@ -4805,7 +4805,7 @@ async function renderSolarReturnPanel(astroData) {
     }
   } catch (err) {
     console.warn("솔라리턴 계산 실패:", err.message);
-    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 솔라리턴 계산 실패: ${err.message}</div>`;
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ ${_friendlyErrorMessage(err, '솔라리턴 계산 중 오류가 발생했습니다.')}</div>`;
   }
 
   // 솔라리턴 패널이 갱신되면 루나리턴 패널도 같은 도시 기준으로 다시 그림
@@ -4883,7 +4883,7 @@ async function renderLunarReturnPanel(astroData) {
     }
   } catch (err) {
     console.warn("루나리턴 계산 실패:", err.message);
-    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 루나리턴 계산 실패: ${err.message}</div>`;
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ ${_friendlyErrorMessage(err, '루나리턴 계산 중 오류가 발생했습니다.')}</div>`;
   }
 
   // 루나리턴 패널이 갱신되면 신월/만월 캘린더 패널도 같은 도시 기준으로 다시 그림
@@ -5000,7 +5000,7 @@ async function renderMoonPhasesPanel(astroData) {
     }
   } catch (err) {
     console.warn("신월/만월 계산 실패:", err.message);
-    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 신월/만월 계산 실패: ${err.message}</div>`;
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ ${_friendlyErrorMessage(err, '신월/만월 계산 중 오류가 발생했습니다.')}</div>`;
   }
 
   if (typeof renderTransitPanel === 'function') renderTransitPanel(astroData);
@@ -5145,7 +5145,7 @@ async function calcTransitChart() {
     }
   } catch (err) {
     console.warn('트랜짓 계산 실패:', err.message);
-    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ 트랜짓 계산 실패: ${err.message}</div>`;
+    if (rowsEl) rowsEl.innerHTML = `<div style="font-size:12px;color:#fca5a5;">⚠️ ${_friendlyErrorMessage(err, '트랜짓 계산 중 오류가 발생했습니다.')}</div>`;
   }
 }
 
@@ -5529,7 +5529,7 @@ async function generateAnnualReport() {
   } catch (err) {
     hideAnnualLoader();
     statusEl.style.display = 'block';
-    statusEl.textContent = '⚠️ ' + err.message;
+    statusEl.textContent = '⚠️ ' + _friendlyErrorMessage(err, '연간 운세 계산 중 오류가 발생했습니다.');
   } finally {
     if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
   }
