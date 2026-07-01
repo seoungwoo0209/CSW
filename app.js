@@ -1025,8 +1025,8 @@ function _renderLoveFortuneHtml(payload, raw, venusRetrograde) {
   const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
     background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
-  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
-  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+  const aiEyebrowStyle = `font-size:12px;letter-spacing:.14em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:15px;color:#ddd4be;line-height:2.0;font-weight:400;`;
 
   return `
     <div style="${panelStyle}">
@@ -1245,8 +1245,8 @@ function _renderReunionFortuneHtml(payload, raw, venusRetrograde) {
   const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
     background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
-  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
-  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+  const aiEyebrowStyle = `font-size:12px;letter-spacing:.14em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:15px;color:#ddd4be;line-height:2.0;font-weight:400;`;
 
   const transitSaturnHouse = payload.liveSaturnHouse ?? payload.transitNow?.planets?.saturn?.house;
   const saturnIn78 = transitSaturnHouse === 7 || transitSaturnHouse === 8;
@@ -1688,8 +1688,8 @@ function _renderCompatibilityHtml(payload, raw, venusRetrograde) {
   const titleStyle = `font-size:18px;font-weight:700;margin-bottom:14px;
     background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
-  const aiEyebrowStyle = `font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
-  const aiTextStyle = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+  const aiEyebrowStyle = `font-size:12px;letter-spacing:.14em;color:#9b8f74;margin:0 0 8px 0;`;
+  const aiTextStyle = `font-size:15px;color:#ddd4be;line-height:2.0;font-weight:400;`;
 
   const myLabel = payload.myName || '나';
   const partnerLabel = payload.partnerName || '상대방';
@@ -2006,8 +2006,8 @@ const _CAREER_EYEBROW_STYLE = `font-size:11px;letter-spacing:.26em;color:#9f93c0
 const _CAREER_TITLE_STYLE = `font-size:18px;font-weight:700;margin-bottom:14px;
   background:linear-gradient(100deg,#f6e9c1 0%,#e0c684 45%,#caa74e 100%);
   -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:transparent;`;
-const _CAREER_AI_EYEBROW_STYLE = `font-size:10.5px;font-weight:700;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;`;
-const _CAREER_AI_TEXT_STYLE = `font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;`;
+const _CAREER_AI_EYEBROW_STYLE = `font-size:12px;font-weight:700;letter-spacing:.14em;color:#9b8f74;margin:0 0 8px 0;`;
+const _CAREER_AI_TEXT_STYLE = `font-size:15px;color:#ddd4be;line-height:2.0;font-weight:400;`;
 
 // 직업 4종 — "타이밍 강도(강함/보통/약함)" → 달 모양 배지
 const _STRENGTH_MOON = {
@@ -6254,8 +6254,8 @@ async function fetchAndInjectSajuAI() {
 
       const html = `
         <div id="aiBlock-${key}" style="position:relative;padding:16px 6px 24px 0;margin-bottom:4px;">
-          <div style="font-size:10.5px;letter-spacing:.18em;color:#9b8f74;margin:0 0 8px 0;">— ${EYEBROW[key]}</div>
-          <div style="font-size:13px;color:#beb39a;line-height:1.85;font-weight:300;">${bodyHtml}</div>
+          <div style="font-size:12px;letter-spacing:.14em;color:#9b8f74;margin:0 0 8px 0;">— ${EYEBROW[key]}</div>
+          <div style="font-size:15px;color:#ddd4be;line-height:2.0;font-weight:400;">${bodyHtml}</div>
         </div>
       `;
       anchor.insertAdjacentHTML("afterend", html);
