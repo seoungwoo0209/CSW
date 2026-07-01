@@ -890,6 +890,22 @@ function _buildLoveEnhancedFields(astroData) {
   };
 }
 
+function _zrLoveSummary(zr, ascSignIndex) {
+  if (!zr?.l1Periods) return null;
+  const l1 = zr.l1Periods[zr.currentL1Index];
+  const l2 = l1?.l2?.[zr.currentL2Index];
+  if (!l1) return null;
+  const toHouse = si => ((si - ascSignIndex + 12) % 12) + 1;
+  return {
+    l1Sign: _ZR_SIGN_SHORT[l1.signIndex],
+    l1House: toHouse(l1.signIndex),
+    l1To: l1.toAge.toFixed(1),
+    l2Sign: l2 ? _ZR_SIGN_SHORT[l2.signIndex] : null,
+    l2House: l2 ? toHouse(l2.signIndex) : null,
+    l2To: l2 ? l2.toAge.toFixed(1) : null,
+  };
+}
+
 async function revealLoveFortune() {
   if (_loveRevealInFlight) return;
   if (!window.AstroResult) {
@@ -949,6 +965,9 @@ async function revealLoveFortune() {
       isInRelationship: _loveRelationshipStatus === 'taken',
       transits: astroData.transits,
       houses: astroData.houses,
+      profectionHouse: Math.floor(((astroData.lunationCycle?.currentAgeYears ?? astroData.progression?.meta?.ageYears ?? 0) % 12)) + 1,
+      zrFortune: _zrLoveSummary(astroData.zrFortune, astroData.angles?.asc?.signIndex ?? 0),
+      zrSpirit:  _zrLoveSummary(astroData.zrSpirit,  astroData.angles?.asc?.signIndex ?? 0),
     };
 
     const res = await fetch("/api/gemini-love", {
