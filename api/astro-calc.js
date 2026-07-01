@@ -26,7 +26,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { birthDate, birthTime, lat, lng, name, gender, utcOffset, partner, timeUnknown } = req.body;
+    const { birthDate, birthTime, lat, lng, name, gender, utcOffset, partner } = req.body;
 
     if (!birthDate || !birthTime || lat == null || lng == null) {
       return res.status(400).json({ error: '생년월일, 출생시각, 출생지(위도/경도)가 필요합니다.' });
@@ -214,7 +214,6 @@ export default async function handler(req, res) {
     }
 
     return res.status(200).json({
-      timeUnknown: !!timeUnknown,
       natal:       natalResult,
       angles:      { asc: toSignInfo(asc), mc: toSignInfo(mc) },
       houses:      houses.map((h, i) => ({ house: i + 1, ...toSignInfo(h) })),
@@ -251,7 +250,6 @@ export default async function handler(req, res) {
         gender:      gender || 'M',
         birthDate,
         birthTime,
-        timeUnknown: !!timeUnknown,
         lat,
         lng,
         utcOffset:   offsetHours,

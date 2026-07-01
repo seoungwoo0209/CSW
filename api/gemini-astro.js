@@ -16,7 +16,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { astroData, question, previousReading, timeUnknown } = req.body;
+    const { astroData, question, previousReading } = req.body;
 
     if (!astroData) {
       return res.status(400).json({ error: '천문 데이터가 없습니다.' });
@@ -49,37 +49,30 @@ export default async function handler(req, res) {
       .filter(([k]) => natal[k])
       .map(([k, label]) => {
         const p = natal[k];
-        return timeUnknown
-          ? `${label}: ${p.sign} ${p.degree}°${p.minute}'`
-          : `${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+        return `${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
-    // ── 프로그레션 행성 문자열 (출생시 미상이면 하우스/ASC/MC 제외)
+    // ── 프로그레션 전 행성 문자열
     const progPlanetStr = PLANET_LABELS
       .filter(([k]) => progPlanets[k])
       .map(([k, label]) => {
         const p = progPlanets[k];
-        return timeUnknown
-          ? `프로그레션 ${label}: ${p.sign} ${p.degree}°${p.minute}'`
-          : `프로그레션 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+        return `프로그레션 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
-    const progAnglesStr = (!timeUnknown && progAngles.asc)
+    const progAnglesStr = progAngles.asc
       ? `프로그레션 ASC: ${progAngles.asc.sign} ${progAngles.asc.degree}°${progAngles.asc.minute}'\n` +
         `프로그레션 MC: ${progAngles.mc.sign} ${progAngles.mc.degree}°${progAngles.mc.minute}'`
       : '';
 
-    // ── 하우스 커스프 문자열 (출생시 미상이면 생략)
-    const houseCusps = timeUnknown
-      ? ''
-      : (houses || []).map(h => `${h.house}하우스: ${h.sign} ${h.degree}°${h.minute}'`).join('\n');
+    // ── 하우스 커스프 문자열
+    const houseCusps = (houses || []).map(h =>
+      `${h.house}하우스: ${h.sign} ${h.degree}°${h.minute}'`
+    ).join('\n');
 
-    // ── 에스펙트 문자열 (출생시 미상이면 ASC/MC 포함 각도 제외)
-    const _ascMcSet = new Set(['ASC', 'MC', 'Asc', 'Mc']);
+    // ── 에스펙트 문자열 (AI 입력용)
     const natalAspectStr = natalAspectsFull.length
-      ? natalAspectsFull
-          .filter(a => !timeUnknown || (!_ascMcSet.has(a.point1) && !_ascMcSet.has(a.point2)))
-          .map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n') || '(주요 에스펙트 없음)'
+      ? natalAspectsFull.map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, orb ${a.orb}°)`).join('\n')
       : '(주요 에스펙트 없음)';
 
     const progAspectStr = progAspects.length
@@ -271,28 +264,24 @@ export default async function handler(req, res) {
       : '';
 
     // ── 공통 분석 데이터 블록
-    const timeUnknownNote = timeUnknown
-      ? `\n⚠️ 출생 시각 미상 — ASC·MC·하우스 배치·ZR은 신뢰할 수 없어 제외함. 행성 별자리 위치와 행성 간 각도(aspect) 중심으로만 해석할 것.\n`
-      : '';
-    const ascMcBlock = timeUnknown
-      ? ''
-      : `\n어센던트(ASC): ${angles.asc.sign} ${angles.asc.degree}°${angles.asc.minute}'\nMC(천정): ${angles.mc.sign} ${angles.mc.degree}°${angles.mc.minute}'\n`;
-    const houseCuspsBlock = (timeUnknown || !houseCusps)
-      ? ''
-      : `\n하우스 커스프:\n${houseCusps}\n`;
-
     const baseData =
 `[분석 데이터]
 이름: ${meta.name || '(이름 없음)'}
 성별: ${meta.gender === 'M' ? '남성' : '여성'}
-출생: ${meta.birthDate}${timeUnknown ? ' (시각 미상)' : ' ' + meta.birthTime}
-${timeUnknown ? '' : `하우스 시스템: ${meta.houseSystem || 'Placidus'}`}
-${timeUnknownNote}${ascMcBlock}${nodesStr ? `\n달의 교점:\n${nodesStr}` : ''}
+출생: ${meta.birthDate} ${meta.birthTime}
+하우스 시스템: ${meta.houseSystem || 'Placidus'}
+
+어센던트(ASC): ${angles.asc.sign} ${angles.asc.degree}°${angles.asc.minute}'
+MC(천정): ${angles.mc.sign} ${angles.mc.degree}°${angles.mc.minute}'
+${nodesStr ? `\n달의 교점:\n${nodesStr}` : ''}
 
 네이탈 행성 위치:
 ${planetStr}
-${houseCuspsBlock}
-네이탈 주요 에스펙트${timeUnknown ? ' (행성 간 각도만)' : ' (행성+ASC/MC+북노드/릴리스 전체)'}:
+
+하우스 커스프:
+${houseCusps}
+
+네이탈 주요 에스펙트 (행성+ASC/MC+북노드/릴리스 전체):
 ${natalAspectStr}
 
 [세컨더리 프로그레션] (기준일: ${progMeta.progDate || '현재'}, 나이 약 ${progMeta.ageYears || '?'}세)
@@ -325,53 +314,6 @@ ${question}
 - 150~250자 사이로 핵심만 답하세요.
 - 자기소개나 서두 없이 바로 답변하세요.
 - 친근하고 따뜻한 톤으로 작성하세요.`;
-
-    } else if (timeUnknown) {
-      // 전체 리딩 모드 — 출생 시각 미상: 행성 별자리·각도·진행월령 중심 (ASC/하우스/ZR 제외)
-      prompt = baseData + `
-
-[진행월령 — 인생 전체 심리적 계절]
-${lunationStr}
-
-──────────────────────────────────────────
-⚠️ 출생 시각을 모르기 때문에 ASC·하우스·ZR·프로펙션은 사용할 수 없습니다.
-위 데이터(행성 별자리 위치·행성 간 각도·프로그레션·진행월령)를 토대로 이 사람의 기질과 현재 흐름을 써주세요.
-
-[작성 지침 — 반드시 준수]
-1. 자기소개 없이 바로 시작.
-2. 행성·별자리명·각도 숫자·기호를 절대 쓰지 말고, 의미만 자연스러운 한국어로 표현.
-3. 완성된 문장으로 마무리. 중간에 끊지 말 것.
-4. 나이 숫자는 자유롭게 써도 됨.
-
-[출력 구조 — 반드시 아래 순서로]
-
-## 타고난 기질 — 이 사람의 에너지
-
-네이탈 행성 별자리 위치와 행성 간 각도를 바탕으로:
-· 태양(의식적 자아 방향)·달(감정·무의식 반응)·수성(생각·소통 방식)·금성(관계·가치관)·화성(행동·추진력)이 각각 어떤 색깔인지
-· 강한 행성 간 각도(합·대립·삼분·사분·육분)가 이 사람의 성격과 삶의 패턴에 어떤 영향을 주는지
-· 목성(확장·기회)과 토성(제한·구조)이 서로, 또는 다른 행성들과 어떤 관계를 맺고 있는지
-
-## 인생의 심리적 흐름 — 진행월령
-
-진행월령 데이터를 바탕으로 인생의 심리적 계절을 서술:
-· 각 단계(신월기·초승달기·상현기 등)가 이 사람에게 어떤 시기였는지/어떤 시기인지
-· 현재 어떤 단계에 있으며, 그것이 지금의 심리적 상태와 어떻게 연결되는지
-· 다음 단계로의 전환이 언제쯤이며 어떤 변화를 준비해야 하는지
-
-## 지금 이 순간
-
-현재 진행월령 단계 + 프로그레션 행성 별자리를 종합해서:
-· 지금이 인생에서 어떤 위치인지 (씨 뿌리는 시기인지, 수확기인지, 전환점인지)
-· 프로그레션 태양·달이 현재 어떤 성격의 에너지를 발산하는지
-· 지금 가장 집중해야 할 삶의 방향
-
-[절대 금지]
-- 행성명·별자리명·각도 숫자·기호·하우스 번호
-- ASC·하우스·ZR 언급 (출생 시각 미상이므로 신뢰할 수 없음)
-- "새로운 시작", "긍정적 변화", "신중함 필요" 같은 뭉뚱그린 표현
-- 누구에게나 해당되는 일반 조언
-700자 이상 충분히 써주세요.`;
 
     } else {
       // 전체 리딩 모드 — 네이탈 위계 + 전체 ZR 타임라인 + 진행월령 + 프로펙션 종합
