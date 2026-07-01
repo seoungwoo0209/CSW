@@ -14,7 +14,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { todayData, question, previousReading } = req.body;
+    const { todayData, question, previousReading, timeUnknown } = req.body;
 
     if (!todayData) {
       return res.status(400).json({ error: '오늘 운세 데이터가 없습니다.' });
@@ -42,20 +42,24 @@ export default async function handler(req, res) {
       ['pluto',   '명왕성'],
     ];
 
-    // ── 네이탈 행성 문자열
+    // ── 네이탈 행성 문자열 (출생시 미상이면 하우스 번호 제외)
     const natalStr = PLANET_LABELS
       .filter(([k]) => natal[k])
       .map(([k, label]) => {
         const p = natal[k];
-        return `네이탈 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+        return timeUnknown
+          ? `네이탈 ${label}: ${p.sign} ${p.degree}°${p.minute}'`
+          : `네이탈 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
-    // ── 오늘 트랜짓 행성 문자열
+    // ── 오늘 트랜짓 행성 문자열 (출생시 미상이면 하우스 번호 제외)
     const transitStr = PLANET_LABELS
       .filter(([k]) => todayTransit[k])
       .map(([k, label]) => {
         const p = todayTransit[k];
-        return `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
+        return timeUnknown
+          ? `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}'`
+          : `오늘 ${label}: ${p.sign} ${p.degree}°${p.minute}', ${p.house}하우스`;
       }).join('\n');
 
     // ── 네이탈 에스펙트 문자열 (orb 4° 이내, 최대 15개)
@@ -75,9 +79,11 @@ export default async function handler(req, res) {
           .join('\n')
       : '(프로그레션-트랜짓 에스펙트 없음)';
 
-    // ── 에스펙트 전체 (orb 기준 정렬, 행성+ASC/MC+북노드/릴리스 전체)
+    // ── 에스펙트 전체 (orb 기준 정렬; 출생시 미상이면 ASC/MC 포함 각도 제외)
+    const _ascMcLabels = new Set(['ASC', 'MC', '어센던트', '천정']);
     const aspectStr = todayAspectsFull
       .slice()
+      .filter(a => !timeUnknown || (!_ascMcLabels.has(a.point1) && !_ascMcLabels.has(a.point2)))
       .sort((a, b) => a.orb - b.orb)
       .map(a => `${a.point1} ${a.symbol} ${a.point2} (${a.aspect}, 오브 ${a.orb}°, ${a.applying ? '접근중' : '이탈중'})`)
       .join('\n') || '(주요 에스펙트 없음)';
@@ -103,15 +109,21 @@ export default async function handler(req, res) {
       ? `${moonPhase.phaseIcon} ${moonPhase.phaseName} · 조도 ${moonPhase.illumination}% · ${moonPhase.energy}`
       : '(달 위상 정보 없음)';
 
-    // ── 프로그레션 문자열
+    // ── 프로그레션 문자열 (출생시 미상이면 하우스/ASC/MC 제외)
     const progStr = progression
-      ? `프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}', ${progression.sun.house}하우스 (현재 삶의 챕터와 자아 진화 방향)\n` +
-        `프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}', ${progression.moon.house}하우스 (현재 감정·관심의 초점, 약 2~3개월 단위 흐름)\n` +
-        `프로그레션 수성: ${progression.mercury.sign} ${progression.mercury.degree}°${progression.mercury.minute}', ${progression.mercury.house}하우스 (현재 생각·소통 방식의 결)\n` +
-        `프로그레션 금성: ${progression.venus.sign} ${progression.venus.degree}°${progression.venus.minute}', ${progression.venus.house}하우스 (현재 관계·가치관에서 끌리는 방향)\n` +
-        `프로그레션 화성: ${progression.mars.sign} ${progression.mars.degree}°${progression.mars.minute}', ${progression.mars.house}하우스 (현재 추진력·행동 방식의 결)\n` +
-        `프로그레션 ASC: ${progression.asc.sign} ${progression.asc.degree}°${progression.asc.minute}' (현재 세상에 보이는 페르소나)\n` +
-        `프로그레션 MC: ${progression.mc.sign} ${progression.mc.degree}°${progression.mc.minute}' (현재 사회적 방향·평판의 결)`
+      ? (timeUnknown
+          ? `프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}' (현재 삶의 챕터와 자아 진화 방향)\n` +
+            `프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}' (현재 감정·관심의 초점, 약 2~3개월 단위 흐름)\n` +
+            `프로그레션 수성: ${progression.mercury.sign} ${progression.mercury.degree}°${progression.mercury.minute}' (현재 생각·소통 방식의 결)\n` +
+            `프로그레션 금성: ${progression.venus.sign} ${progression.venus.degree}°${progression.venus.minute}' (현재 관계·가치관에서 끌리는 방향)\n` +
+            `프로그레션 화성: ${progression.mars.sign} ${progression.mars.degree}°${progression.mars.minute}' (현재 추진력·행동 방식의 결)`
+          : `프로그레션 태양: ${progression.sun.sign} ${progression.sun.degree}°${progression.sun.minute}', ${progression.sun.house}하우스 (현재 삶의 챕터와 자아 진화 방향)\n` +
+            `프로그레션 달: ${progression.moon.sign} ${progression.moon.degree}°${progression.moon.minute}', ${progression.moon.house}하우스 (현재 감정·관심의 초점, 약 2~3개월 단위 흐름)\n` +
+            `프로그레션 수성: ${progression.mercury.sign} ${progression.mercury.degree}°${progression.mercury.minute}', ${progression.mercury.house}하우스 (현재 생각·소통 방식의 결)\n` +
+            `프로그레션 금성: ${progression.venus.sign} ${progression.venus.degree}°${progression.venus.minute}', ${progression.venus.house}하우스 (현재 관계·가치관에서 끌리는 방향)\n` +
+            `프로그레션 화성: ${progression.mars.sign} ${progression.mars.degree}°${progression.mars.minute}', ${progression.mars.house}하우스 (현재 추진력·행동 방식의 결)\n` +
+            `프로그레션 ASC: ${progression.asc.sign} ${progression.asc.degree}°${progression.asc.minute}' (현재 세상에 보이는 페르소나)\n` +
+            `프로그레션 MC: ${progression.mc.sign} ${progression.mc.degree}°${progression.mc.minute}' (현재 사회적 방향·평판의 결)`)
       : '(프로그레션 정보 없음)';
 
     // ── 오늘의 전환점 문자열 (역행 시작/종료, 사인 이동 — 매일 같은 정적 상태가
@@ -128,17 +140,21 @@ export default async function handler(req, res) {
       : '(오늘 특별한 전환점 없음 — 평소와 비슷한 흐름이 이어지는 날)';
 
     // ── 공통 데이터 블록
+    const timeUnknownNote = timeUnknown
+      ? `\n⚠️ 출생 시각 미상 — ASC·MC·하우스 배치는 신뢰할 수 없어 제외함. 행성 별자리 위치와 행성 간 각도(aspect) 중심으로만 해석할 것.\n`
+      : '';
+    const ascMcStr = timeUnknown
+      ? ''
+      : `\n어센던트(ASC): ${natalAngles?.asc?.sign || ''} ${natalAngles?.asc?.degree || ''}°\nMC(천정): ${natalAngles?.mc?.sign || ''} ${natalAngles?.mc?.degree || ''}°\n`;
+
     const baseData =
 `[오늘의 운세 분석 데이터]
 이름: ${meta.name || '(이름 없음)'}
 성별: ${meta.gender === 'M' ? '남성' : '여성'}
-출생: ${meta.birthDate} ${meta.birthTime}
+출생: ${meta.birthDate}${timeUnknown ? ' (시각 미상)' : ' ' + meta.birthTime}
 오늘 날짜: ${todayDate}
 현재 시각 (KST): ${currentTime || '알 수 없음'}
-
-어센던트(ASC): ${natalAngles?.asc?.sign || ''} ${natalAngles?.asc?.degree || ''}°
-MC(천정): ${natalAngles?.mc?.sign || ''} ${natalAngles?.mc?.degree || ''}°
-
+${timeUnknownNote}${ascMcStr}
 [네이탈 행성 위치]
 ${natalStr}
 

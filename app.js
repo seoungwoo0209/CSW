@@ -54,6 +54,8 @@ function _resetCareerLikeResultScreens() {
   });
 }
 
+let _currentTimeUnknown = false; // 프로필 로드 시 시간 모름 여부 추적
+
 function _invalidateAstroResult() {
   window.AstroResult = null;
   window.AstroReadingResult = null;
@@ -198,6 +200,7 @@ function setScreenLocation(screenKey, city) {
 // 활성 프로필이 바뀔 때마다 폼/캐시/위치 변수를 그 사람 기준으로 다시 맞춘다.
 function syncFormFromProfile(p) {
   if (!p) return;
+  _currentTimeUnknown = !!p.timeUnknown;
   if (_$("name"))           _$("name").value           = p.name || "";
   if (_$("gender"))         _$("gender").value          = p.gender || "M";
   if (_$("birthDate"))      _$("birthDate").value      = p.solarBirthDate || p.birthDate || "";
@@ -752,6 +755,7 @@ function runAll() {
 
   window.SajuResult = {
     name, birthDate, birthTime, gender, lunarInput,
+    timeUnknown: _currentTimeUnknown,
     fourPillars, birthUtc, approx,
     surface,
     yinyang,
@@ -968,6 +972,7 @@ async function revealLoveFortune() {
       profectionHouse: Math.floor(((astroData.lunationCycle?.currentAgeYears ?? astroData.progression?.meta?.ageYears ?? 0) % 12)) + 1,
       zrFortune: _zrLoveSummary(astroData.zrFortune, astroData.angles?.asc?.signIndex ?? 0),
       zrSpirit:  _zrLoveSummary(astroData.zrSpirit,  astroData.angles?.asc?.signIndex ?? 0),
+      timeUnknown: !!window.SajuResult?.timeUnknown,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -1189,6 +1194,7 @@ async function revealReunionFortune() {
       profectionHouse: Math.floor(((astroData.lunationCycle?.currentAgeYears ?? astroData.progression?.meta?.ageYears ?? 0) % 12)) + 1,
       zrFortune: _zrLoveSummary(astroData.zrFortune, astroData.angles?.asc?.signIndex ?? 0),
       zrSpirit:  _zrLoveSummary(astroData.zrSpirit,  astroData.angles?.asc?.signIndex ?? 0),
+      timeUnknown: !!window.SajuResult?.timeUnknown,
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -1605,6 +1611,7 @@ async function revealCompatibility() {
       aiPayload.profectionHouse = Math.floor(((_ar?.lunationCycle?.currentAgeYears ?? _ar?.progression?.meta?.ageYears ?? 0) % 12)) + 1;
       aiPayload.zrFortune = _zrLoveSummary(_ar?.zrFortune, _ar?.angles?.asc?.signIndex ?? 0);
       aiPayload.zrSpirit  = _zrLoveSummary(_ar?.zrSpirit,  _ar?.angles?.asc?.signIndex ?? 0);
+      aiPayload.timeUnknown = !!window.SajuResult?.timeUnknown;
     }
 
     const aiRes = await fetch("/api/gemini-love", {
@@ -1899,6 +1906,7 @@ function _buildCareerCommonFields(astroData) {
   return {
     name:   window.SajuResult?.name || '',
     gender: window.SajuResult?.gender || 'M',
+    timeUnknown: !!window.SajuResult?.timeUnknown,
     ascSign: astroData.angles.asc.sign,
     ascRuler,
     mcSign:  astroData.angles.mc.sign,
@@ -3171,7 +3179,7 @@ async function runAstroCalc() {
     const calcRes = await fetch("/api/astro-calc", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ birthDate, birthTime, lat, lng, name, gender, utcOffset })
+      body: JSON.stringify({ birthDate, birthTime, lat, lng, name, gender, utcOffset, timeUnknown: !!window.SajuResult?.timeUnknown })
     });
 
     const astroData = await calcRes.json();
@@ -6060,7 +6068,7 @@ async function requestTodayFortune() {
       const calcRes = await fetch("/api/astro-today", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ birthDate, birthTime, lat, lng, name, gender, utcOffset, appLat, appLng, appUtcOffset })
+        body: JSON.stringify({ birthDate, birthTime, lat, lng, name, gender, utcOffset, appLat, appLng, appUtcOffset, timeUnknown: !!window.SajuResult?.timeUnknown })
       });
 
       const todayData = await calcRes.json();
@@ -6078,7 +6086,7 @@ async function requestTodayFortune() {
     const geminiRes = await fetch("/api/gemini-today", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ todayData: window.TodayResult })
+      body: JSON.stringify({ todayData: window.TodayResult, timeUnknown: !!window.SajuResult?.timeUnknown })
     });
 
     const geminiData = await geminiRes.json();
@@ -6428,7 +6436,7 @@ async function requestAstroReading() {
     const geminiRes = await fetch("/api/gemini-astro", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ astroData: window.AstroResult })
+      body: JSON.stringify({ astroData: window.AstroResult, timeUnknown: !!window.SajuResult?.timeUnknown })
     });
 
     const geminiData = await geminiRes.json();
