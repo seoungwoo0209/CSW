@@ -1186,6 +1186,9 @@ async function revealReunionFortune() {
       eclipseSignal,
       transits: astroData.transits,
       houses: astroData.houses,
+      profectionHouse: Math.floor(((astroData.lunationCycle?.currentAgeYears ?? astroData.progression?.meta?.ageYears ?? 0) % 12)) + 1,
+      zrFortune: _zrLoveSummary(astroData.zrFortune, astroData.angles?.asc?.signIndex ?? 0),
+      zrSpirit:  _zrLoveSummary(astroData.zrSpirit,  astroData.angles?.asc?.signIndex ?? 0),
     };
 
     const res = await fetch("/api/gemini-love", {
@@ -1598,6 +1601,10 @@ async function revealCompatibility() {
       aiPayload.eclipseSignal = await _getEclipseReunionSignal(window.AstroResult);
       aiPayload.transits = window.AstroResult?.transits;
       aiPayload.houses = window.AstroResult?.houses;
+      const _ar = window.AstroResult;
+      aiPayload.profectionHouse = Math.floor(((_ar?.lunationCycle?.currentAgeYears ?? _ar?.progression?.meta?.ageYears ?? 0) % 12)) + 1;
+      aiPayload.zrFortune = _zrLoveSummary(_ar?.zrFortune, _ar?.angles?.asc?.signIndex ?? 0);
+      aiPayload.zrSpirit  = _zrLoveSummary(_ar?.zrSpirit,  _ar?.angles?.asc?.signIndex ?? 0);
     }
 
     const aiRes = await fetch("/api/gemini-love", {

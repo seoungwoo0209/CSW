@@ -259,8 +259,8 @@ function marriageWaveTrajectoryInstruction(bestIndices, nowMonthIdx, reasonFn, c
    재회운 — 올해의 재회 타이밍 점수·타임라인 (①단독·②상대방 있음 둘 다 동일 공식, 내 차트 기준 트랜짓)
    ========================================================= */
 function reunionScoreAt(monthIdx, ctx) {
-  const { transits, natalVenusLon, natalSaturnLon, eclipseMonth, venusRetroFlags } = ctx;
-  let s = 0;
+  const { transits, natalVenusLon, natalSaturnLon, eclipseMonth, venusRetroFlags, zrReunionBonus = 0, profectionBonus = 0 } = ctx;
+  let s = zrReunionBonus + profectionBonus; // ZR·프로펙션 연간 베이스 (재회 테마가 열린 해)
   if ([7, 8].includes(monthlyHouse(transits, monthIdx, 'saturn'))) s += 1;
   if (venusRetroFlags?.[monthIdx]) s += 1;
   if (eclipseMonth === monthIdx) s += 1;
@@ -664,7 +664,8 @@ function buildReunionPrompt(body) {
     venusRetro,
     ascSign, ascRuler, house8Sign, house8Occupants,
     progVenusSign, progVenusHouse, northNodeSign, northNodeHouse,
-    jupiterVenusAspect, eclipseSignal, transits, houses
+    jupiterVenusAspect, eclipseSignal, transits, houses,
+    profectionHouse, zrFortune, zrSpirit
   } = body;
 
   const nowMonthIdx = new Date().getMonth();
@@ -672,12 +673,16 @@ function buildReunionPrompt(body) {
   if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const zrReunionBonus = ([7,8,12].includes(zrFortune?.l2House) || [7,8,12].includes(zrSpirit?.l2House)) ? 1 : 0;
+    const profectionBonus = [7,12].includes(profectionHouse) ? 1 : 0;
     ctx = {
       transits: patchedTransitsForNow(transits, houses, nowMonthIdx, ['jupiter', 'saturn', 'venus']),
       natalVenusLon: venus?.longitude,
       natalSaturnLon: saturn?.longitude,
       eclipseMonth: eclipseMonthIndex(eclipseSignal),
       venusRetroFlags,
+      zrReunionBonus,
+      profectionBonus,
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
@@ -754,6 +759,11 @@ ${satVenusStr}
 ${satRulerStr}
 ${jupVenusStr}
 ${nodeStr}
+
+[ZR 타이밍 + 프로펙션 — 지금 어떤 주제가 열려 있는가]
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스${profectionHouse === 7 ? ' (파트너십 테마 — 관계가 올해 핵심)' : profectionHouse === 12 ? ' (과거·숨겨진 인연 하우스 — 끝나지 않은 관계가 다시 수면 위로 오르는 해)' : ''}` : ''}
+${[_zrLineStr(zrFortune, '포르투나'), _zrLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+(해석 지침: 7H·8H는 관계 에너지가 열린 신호, 12H는 과거·숨겨진 인연이 수면 위로 오르는 재회 특유의 신호다.)
 
 [지금 시점의 재회 타이밍 신호]
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
@@ -897,7 +907,8 @@ function buildReunionKnownPrompt(body) {
     myName, myGender, partnerName, partnerGender,
     myPlanets, partnerPlanets, partnerTimeUnknown,
     topAspects, houseOverlay, composite,
-    transitSaturnHouse, venusRetro, eclipseSignal, transits, houses
+    transitSaturnHouse, venusRetro, eclipseSignal, transits, houses,
+    profectionHouse, zrFortune, zrSpirit
   } = body;
 
   const myLabel      = myName?.trim() || '나';
@@ -927,6 +938,8 @@ function buildReunionKnownPrompt(body) {
   if (Array.isArray(transits) && transits.length === 12 && Array.isArray(houses) && houses.length === 12) {
     const venusRetroFlags = monthlyRetroFlags(transits, 'venus');
     if (venusRetroFlags) venusRetroFlags[nowMonthIdx] = venusRetro;
+    const zrReunionBonus = ([7,8,12].includes(zrFortune?.l2House) || [7,8,12].includes(zrSpirit?.l2House)) ? 1 : 0;
+    const profectionBonus = [7,12].includes(profectionHouse) ? 1 : 0;
     // 상대방 네이탈 핵심 행성 + 컴포지트(관계 자체) 차트 경도 — "아는 사람" 모드 전용 타이밍 신호에 사용
     const partnerLons = [
       partnerPlanets?.venus?.longitude, partnerPlanets?.mars?.longitude,
@@ -943,6 +956,8 @@ function buildReunionKnownPrompt(body) {
       venusRetroFlags,
       partnerLons,
       compositeLons,
+      zrReunionBonus,
+      profectionBonus,
     };
     const monthlyScores = Array.from({ length: 12 }, (_, m) => reunionKnownScoreAt(m, ctx));
     strengthFixed = strengthFromScore(monthlyScores[nowMonthIdx]);
@@ -984,6 +999,11 @@ ${overlayStr}${timeNote}
 
 [컴포지트 차트 — 관계 자체의 성격]
 컴포지트 태양: ${composite.sun.sign} / 컴포지트 달: ${composite.moon.sign} / 컴포지트 ASC: ${composite.asc.sign}
+
+[ZR 타이밍 + 프로펙션 — 지금 어떤 주제가 열려 있는가]
+${profectionHouse ? `프로펙션 활성화 하우스: ${profectionHouse}하우스${profectionHouse === 7 ? ' (파트너십 테마 — 관계가 올해 핵심)' : profectionHouse === 12 ? ' (과거·숨겨진 인연 하우스 — 끝나지 않은 관계가 다시 수면 위로 오르는 해)' : ''}` : ''}
+${[_zrLineStr(zrFortune, '포르투나'), _zrLineStr(zrSpirit, '스피릿')].filter(Boolean).join('\n') || '(ZR 데이터 없음)'}
+(12H 신호는 과거 인연이 수면 위로 올라오는 재회 특유의 신호다.)
 
 [지금 시점의 재회 타이밍 신호]
 금성 역행 여부: ${venusRetro ? '역행 중 (전통적으로 과거 인연이 다시 떠오르는 시기로 해석됨)' : '순행 중'}
