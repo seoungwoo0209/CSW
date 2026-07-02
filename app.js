@@ -665,6 +665,68 @@ function renderHomeProfileStatus() {
 }
 
 /* =========================================================
+   인생사절(人生四節) — 60년 생애주기 계산
+   시주(시간지지)로 결정되는 봄·여름·가을·겨울 계절 순환
+   ========================================================= */
+function calcInSaengSaJeol(birthYear, birthMonth, birthDay, birthHour, birthMinute) {
+  const bMin = birthHour * 60 + birthMinute;
+
+  // 시주 → 시작 계절 및 기준 시각(분) 결정
+  // 가을(축인묘) base=01:31, 여름(진사오) base=07:31,
+  // 봄(미신유) base=13:31, 겨울(술해자) base=19:00
+  let season, baseMin, bMinAdj = bMin;
+  if (bMin >= 60 && bMin < 420) {
+    season = '가을'; baseMin = 91;    // 01:31 (축인묘) ✅ 검증
+  } else if (bMin >= 420 && bMin < 780) {
+    season = '여름'; baseMin = 451;   // 07:31 (진사오) — 추정
+  } else if (bMin >= 780 && bMin < 1140) {
+    season = '봄';   baseMin = 811;   // 13:31 (미신유) — 추정
+  } else {
+    season = '겨울'; baseMin = 1140;  // 19:00 (술해자) ✅ 검증
+    if (bMin < 60) bMinAdj = bMin + 1440; // 자시(00:xx)는 익일로
+  }
+
+  // 년차 = floor((경과분 - 1) / 9) % 6 + 1
+  const elapsedMin = bMinAdj - baseMin;
+  const safeElapsed = Math.max(1, elapsedMin);
+  const step = Math.floor((safeElapsed - 1) / 9);
+  const nyancha = step % 6 + 1;
+
+  // 출생 시점의 시작 계절 경과 연수
+  // 봄·가을(12년 계절, 순방향): 경과년 = 년차 - 1
+  // 여름·겨울(18년 계절, 역방향): 경과년 = 6 - 년차
+  const elapsedCalYears = (season === '봄' || season === '가을') ? (nyancha - 1) : (6 - nyancha);
+
+  // 60년 주기 계절 순서
+  const CYCLE_ORDER = {
+    '가을': ['가을','겨울','봄','여름'],
+    '겨울': ['겨울','봄','여름','가을'],
+    '봄':   ['봄','여름','가을','겨울'],
+    '여름': ['여름','가을','겨울','봄'],
+  };
+  const SEASON_KI = { '봄': 2, '여름': 3, '가을': 2, '겨울': 3 };
+
+  // 타임라인 생성 (startAge: 출생 기준 만나이)
+  const timeline = [];
+  let ageOffset = -elapsedCalYears;
+  for (const s of CYCLE_ORDER[season]) {
+    for (let ki = 1; ki <= SEASON_KI[s]; ki++) {
+      timeline.push({ season: s, ki, label: `${s}${ki}기`, startAge: ageOffset, endAge: ageOffset + 6 });
+      ageOffset += 6;
+    }
+  }
+
+  // 현재 위치
+  const ageNow = (Date.now() - new Date(birthYear, birthMonth - 1, birthDay).getTime()) / (365.2425 * 86400000);
+  const currentKiIdx = timeline.findIndex(k => ageNow >= k.startAge && ageNow < k.endAge);
+
+  return {
+    season, nyancha, elapsedCalYears, timeline, currentKiIdx, ageNow,
+    hasEstimatedBase: (season === '봄' || season === '여름'),
+  };
+}
+
+/* =========================================================
    메인 사주 계산 및 렌더링
    ========================================================= */
 /* runAll(): 사주 데이터 "조용히 미리 계산"만 담당.
@@ -753,6 +815,18 @@ function runAll() {
     if (window.SajuUI?.renderDaeunInfo) window.SajuUI.renderDaeunInfo(daeunTimeline, currentDecadeIdx);
   }
 
+  // ── 인생사절 60년 생애주기
+  let inSaengSaJeol = null;
+  if (birthTime) {
+    const [bh, bm] = birthTime.split(':').map(Number);
+    const [by, bmon, bd] = birthDate.split('-').map(Number);
+    inSaengSaJeol = calcInSaengSaJeol(by, bmon, bd, bh, bm);
+    if (window.SajuUI?.renderInSaengSaJeol) window.SajuUI.renderInSaengSaJeol(inSaengSaJeol, by);
+  } else {
+    const _isp = _$('inSaengSaJeolPanel');
+    if (_isp) _isp.innerHTML = '';
+  }
+
   window.SajuResult = {
     name, birthDate, birthTime, gender, lunarInput,
     fourPillars, birthUtc, approx,
@@ -761,7 +835,7 @@ function runAll() {
     yinyangWithHidden: yinyangWithHidden.withHidden,
     natalBranches: [fourPillars.year.branch, fourPillars.month.branch, fourPillars.day.branch, fourPillars.hour.branch],
     shinsal: (typeof calc12Shinsal === "function") ? calc12Shinsal(fourPillars) : null,
-    daeunTimeline, currentDecadeIdx,
+    daeunTimeline, currentDecadeIdx, inSaengSaJeol,
   };
 
   // ── 연간 운세 탭: 로딩 상태 (정통사주 화면 공개와 무관하게 즉시 진행)

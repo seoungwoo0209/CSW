@@ -463,6 +463,81 @@ function renderFullAnalysis() {
 }
 
 /* =========================================================
+   PART 3.6: 인생사절 60년 생애주기 렌더링
+   ========================================================= */
+function renderInSaengSaJeol(data, birthYear) {
+  const c = _$("inSaengSaJeolPanel");
+  if (!c || !data) return;
+
+  const { season, nyancha, timeline, currentKiIdx, ageNow, hasEstimatedBase } = data;
+
+  const SEASON_COLOR  = { '봄':'#82c9a0', '여름':'#e8a86a', '가을':'#e6c98b', '겨울':'#9ab4d0' };
+  const SEASON_BG     = { '봄':'rgba(82,180,120,.16)', '여름':'rgba(220,150,80,.16)', '가을':'rgba(200,168,96,.16)', '겨울':'rgba(100,140,190,.16)' };
+  const SEASON_BORDER = { '봄':'rgba(82,180,120,.45)', '여름':'rgba(220,150,80,.45)', '가을':'rgba(200,168,96,.45)', '겨울':'rgba(100,140,190,.45)' };
+  const SEASON_HANJA  = { '봄':'春', '여름':'夏', '가을':'秋', '겨울':'冬' };
+
+  const kiHtml = timeline.map((ki, idx) => {
+    const isCurrent = idx === currentKiIdx;
+    const isPast    = currentKiIdx >= 0 && idx < currentKiIdx;
+    const startYear = birthYear ? birthYear + ki.startAge : null;
+    const color  = SEASON_COLOR[ki.season];
+    const border = SEASON_BORDER[ki.season];
+    const bg     = SEASON_BG[ki.season];
+    const startLabel = ki.startAge < 0 ? 0 : ki.startAge;
+
+    return `<div style="flex:0 0 auto;width:68px;text-align:center;padding:9px 4px;border-radius:12px;
+        ${isCurrent
+          ? `background:${bg};border:1.5px solid ${border};`
+          : `border:1px solid rgba(200,168,96,.1);${isPast ? 'opacity:.4;' : ''}`}">
+        <div style="font-size:10px;letter-spacing:.04em;color:${isCurrent ? color : '#8d8268'};
+          font-weight:${isCurrent ? 600 : 400};margin-bottom:4px;">${ki.label}</div>
+        <div style="font-size:10.5px;color:#c9c0a8;">${startLabel}~${ki.endAge}세</div>
+        ${startYear ? `<div style="font-size:9.5px;color:#7d7257;margin-top:2px;">${startYear}년~</div>` : ''}
+        ${isCurrent ? `<div style="font-size:9px;color:${color};margin-top:3px;letter-spacing:.06em;">● 현재</div>` : ''}
+      </div>`;
+  }).join('');
+
+  const curKi  = currentKiIdx >= 0 ? timeline[currentKiIdx]  : null;
+  const nextKi = currentKiIdx >= 0 && currentKiIdx + 1 < timeline.length ? timeline[currentKiIdx + 1] : null;
+  const curStartYear = (birthYear && curKi) ? (birthYear + curKi.startAge) : null;
+  const nextStartYear = (birthYear && nextKi) ? (birthYear + nextKi.startAge) : null;
+
+  const calloutHtml = curKi ? `
+    <div style="margin-top:10px;padding:12px 14px;border-radius:12px;
+      background:rgba(200,168,96,.06);border:1px solid rgba(200,168,96,.15);">
+      <div style="font-size:10.5px;color:#9b8f74;letter-spacing:.1em;margin-bottom:5px;">지금은</div>
+      <div style="font-size:16px;color:#e6cd8a;font-family:Georgia,serif;font-weight:600;">${curKi.label}</div>
+      <div style="font-size:12px;color:#9b8f74;margin-top:3px;">
+        ${curKi.startAge < 0 ? 0 : curKi.startAge}~${curKi.endAge}세${curStartYear ? ` · ${curStartYear}~${birthYear + curKi.endAge}년` : ''} · 만 ${Math.floor(ageNow)}세
+      </div>
+      ${nextKi ? `<div style="font-size:11.5px;color:#7d7257;margin-top:6px;">
+        다음: <span style="color:${SEASON_COLOR[nextKi.season]}">${nextKi.label}</span>
+        ${nextKi.startAge}세${nextStartYear ? ` (${nextStartYear}년~)` : ''}부터
+      </div>` : ''}
+    </div>` : '';
+
+  const estimateNote = hasEstimatedBase
+    ? `<div style="font-size:10px;color:#6b5f45;margin-top:8px;padding:6px 10px;
+        border-radius:8px;background:rgba(255,200,100,.06);border:1px solid rgba(255,200,100,.15);">
+        ※ 봄·여름 시작자의 기준 시각은 검증 전 추정값입니다
+      </div>` : '';
+
+  c.innerHTML = `
+    <div class="result-card">
+      <div class="card-title">인생사절(人生四節) — 60년 생애주기</div>
+      <div class="tiny">${SEASON_HANJA[season]} ${season}에서 시작 · 태어날 때 ${season}1기 ${nyancha}년차</div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px;margin:14px -2px 0;">
+        <div style="display:flex;gap:5px;min-width:max-content;padding:0 2px 8px;">
+          ${kiHtml}
+        </div>
+      </div>
+      ${calloutHtml}
+      ${estimateNote}
+    </div>
+  `;
+}
+
+/* =========================================================
    Export
    ========================================================= */
 window.SajuUI = {
@@ -474,6 +549,7 @@ window.SajuUI = {
   renderGodsInfo,
   renderShinsalInfo,
   renderDaeunInfo,
+  renderInSaengSaJeol,
   renderBaseScore,
   renderResourcePanel,
   renderPersonalityCard,
